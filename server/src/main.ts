@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import { UserRole } from '@prisma/client';
 import { cities, countries, estimateFare, findCity, findVehicleType, vehicleTypes } from './config.js';
 import { prisma, isDatabaseEnabled } from './db.js';
 
@@ -16,9 +17,22 @@ const drivers = [
 ];
 
 const memoryRides: any[] = [];
+const memoryUsers: any[] = [];
+const memoryCities: any[] = [...cities];
+const memoryVehicleTypes: any[] = [...vehicleTypes];
 
 function findMemoryRide(id: string) {
   return memoryRides.find((item) => item.id === id);
+}
+
+function normalizeRole(role?: string): UserRole {
+  if (role === 'DRIVER') return UserRole.DRIVER;
+  if (role === 'ADMIN') return UserRole.ADMIN;
+  return UserRole.PASSENGER;
+}
+
+function publicUser(user: any) {
+  return { id: user.id, phone: user.phone, name: user.name, role: user.role };
 }
 
 app.get('/', (_req, res) => {
@@ -27,6 +41,40 @@ app.get('/', (_req, res) => {
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true, app: 'JUMBAK', region: 'global-ready', database: isDatabaseEnabled() });
+});
+
+app.post('/api/auth/request-otp', (req, res) => {
+  const phone = String(req.body.phone || '').trim();
+  if (!phone) return res.status(400).json({ error: 'Phone is required' });
+  res.json({ ok: true, phone, devOtp: '123456', message: 'OTP generated for development. Replace with SMS provider before production.' });
+});
+
+app.post('/api/auth/verify-otp', async (req, res) => {
+  const phone = String(req.body.phone || '').trim();
+  const code = String(req.body.code || '').trim();
+  const name = String(req.body.name || '').trim() || null;
+  const role = normalizeRole(String(req.body.role || 'PASSENGER'));
+  if (!phone) return res.status(400).json({ error: 'Phone is required' });
+  if (code !== '123456') return res.status(401).json({ error: 'Invalid OTP' });
+
+  if (prisma) {
+    const user = await prisma.user.upsert({
+      where: { phone },
+      update: { name: name || undefined, role },
+      create: { phone, name, role }
+    });
+    return res.json({ ok: true, user: publicUser(user), token: `dev_${user.id}` });
+  }
+
+  let user = memoryUsers.find((item) => item.phone === phone);
+  if (!user) {
+    user = { id: `user_${Date.now()}`, phone, name, role, createdAt: new Date().toISOString() };
+    memoryUsers.push(user);
+  } else {
+    user.name = name || user.name;
+    user.role = role;
+  }
+  res.json({ ok: true, user: publicUser(user), token: `dev_${user.id}` });
 });
 
 app.get('/api/config', async (_req, res) => {
@@ -38,7 +86,58 @@ app.get('/api/config', async (_req, res) => {
     ]);
     return res.json({ countries: dbCountries, cities: dbCities, vehicleTypes: dbVehicleTypes });
   }
-  res.json({ countries, cities, vehicleTypes });
+  res.json({ countries, cities: memoryCities, vehicleTypes: memoryVehicleTypes });
+});
+
+app.post('/api/admin/cities', async (req, res) => {
+  const id = String(req.body.id || '').trim().toLowerCase();
+  const countryId = String(req.body.countryId || 'sd');
+  const nameAr = String(req.body.nameAr || '').trim();
+  const nameEn = String(req.body.nameEn || '').trim();
+  const zonesAr = Array.isArray(req.body.zonesAr) ? req.body.zonesAr : [];
+  const zonesEn = Array.isArray(req.body.zonesEn) ? req.body.zonesEn : [];
+  if (!id || !nameAr || !nameEn) return res.status(400).json({ error: 'id, nameAr and nameEn are required' });
+
+  if (prisma) {
+    const city = await prisma.city.upsert({
+      where: { id },
+      update: { countryId, nameAr, nameEn },
+      create: { id, countryId, nameAr, nameEn }
+    });
+    for (let i = 0; i < Math.max(zonesAr.length, zonesEn.length); i++) {
+      await prisma.zone.upsert({
+        where: { id: `${id}_${i}` },
+        update: { nameAr: zonesAr[i] || zonesEn[i] || `Zone ${i + 1}`, nameEn: zonesEn[i] || zonesAr[i] || `Zone ${i + 1}` },
+        create: { id: `${id}_${i}`, cityId: id, nameAr: zonesAr[i] || zonesEn[i] || `Zone ${i + 1}`, nameEn: zonesEn[i] || zonesAr[i] || `Zone ${i + 1}` }
+      });
+    }
+    return res.status(201).json(city);
+  }
+
+  const city = { id, countryId, nameAr, nameEn, zonesAr, zonesEn };
+  const index = memoryCities.findIndex((item) => item.id === id);
+  if (index >= 0) memoryCities[index] = city; else memoryCities.push(city);
+  res.status(201).json(city);
+});
+
+app.post('/api/admin/vehicle-types', async (req, res) => {
+  const id = String(req.body.id || '').trim().toLowerCase();
+  const nameAr = String(req.body.nameAr || '').trim();
+  const nameEn = String(req.body.nameEn || '').trim();
+  const baseFare = Number(req.body.baseFare || 0);
+  const perKmFare = Number(req.body.perKmFare || 0);
+  const minimumFare = Number(req.body.minimumFare || 0);
+  if (!id || !nameAr || !nameEn || !baseFare || !perKmFare || !minimumFare) return res.status(400).json({ error: 'Missing vehicle type fields' });
+
+  const item = { id, nameAr, nameEn, baseFare, perKmFare, minimumFare };
+  if (prisma) {
+    const vehicleType = await prisma.vehicleType.upsert({ where: { id }, update: item, create: item });
+    return res.status(201).json(vehicleType);
+  }
+
+  const index = memoryVehicleTypes.findIndex((value) => value.id === id);
+  if (index >= 0) memoryVehicleTypes[index] = item; else memoryVehicleTypes.push(item);
+  res.status(201).json(item);
 });
 
 app.get('/api/drivers', async (req, res) => {
