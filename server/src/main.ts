@@ -16,6 +16,10 @@ const drivers = [
 
 const rides: any[] = [];
 
+function findRide(id: string) {
+  return rides.find((item) => item.id === id);
+}
+
 app.get('/', (_req, res) => {
   res.json({ ok: true, app: 'JUMBAK', message: 'Multi-city transport platform' });
 });
@@ -52,23 +56,33 @@ app.get('/api/rides', (_req, res) => {
   res.json(rides.slice().reverse());
 });
 
+app.get('/api/rides/:id', (req, res) => {
+  const ride = findRide(req.params.id);
+  if (!ride) return res.status(404).json({ error: 'Ride not found' });
+  res.json(ride);
+});
+
 app.post('/api/rides', (req, res) => {
   const distanceKm = Number(req.body.distanceKm || 2);
   const cityId = String(req.body.cityId || 'rufaa');
   const vehicleTypeId = String(req.body.vehicleTypeId || 'rickshaw');
   const city = findCity(cityId);
   const vehicle = findVehicleType(vehicleTypeId);
+  const matchedDriver = drivers.find((driver) => driver.cityId === cityId && driver.vehicleTypeId === vehicleTypeId && driver.online);
   const ride = {
     id: `ride_${Date.now()}`,
     cityId,
     cityName: city.nameEn,
     vehicleTypeId,
     vehicleName: vehicle.nameEn,
+    driverId: matchedDriver?.id || null,
+    driverName: matchedDriver?.name || null,
     pickupLabel: req.body.pickupLabel || city.zonesEn[0],
     destinationLabel: req.body.destinationLabel || city.zonesEn[1],
     distanceKm,
     estimatedFare: estimateFare(distanceKm, vehicleTypeId),
     status: 'REQUESTED',
+    rating: null,
     createdAt: new Date().toISOString()
   };
   rides.push(ride);
@@ -76,9 +90,20 @@ app.post('/api/rides', (req, res) => {
 });
 
 app.patch('/api/rides/:id/status', (req, res) => {
-  const ride = rides.find((item) => item.id === req.params.id);
+  const ride = findRide(req.params.id);
   if (!ride) return res.status(404).json({ error: 'Ride not found' });
   ride.status = req.body.status || ride.status;
+  ride.updatedAt = new Date().toISOString();
+  res.json(ride);
+});
+
+app.patch('/api/rides/:id/rating', (req, res) => {
+  const ride = findRide(req.params.id);
+  if (!ride) return res.status(404).json({ error: 'Ride not found' });
+  const rating = Number(req.body.rating || 0);
+  if (rating < 1 || rating > 5) return res.status(400).json({ error: 'Rating must be between 1 and 5' });
+  ride.rating = rating;
+  ride.status = 'COMPLETED';
   ride.updatedAt = new Date().toISOString();
   res.json(ride);
 });
