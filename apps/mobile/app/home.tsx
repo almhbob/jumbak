@@ -33,6 +33,21 @@ export default function Home() {
     setDestinationIndex(1);
   }
 
+  function rideParams(extra: Record<string, string> = {}) {
+    return {
+      pickup,
+      destination,
+      fare: String(fare),
+      lang,
+      city: cityName,
+      vehicle: vehicleName,
+      cityId: city.id,
+      vehicleTypeId: vehicle.id,
+      distanceKm: String(distanceKm),
+      ...extra
+    };
+  }
+
   async function requestRide() {
     setLoading(true);
     try {
@@ -43,10 +58,10 @@ export default function Home() {
         destinationLabel: destination,
         distanceKm
       });
-      router.push({ pathname: '/ride', params: { pickup, destination, fare: String(ride.estimatedFare || fare), lang, city: cityName, vehicle: vehicleName, rideId: ride.id } });
+      router.push({ pathname: '/ride', params: rideParams({ fare: String(ride.estimatedFare || fare), rideId: ride.id }) });
     } catch (error) {
       Alert.alert('JUMBAK', lang === 'ar' ? 'الخادم غير متصل الآن. سيتم تشغيل الرحلة كتجربة محلية.' : 'Backend is offline. Starting local preview ride.');
-      router.push({ pathname: '/ride', params: { pickup, destination, fare: String(fare), lang, city: cityName, vehicle: vehicleName } });
+      router.push({ pathname: '/ride', params: rideParams() });
     } finally {
       setLoading(false);
     }
