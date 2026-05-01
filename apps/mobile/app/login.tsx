@@ -20,6 +20,14 @@ export default function Login() {
   const t = dict[lang];
   const rtl = lang === 'ar';
 
+  function nextRoute() {
+    if (role === 'DRIVER') {
+      router.replace({ pathname: '/driver-register', params: { lang, phone: phone.trim(), name: name.trim() } });
+    } else {
+      router.replace({ pathname: '/home', params: { lang } });
+    }
+  }
+
   async function sendOtp() {
     if (!phone.trim()) {
       Alert.alert('JUMBAK', lang === 'ar' ? 'أدخل رقم الهاتف أولًا' : 'Enter your phone number first');
@@ -48,10 +56,10 @@ export default function Login() {
     setLoading(true);
     try {
       await verifyOtp({ phone: phone.trim(), code: code.trim(), name: name.trim() || undefined, role });
-      router.replace({ pathname: role === 'DRIVER' ? '/driver' : '/home', params: { lang } });
+      nextRoute();
     } catch {
       if (code.trim() === '123456') {
-        router.replace({ pathname: role === 'DRIVER' ? '/driver' : '/home', params: { lang } });
+        nextRoute();
       } else {
         Alert.alert('JUMBAK', lang === 'ar' ? 'رمز غير صحيح' : 'Invalid OTP');
       }
@@ -86,7 +94,7 @@ export default function Login() {
       {!otpSent ? (
         <Button title={loading ? (lang === 'ar' ? 'جاري الإرسال...' : 'Sending...') : (lang === 'ar' ? 'إرسال الرمز' : 'Send OTP')} variant='gold' onPress={sendOtp} />
       ) : (
-        <Button title={loading ? (lang === 'ar' ? 'جاري الدخول...' : 'Signing in...') : (lang === 'ar' ? 'تسجيل الدخول' : 'Sign in')} variant='gold' onPress={login} />
+        <Button title={loading ? (lang === 'ar' ? 'جاري الدخول...' : 'Signing in...') : (role === 'DRIVER' ? (lang === 'ar' ? 'متابعة بيانات المركبة' : 'Continue vehicle details') : (lang === 'ar' ? 'تسجيل الدخول' : 'Sign in'))} variant='gold' onPress={login} />
       )}
     </View>
   );
