@@ -1,13 +1,18 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { colors } from '../src/constants/theme';
 import { dict, Lang } from '../src/i18n';
+import { getDrivers } from '../src/api';
+
+type Driver = { id: string; name: string; vehicle: string; rating: number; online?: boolean };
 
 export default function Ride() {
-  const params = useLocalSearchParams<{ pickup?: string; destination?: string; fare?: string; lang?: Lang }>();
+  const params = useLocalSearchParams<{ pickup?: string; destination?: string; fare?: string; lang?: Lang; cityId?: string; vehicleTypeId?: string; rideId?: string }>();
   const [step, setStep] = useState(0);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [driverSource, setDriverSource] = useState<'api' | 'local'>('local');
   const lang: Lang = params.lang === 'en' ? 'en' : 'ar';
   const t = dict[lang];
   const rtl = lang === 'ar';
@@ -15,12 +20,33 @@ export default function Ride() {
   const pickup = params.pickup || (lang === 'ar' ? 'السوق' : 'Market');
   const destination = params.destination || (lang === 'ar' ? 'المستشفى' : 'Hospital');
   const fare = params.fare || '1200';
+  const selectedDriver = drivers[0] || { id: 'local_driver', name: lang === 'ar' ? 'محمد أحمد' : 'Mohammed Ahmed', vehicle: lang === 'ar' ? 'ركشة زرقاء' : 'Blue rickshaw', rating: 4.8 };
+
+  useEffect(() => {
+    async function loadDrivers() {
+      try {
+        const result = await getDrivers(params.cityId, params.vehicleTypeId);
+        if (Array.isArray(result) && result.length > 0) {
+          setDrivers(result);
+          setDriverSource('api');
+        } else {
+          setDrivers([]);
+          setDriverSource('local');
+        }
+      } catch {
+        setDrivers([]);
+        setDriverSource('local');
+      }
+    }
+    loadDrivers();
+  }, [params.cityId, params.vehicleTypeId]);
 
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
         <Text style={[styles.kicker, rtl && styles.rtl]}>{t.liveTrip}</Text>
         <Text style={[styles.title, rtl && styles.rtl]}>{states[step]}</Text>
+        {!!params.rideId && <Text style={[styles.rideId, rtl && styles.rtl]}>#{params.rideId}</Text>}
       </View>
       <View style={styles.mapCard}>
         <Text style={styles.logo}>J</Text>
@@ -33,11 +59,11 @@ export default function Ride() {
       </View>
       {step > 0 && (
         <View style={[styles.driverCard, rtl && styles.driverCardRtl]}>
-          <View style={styles.driverAvatar}><Text style={styles.driverInitial}>M</Text></View>
+          <View style={styles.driverAvatar}><Text style={styles.driverInitial}>{selectedDriver.name.slice(0, 1)}</Text></View>
           <View style={styles.driverInfo}>
             <Text style={[styles.section, rtl && styles.rtl]}>{t.driver}</Text>
-            <Text style={[styles.name, rtl && styles.rtl]}>Mohammed Ahmed</Text>
-            <Text style={[styles.muted, rtl && styles.rtl]}>{lang === 'ar' ? 'ركشة زرقاء - تقييم 4.8 - 3 دقائق' : 'Blue rickshaw - rating 4.8 - 3 min'}</Text>
+            <Text style={[styles.name, rtl && styles.rtl]}>{selectedDriver.name}</Text>
+            <Text style={[styles.muted, rtl && styles.rtl]}>{selectedDriver.vehicle} - rating {selectedDriver.rating} - {driverSource === 'api' ? 'API' : 'local preview'}</Text>
           </View>
         </View>
       )}
@@ -61,6 +87,7 @@ const styles = StyleSheet.create({
   header: { gap: 2 },
   kicker: { color: colors.gold, fontWeight: '900', letterSpacing: 2 },
   title: { fontSize: 32, fontWeight: '900', color: colors.navy },
+  rideId: { color: colors.muted, fontWeight: '800' },
   mapCard: { height: 275, borderRadius: 32, padding: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: '#DDF3FA' },
   logo: { color: colors.gold, fontSize: 72, fontWeight: '900' },
   progressRow: { flexDirection: 'row', gap: 8, marginVertical: 22 },
