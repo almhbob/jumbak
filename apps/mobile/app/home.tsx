@@ -3,19 +3,32 @@ import { ScrollView, Text, StyleSheet, Pressable, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { colors } from '../src/constants/theme';
-import { dict, Lang, arZones, enZones } from '../src/i18n';
+import { dict, Lang } from '../src/i18n';
+import { cities, vehicleTypes, estimateFare } from '../src/serviceConfig';
 
 export default function Home() {
   const params = useLocalSearchParams<{ lang?: Lang }>();
   const [lang, setLang] = useState<Lang>(params.lang === 'en' ? 'en' : 'ar');
-  const t = dict[lang];
-  const zones = lang === 'ar' ? arZones : enZones;
+  const [cityIndex, setCityIndex] = useState(0);
+  const [vehicleIndex, setVehicleIndex] = useState(0);
   const [pickupIndex, setPickupIndex] = useState(0);
   const [destinationIndex, setDestinationIndex] = useState(1);
-  const fare = pickupIndex === destinationIndex ? 1000 : 1200;
-  const pickup = zones[pickupIndex];
-  const destination = zones[destinationIndex];
+  const t = dict[lang];
+  const city = cities[cityIndex];
+  const vehicle = vehicleTypes[vehicleIndex];
+  const zones = lang === 'ar' ? city.zonesAr : city.zonesEn;
+  const fare = estimateFare(pickupIndex === destinationIndex ? 1 : 2, vehicle);
+  const pickup = zones[pickupIndex] || zones[0];
+  const destination = zones[destinationIndex] || zones[1];
+  const cityName = lang === 'ar' ? city.nameAr : city.nameEn;
+  const vehicleName = lang === 'ar' ? vehicle.nameAr : vehicle.nameEn;
   const rtl = lang === 'ar';
+
+  function changeCity(index: number) {
+    setCityIndex(index);
+    setPickupIndex(0);
+    setDestinationIndex(1);
+  }
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -28,40 +41,60 @@ export default function Home() {
           <Text style={styles.langText}>{t.language}</Text>
         </Pressable>
       </View>
+
+      <Text style={[styles.label, rtl && styles.rtl]}>{lang === 'ar' ? 'المدينة' : 'City'}</Text>
+      <View style={[styles.wrap, rtl && styles.reverseWrap]}>
+        {cities.map((item, index) => (
+          <Pressable key={item.id} onPress={() => changeCity(index)} style={[styles.chip, cityIndex === index && styles.active]}>
+            <Text style={[styles.chipText, cityIndex === index && styles.activeText]}>{lang === 'ar' ? item.nameAr : item.nameEn}</Text>
+          </Pressable>
+        ))}
+      </View>
+
+      <Text style={[styles.label, rtl && styles.rtl]}>{lang === 'ar' ? 'نوع الخدمة' : 'Service type'}</Text>
+      <View style={[styles.wrap, rtl && styles.reverseWrap]}>
+        {vehicleTypes.map((item, index) => (
+          <Pressable key={item.id} onPress={() => setVehicleIndex(index)} style={[styles.serviceChip, vehicleIndex === index && styles.active]}>
+            <Text style={[styles.serviceIcon, vehicleIndex === index && styles.activeText]}>{item.icon}</Text>
+            <Text style={[styles.chipText, vehicleIndex === index && styles.activeText]}>{lang === 'ar' ? item.nameAr : item.nameEn}</Text>
+          </Pressable>
+        ))}
+      </View>
+
       <View style={styles.mapCard}>
-        <Text style={[styles.mapTitle, rtl && styles.rtl]}>{t.liveMap}</Text>
-        <Text style={[styles.mapSub, rtl && styles.rtl]}>{pickup} {t.to} {destination}</Text>
+        <Text style={[styles.mapTitle, rtl && styles.rtl]}>{cityName}</Text>
+        <Text style={[styles.mapSub, rtl && styles.rtl]}>{vehicleName} - {pickup} {t.to} {destination}</Text>
         <View style={styles.routeLine}>
           <View style={styles.pin} />
           <View style={styles.line} />
           <View style={[styles.pin, styles.pinGold]} />
         </View>
       </View>
+
       <Text style={[styles.label, rtl && styles.rtl]}>{t.pickup}</Text>
       <View style={[styles.wrap, rtl && styles.reverseWrap]}>
-        {zones.slice(0, 4).map((z, index) => (
+        {zones.slice(0, 5).map((z, index) => (
           <Pressable key={z} onPress={() => setPickupIndex(index)} style={[styles.chip, pickupIndex === index && styles.active]}>
             <Text style={[styles.chipText, pickupIndex === index && styles.activeText]}>{z}</Text>
           </Pressable>
         ))}
       </View>
+
       <Text style={[styles.label, rtl && styles.rtl]}>{t.destination}</Text>
       <View style={[styles.wrap, rtl && styles.reverseWrap]}>
-        {zones.slice(1, 6).map((z, i) => {
-          const index = i + 1;
-          return (
-            <Pressable key={z} onPress={() => setDestinationIndex(index)} style={[styles.chip, destinationIndex === index && styles.active]}>
-              <Text style={[styles.chipText, destinationIndex === index && styles.activeText]}>{z}</Text>
-            </Pressable>
-          );
-        })}
+        {zones.map((z, index) => (
+          <Pressable key={z} onPress={() => setDestinationIndex(index)} style={[styles.chip, destinationIndex === index && styles.active]}>
+            <Text style={[styles.chipText, destinationIndex === index && styles.activeText]}>{z}</Text>
+          </Pressable>
+        ))}
       </View>
+
       <View style={styles.fareCard}>
         <Text style={[styles.fareLabel, rtl && styles.rtl]}>{t.estimatedFare}</Text>
-        <Text style={[styles.fare, rtl && styles.rtl]}>{fare} SDG</Text>
+        <Text style={[styles.fare, rtl && styles.rtl]}>{fare} {city.countryId === 'sa' ? 'SAR' : 'SDG'}</Text>
         <Text style={[styles.note, rtl && styles.rtl]}>{t.fareNote}</Text>
       </View>
-      <Button title={t.requestRickshaw} onPress={() => router.push({ pathname: '/ride', params: { pickup, destination, fare, lang } })} />
+      <Button title={t.requestRickshaw} onPress={() => router.push({ pathname: '/ride', params: { pickup, destination, fare, lang, city: cityName, vehicle: vehicleName } })} />
       <Button title={t.tripHistory} variant='ghost' onPress={() => router.push({ pathname: '/trips', params: { lang } })} />
     </ScrollView>
   );
@@ -87,6 +120,8 @@ const styles = StyleSheet.create({
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   reverseWrap: { flexDirection: 'row-reverse' },
   chip: { paddingVertical: 11, paddingHorizontal: 15, borderRadius: 999, backgroundColor: '#E7EEF5' },
+  serviceChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 11, paddingHorizontal: 15, borderRadius: 999, backgroundColor: '#E7EEF5' },
+  serviceIcon: { color: colors.gold, fontWeight: '900' },
   active: { backgroundColor: colors.navy },
   chipText: { color: colors.navy, fontWeight: '900' },
   activeText: { color: colors.white },
