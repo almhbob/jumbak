@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { ScrollView, Text, StyleSheet, Pressable, View } from 'react-native';
+import { ScrollView, Text, StyleSheet, Pressable, View, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { colors } from '../src/constants/theme';
 import { dict, Lang } from '../src/i18n';
 import { cities, vehicleTypes, estimateFare } from '../src/serviceConfig';
+import { createRide } from '../src/api';
 
 export default function Home() {
   const params = useLocalSearchParams<{ lang?: Lang }>();
@@ -13,11 +14,13 @@ export default function Home() {
   const [vehicleIndex, setVehicleIndex] = useState(0);
   const [pickupIndex, setPickupIndex] = useState(0);
   const [destinationIndex, setDestinationIndex] = useState(1);
+  const [loading, setLoading] = useState(false);
   const t = dict[lang];
   const city = cities[cityIndex];
   const vehicle = vehicleTypes[vehicleIndex];
   const zones = lang === 'ar' ? city.zonesAr : city.zonesEn;
-  const fare = estimateFare(pickupIndex === destinationIndex ? 1 : 2, vehicle);
+  const distanceKm = pickupIndex === destinationIndex ? 1 : 2;
+  const fare = estimateFare(distanceKm, vehicle);
   const pickup = zones[pickupIndex] || zones[0];
   const destination = zones[destinationIndex] || zones[1];
   const cityName = lang === 'ar' ? city.nameAr : city.nameEn;
@@ -28,6 +31,25 @@ export default function Home() {
     setCityIndex(index);
     setPickupIndex(0);
     setDestinationIndex(1);
+  }
+
+  async function requestRide() {
+    setLoading(true);
+    try {
+      const ride = await createRide({
+        cityId: city.id,
+        vehicleTypeId: vehicle.id,
+        pickupLabel: pickup,
+        destinationLabel: destination,
+        distanceKm
+      });
+      router.push({ pathname: '/ride', params: { pickup, destination, fare: String(ride.estimatedFare || fare), lang, city: cityName, vehicle: vehicleName, rideId: ride.id } });
+    } catch (error) {
+      Alert.alert('JUMBAK', lang === 'ar' ? 'الخادم غير متصل الآن. سيتم تشغيل الرحلة كتجربة محلية.' : 'Backend is offline. Starting local preview ride.');
+      router.push({ pathname: '/ride', params: { pickup, destination, fare: String(fare), lang, city: cityName, vehicle: vehicleName } });
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -94,7 +116,7 @@ export default function Home() {
         <Text style={[styles.fare, rtl && styles.rtl]}>{fare} {city.countryId === 'sa' ? 'SAR' : 'SDG'}</Text>
         <Text style={[styles.note, rtl && styles.rtl]}>{t.fareNote}</Text>
       </View>
-      <Button title={t.requestRickshaw} onPress={() => router.push({ pathname: '/ride', params: { pickup, destination, fare, lang, city: cityName, vehicle: vehicleName } })} />
+      <Button title={loading ? (lang === 'ar' ? 'جاري الطلب...' : 'Requesting...') : t.requestRickshaw} onPress={requestRide} />
       <Button title={t.tripHistory} variant='ghost' onPress={() => router.push({ pathname: '/trips', params: { lang } })} />
     </ScrollView>
   );
