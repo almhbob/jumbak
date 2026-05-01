@@ -32,6 +32,26 @@ export async function createRide(input: {
   return response.json();
 }
 
+export async function updateRideStatus(rideId: string, status: string) {
+  const response = await fetch(`${API_URL}/api/rides/${rideId}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status })
+  });
+  if (!response.ok) throw new Error('Failed to update ride status');
+  return response.json();
+}
+
+export async function submitRideRating(rideId: string, rating: number) {
+  const response = await fetch(`${API_URL}/api/rides/${rideId}/rating`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rating })
+  });
+  if (!response.ok) throw new Error('Failed to submit rating');
+  return response.json();
+}
+
 export async function getDrivers(cityId?: string, vehicleTypeId?: string) {
   const params = new URLSearchParams();
   if (cityId) params.set('cityId', cityId);
