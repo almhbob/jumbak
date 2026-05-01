@@ -1,29 +1,77 @@
-const metrics = [
-  ['Trips today', '24'],
-  ['Active drivers', '12'],
-  ['Cities', '3'],
-  ['Vehicle types', '3']
+type AppConfig = {
+  countries: Array<{ id: string; nameEn: string; currency: string }>;
+  cities: Array<{ id: string; countryId: string; nameEn: string; zones?: unknown[]; zonesEn?: string[] }>;
+  vehicleTypes: Array<{ id: string; nameEn: string; baseFare: number; perKmFare: number; minimumFare: number }>;
+};
+
+type Driver = { id: string; name: string; online?: boolean; verified?: boolean; cityId?: string };
+type Ride = { id: string; status: string; estimatedFare: number; cityId?: string; vehicleTypeId?: string; createdAt?: string };
+
+const fallbackConfig: AppConfig = {
+  countries: [
+    { id: 'sd', nameEn: 'Sudan', currency: 'SDG' },
+    { id: 'sa', nameEn: 'Saudi Arabia', currency: 'SAR' }
+  ],
+  cities: [
+    { id: 'rufaa', countryId: 'sd', nameEn: 'Rufaa', zonesEn: ['Market', 'Hospital', 'Station', 'Schools', 'Residential', 'University'] },
+    { id: 'khartoum', countryId: 'sd', nameEn: 'Khartoum', zonesEn: ['Khartoum', 'Bahri', 'Omdurman', 'Arab Market', 'Airport'] },
+    { id: 'dammam', countryId: 'sa', nameEn: 'Dammam', zonesEn: ['Central Dammam', 'Corniche', 'Al Shati', 'Al Faisaliyah', 'Airport'] }
+  ],
+  vehicleTypes: [
+    { id: 'rickshaw', nameEn: 'Rickshaw', baseFare: 500, perKmFare: 300, minimumFare: 1000 },
+    { id: 'car', nameEn: 'Car', baseFare: 900, perKmFare: 550, minimumFare: 1800 },
+    { id: 'van', nameEn: 'Van', baseFare: 1200, perKmFare: 700, minimumFare: 2500 }
+  ]
+};
+
+const fallbackDrivers: Driver[] = [
+  { id: 'driver_1', name: 'Mohammed Ahmed', online: true, verified: true, cityId: 'rufaa' },
+  { id: 'driver_2', name: 'Ali Altayeb', online: true, verified: true, cityId: 'rufaa' }
 ];
 
-const cities = [
-  ['Rufaa', 'Sudan', '6 zones', 'Active'],
-  ['Khartoum', 'Sudan', '5 zones', 'Ready'],
-  ['Dammam', 'Saudi Arabia', '5 zones', 'Ready']
-];
+async function apiGet<T>(path: string, fallback: T): Promise<T> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl) return fallback;
 
-const vehicleTypes = [
-  ['Rickshaw', '500', '300 / km', '1000 min'],
-  ['Car', '900', '550 / km', '1800 min'],
-  ['Van', '1200', '700 / km', '2500 min']
-];
+  try {
+    const response = await fetch(`${apiUrl}${path}`, { cache: 'no-store' });
+    if (!response.ok) return fallback;
+    return response.json();
+  } catch {
+    return fallback;
+  }
+}
 
-export default function Dashboard() {
+function countryName(config: AppConfig, countryId: string) {
+  return config.countries.find((country) => country.id === countryId)?.nameEn || countryId.toUpperCase();
+}
+
+function zoneCount(city: AppConfig['cities'][number]) {
+  return city.zones?.length || city.zonesEn?.length || 0;
+}
+
+export default async function Dashboard() {
+  const config = await apiGet<AppConfig>('/api/config', fallbackConfig);
+  const drivers = await apiGet<Driver[]>('/api/drivers', fallbackDrivers);
+  const rides = await apiGet<Ride[]>('/api/rides', []);
+
+  const activeDrivers = drivers.filter((driver) => driver.online).length;
+  const completedRides = rides.filter((ride) => ride.status === 'COMPLETED').length;
+  const totalRevenue = rides.reduce((sum, ride) => sum + Number(ride.estimatedFare || 0), 0);
+
+  const metrics = [
+    ['Trips total', String(rides.length)],
+    ['Active drivers', String(activeDrivers)],
+    ['Cities', String(config.cities.length)],
+    ['Vehicle types', String(config.vehicleTypes.length)]
+  ];
+
   return (
     <main>
       <section className='hero'>
         <p className='kicker'>JUMBAK CONTROL CENTER</p>
         <h1>Operations Dashboard</h1>
-        <p>Manage cities, service types, drivers, rides, and pricing from one place.</p>
+        <p>Live-ready admin view for cities, services, drivers, rides, and pricing.</p>
       </section>
 
       <section className='grid'>
@@ -36,14 +84,26 @@ export default function Dashboard() {
       </section>
 
       <section className='panel'>
+        <h2>Operations summary</h2>
+        <div className='table'>
+          <div className='row'>
+            <span>Completed rides</span>
+            <span>{completedRides}</span>
+            <span>Total estimated revenue</span>
+            <b>{totalRevenue} SDG</b>
+          </div>
+        </div>
+      </section>
+
+      <section className='panel'>
         <h2>Cities and launch areas</h2>
         <div className='table'>
-          {cities.map((row) => (
-            <div className='row' key={row[0]}>
-              <span>{row[0]}</span>
-              <span>{row[1]}</span>
-              <span>{row[2]}</span>
-              <b>{row[3]}</b>
+          {config.cities.map((city) => (
+            <div className='row' key={city.id}>
+              <span>{city.nameEn}</span>
+              <span>{countryName(config, city.countryId)}</span>
+              <span>{zoneCount(city)} zones</span>
+              <b>Ready</b>
             </div>
           ))}
         </div>
@@ -52,12 +112,26 @@ export default function Dashboard() {
       <section className='panel'>
         <h2>Vehicle types and pricing</h2>
         <div className='table'>
-          {vehicleTypes.map((row) => (
-            <div className='row' key={row[0]}>
-              <span>{row[0]}</span>
-              <span>Base {row[1]}</span>
-              <span>{row[2]}</span>
-              <b>{row[3]}</b>
+          {config.vehicleTypes.map((item) => (
+            <div className='row' key={item.id}>
+              <span>{item.nameEn}</span>
+              <span>Base {item.baseFare}</span>
+              <span>{item.perKmFare} / km</span>
+              <b>{item.minimumFare} min</b>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className='panel'>
+        <h2>Drivers</h2>
+        <div className='table'>
+          {drivers.slice(0, 8).map((driver) => (
+            <div className='row' key={driver.id}>
+              <span>{driver.name}</span>
+              <span>{driver.cityId || 'city'}</span>
+              <span>{driver.verified ? 'Verified' : 'Pending'}</span>
+              <b>{driver.online ? 'Online' : 'Offline'}</b>
             </div>
           ))}
         </div>
