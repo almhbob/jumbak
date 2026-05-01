@@ -1,54 +1,68 @@
 import React, { useState } from 'react';
 import { ScrollView, Text, StyleSheet, Pressable, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../src/components/Button';
-import { colors, zones } from '../src/constants/theme';
+import { colors } from '../src/constants/theme';
+import { dict, Lang, arZones, enZones } from '../src/i18n';
 
 export default function Home() {
-  const [pickup, setPickup] = useState('Market');
-  const [destination, setDestination] = useState('Hospital');
-  const fare = pickup === destination ? 1000 : 1200;
+  const params = useLocalSearchParams<{ lang?: Lang }>();
+  const [lang, setLang] = useState<Lang>(params.lang === 'en' ? 'en' : 'ar');
+  const t = dict[lang];
+  const zones = lang === 'ar' ? arZones : enZones;
+  const [pickupIndex, setPickupIndex] = useState(0);
+  const [destinationIndex, setDestinationIndex] = useState(1);
+  const fare = pickupIndex === destinationIndex ? 1000 : 1200;
+  const pickup = zones[pickupIndex];
+  const destination = zones[destinationIndex];
+  const rtl = lang === 'ar';
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
+      <View style={[styles.header, rtl && styles.reverse]}>
         <View>
-          <Text style={styles.hello}>JUMBAK</Text>
-          <Text style={styles.title}>Where are you going?</Text>
+          <Text style={[styles.hello, rtl && styles.rtl]}>{t.appNameEn}</Text>
+          <Text style={[styles.title, rtl && styles.rtl]}>{t.whereTo}</Text>
         </View>
-        <Text style={styles.avatar}>J</Text>
+        <Pressable style={styles.langButton} onPress={() => setLang(lang === 'ar' ? 'en' : 'ar')}>
+          <Text style={styles.langText}>{t.language}</Text>
+        </Pressable>
       </View>
       <View style={styles.mapCard}>
-        <Text style={styles.mapTitle}>Rufaa live map</Text>
-        <Text style={styles.mapSub}>{pickup} to {destination}</Text>
+        <Text style={[styles.mapTitle, rtl && styles.rtl]}>{t.liveMap}</Text>
+        <Text style={[styles.mapSub, rtl && styles.rtl]}>{pickup} {t.to} {destination}</Text>
         <View style={styles.routeLine}>
           <View style={styles.pin} />
           <View style={styles.line} />
           <View style={[styles.pin, styles.pinGold]} />
         </View>
       </View>
-      <Text style={styles.label}>Pickup</Text>
-      <View style={styles.wrap}>
-        {zones.slice(0, 4).map((z) => (
-          <Pressable key={z} onPress={() => setPickup(z)} style={[styles.chip, pickup === z && styles.active]}>
-            <Text style={[styles.chipText, pickup === z && styles.activeText]}>{z}</Text>
+      <Text style={[styles.label, rtl && styles.rtl]}>{t.pickup}</Text>
+      <View style={[styles.wrap, rtl && styles.reverseWrap]}>
+        {zones.slice(0, 4).map((z, index) => (
+          <Pressable key={z} onPress={() => setPickupIndex(index)} style={[styles.chip, pickupIndex === index && styles.active]}>
+            <Text style={[styles.chipText, pickupIndex === index && styles.activeText]}>{z}</Text>
           </Pressable>
         ))}
       </View>
-      <Text style={styles.label}>Destination</Text>
-      <View style={styles.wrap}>
-        {zones.slice(1, 6).map((z) => (
-          <Pressable key={z} onPress={() => setDestination(z)} style={[styles.chip, destination === z && styles.active]}>
-            <Text style={[styles.chipText, destination === z && styles.activeText]}>{z}</Text>
-          </Pressable>
-        ))}
+      <Text style={[styles.label, rtl && styles.rtl]}>{t.destination}</Text>
+      <View style={[styles.wrap, rtl && styles.reverseWrap]}>
+        {zones.slice(1, 6).map((z, i) => {
+          const index = i + 1;
+          return (
+            <Pressable key={z} onPress={() => setDestinationIndex(index)} style={[styles.chip, destinationIndex === index && styles.active]}>
+              <Text style={[styles.chipText, destinationIndex === index && styles.activeText]}>{z}</Text>
+            </Pressable>
+          );
+        })}
       </View>
       <View style={styles.fareCard}>
-        <Text style={styles.fareLabel}>Estimated fare</Text>
-        <Text style={styles.fare}>{fare} SDG</Text>
-        <Text style={styles.note}>Base fare plus local distance estimate.</Text>
+        <Text style={[styles.fareLabel, rtl && styles.rtl]}>{t.estimatedFare}</Text>
+        <Text style={[styles.fare, rtl && styles.rtl]}>{fare} SDG</Text>
+        <Text style={[styles.note, rtl && styles.rtl]}>{t.fareNote}</Text>
       </View>
-      <Button title='Request rickshaw' onPress={() => router.push({ pathname: '/ride', params: { pickup, destination, fare } })} />
-      <Button title='Trip history' variant='ghost' onPress={() => router.push('/trips')} />
+      <Button title={t.requestRickshaw} onPress={() => router.push({ pathname: '/ride', params: { pickup, destination, fare, lang } })} />
+      <Button title={t.tripHistory} variant='ghost' onPress={() => router.push({ pathname: '/trips', params: { lang } })} />
     </ScrollView>
   );
 }
@@ -57,9 +71,11 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 22, paddingTop: 58, gap: 14 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  reverse: { flexDirection: 'row-reverse' },
   hello: { color: colors.gold, fontWeight: '900', letterSpacing: 2 },
   title: { fontSize: 30, fontWeight: '900', color: colors.navy },
-  avatar: { width: 48, height: 48, borderRadius: 18, backgroundColor: colors.navy, color: colors.gold, textAlign: 'center', textAlignVertical: 'center', fontSize: 24, fontWeight: '900' },
+  langButton: { borderRadius: 18, backgroundColor: colors.navy, paddingVertical: 11, paddingHorizontal: 14 },
+  langText: { color: colors.white, fontWeight: '900' },
   mapCard: { height: 235, borderRadius: 30, padding: 22, justifyContent: 'space-between', backgroundColor: '#DDF3FA' },
   mapTitle: { color: colors.teal, fontSize: 28, fontWeight: '900' },
   mapSub: { color: colors.navy, fontSize: 16, fontWeight: '800' },
@@ -69,6 +85,7 @@ const styles = StyleSheet.create({
   line: { flex: 1, height: 4, backgroundColor: colors.white, marginHorizontal: 8, borderRadius: 999 },
   label: { color: colors.text, fontWeight: '900', fontSize: 16, marginTop: 4 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  reverseWrap: { flexDirection: 'row-reverse' },
   chip: { paddingVertical: 11, paddingHorizontal: 15, borderRadius: 999, backgroundColor: '#E7EEF5' },
   active: { backgroundColor: colors.navy },
   chipText: { color: colors.navy, fontWeight: '900' },
@@ -76,5 +93,6 @@ const styles = StyleSheet.create({
   fareCard: { backgroundColor: colors.white, borderRadius: 28, padding: 18 },
   fareLabel: { color: colors.muted, fontWeight: '800' },
   fare: { color: colors.gold, fontSize: 38, fontWeight: '900' },
-  note: { color: colors.muted, marginTop: 4 }
+  note: { color: colors.muted, marginTop: 4 },
+  rtl: { textAlign: 'right', writingDirection: 'rtl' }
 });
