@@ -11,9 +11,9 @@ app.use(cors());
 app.use(express.json());
 
 const drivers = [
-  { id: 'driver_1', name: 'Mohammed Ahmed', vehicleTypeId: 'rickshaw', vehicle: 'Blue rickshaw', rating: 4.8, online: true, cityId: 'rufaa' },
-  { id: 'driver_2', name: 'Ali Altayeb', vehicleTypeId: 'car', vehicle: 'White car', rating: 4.7, online: true, cityId: 'rufaa' },
-  { id: 'driver_3', name: 'Khalid Osman', vehicleTypeId: 'van', vehicle: 'Family van', rating: 4.6, online: false, cityId: 'khartoum' }
+  { id: 'driver_1', name: 'Mohammed Ahmed', phone: '+249900000001', vehicleTypeId: 'rickshaw', vehicle: 'Blue rickshaw', rating: 4.8, online: true, cityId: 'rufaa' },
+  { id: 'driver_2', name: 'Ali Altayeb', phone: '+249900000002', vehicleTypeId: 'car', vehicle: 'White car', rating: 4.7, online: true, cityId: 'rufaa' },
+  { id: 'driver_3', name: 'Khalid Osman', phone: '+249900000003', vehicleTypeId: 'van', vehicle: 'Family van', rating: 4.6, online: false, cityId: 'khartoum' }
 ];
 
 const memoryRides: any[] = [];
@@ -140,6 +140,40 @@ app.post('/api/admin/vehicle-types', async (req, res) => {
   res.status(201).json(item);
 });
 
+app.post('/api/drivers/register', async (req, res) => {
+  const phone = String(req.body.phone || '').trim();
+  const name = String(req.body.name || '').trim();
+  const cityId = String(req.body.cityId || 'rufaa');
+  const vehicleTypeId = String(req.body.vehicleTypeId || 'rickshaw');
+  const plateNo = String(req.body.plateNo || '').trim();
+  const color = String(req.body.color || '').trim();
+  const model = String(req.body.model || '').trim();
+  if (!phone || !name) return res.status(400).json({ error: 'phone and name are required' });
+
+  if (prisma) {
+    const user = await prisma.user.upsert({
+      where: { phone },
+      update: { name, role: UserRole.DRIVER },
+      create: { phone, name, role: UserRole.DRIVER }
+    });
+    const driver = await prisma.driver.upsert({
+      where: { userId: user.id },
+      update: { cityId, isOnline: false, isVerified: false },
+      create: { userId: user.id, cityId, isOnline: false, isVerified: false }
+    });
+    const vehicle = await prisma.vehicle.upsert({
+      where: { driverId: driver.id },
+      update: { vehicleTypeId, plateNo, color, model },
+      create: { driverId: driver.id, vehicleTypeId, plateNo, color, model }
+    });
+    return res.status(201).json({ ok: true, user: publicUser(user), driver, vehicle });
+  }
+
+  const driver = { id: `driver_${Date.now()}`, name, phone, cityId, vehicleTypeId, vehicle: `${color || 'Vehicle'} ${model || vehicleTypeId}`, rating: 5, online: false, verified: false, plateNo };
+  drivers.push(driver);
+  res.status(201).json({ ok: true, driver });
+});
+
 app.get('/api/drivers', async (req, res) => {
   const cityId = String(req.query.cityId || '');
   const vehicleTypeId = String(req.query.vehicleTypeId || '');
@@ -159,6 +193,7 @@ app.get('/api/drivers', async (req, res) => {
       vehicle: driver.vehicle?.vehicleType.nameEn || 'Vehicle',
       rating: 4.8,
       online: driver.isOnline,
+      verified: driver.isVerified,
       cityId: driver.cityId
     })));
   }
@@ -220,7 +255,7 @@ app.post('/api/rides', async (req, res) => {
   if (prisma) {
     const vehicle = await prisma.vehicleType.findUnique({ where: { id: vehicleTypeId } });
     const selectedVehicle = vehicle || findVehicleType(vehicleTypeId);
-    const matchedDriver = await prisma.driver.findFirst({ where: { cityId, isOnline: true, vehicle: { vehicleTypeId } } });
+    const matchedDriver = await prisma.driver.findFirst({ where: { cityId, isOnline: true, isVerified: true, vehicle: { vehicleTypeId } } });
     const ride = await prisma.ride.create({
       data: {
         cityId,
