@@ -18,8 +18,8 @@ export default function Welcome() {
       <Text style={styles.title}>{t.appName}</Text>
       <Text style={styles.tagline}>{t.tagline}</Text>
       <Text style={[styles.copy, rtl && styles.rtl]}>{t.intro}</Text>
-      <Button title={t.startRide} variant='gold' onPress={() => router.push({ pathname: '/home', params: { lang } })} />
-      <Button title={t.driverMode} variant='ghost' onPress={() => router.push({ pathname: '/driver', params: { lang } })} />
+      <Button title={t.startRide} variant='gold' onPress={() => router.push({ pathname: '/login', params: { lang } })} />
+      <Button title={t.driverMode} variant='ghost' onPress={() => router.push({ pathname: '/login', params: { lang } })} />
     </View>
   );
 }
