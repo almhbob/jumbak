@@ -1,5 +1,25 @@
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000';
 
+export async function requestOtp(phone: string) {
+  const response = await fetch(`${API_URL}/api/auth/request-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone })
+  });
+  if (!response.ok) throw new Error('Failed to request OTP');
+  return response.json();
+}
+
+export async function verifyOtp(input: { phone: string; code: string; name?: string; role?: 'PASSENGER' | 'DRIVER' | 'ADMIN' }) {
+  const response = await fetch(`${API_URL}/api/auth/verify-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input)
+  });
+  if (!response.ok) throw new Error('Failed to verify OTP');
+  return response.json();
+}
+
 export async function getAppConfig() {
   const response = await fetch(`${API_URL}/api/config`);
   if (!response.ok) throw new Error('Failed to load app config');
