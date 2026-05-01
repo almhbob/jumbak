@@ -20,6 +20,24 @@ export async function verifyOtp(input: { phone: string; code: string; name?: str
   return response.json();
 }
 
+export async function registerDriver(input: {
+  phone: string;
+  name: string;
+  cityId: string;
+  vehicleTypeId: string;
+  plateNo?: string;
+  color?: string;
+  model?: string;
+}) {
+  const response = await fetch(`${API_URL}/api/drivers/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input)
+  });
+  if (!response.ok) throw new Error('Failed to register driver');
+  return response.json();
+}
+
 export async function getAppConfig() {
   const response = await fetch(`${API_URL}/api/config`);
   if (!response.ok) throw new Error('Failed to load app config');
