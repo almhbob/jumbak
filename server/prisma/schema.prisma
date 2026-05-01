@@ -1,0 +1,121 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  PASSENGER
+  DRIVER
+  ADMIN
+}
+
+enum RideStatus {
+  REQUESTED
+  ACCEPTED
+  ARRIVING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model Country {
+  id        String   @id
+  nameAr    String
+  nameEn    String
+  currency  String
+  cities    City[]
+  createdAt DateTime @default(now())
+}
+
+model City {
+  id        String   @id
+  countryId String
+  country   Country  @relation(fields: [countryId], references: [id])
+  nameAr    String
+  nameEn    String
+  zones     Zone[]
+  drivers   Driver[]
+  rides     Ride[]
+  createdAt DateTime @default(now())
+}
+
+model Zone {
+  id        String   @id @default(cuid())
+  cityId    String
+  city      City     @relation(fields: [cityId], references: [id])
+  nameAr    String
+  nameEn    String
+  multiplier Float   @default(1)
+  createdAt DateTime @default(now())
+}
+
+model VehicleType {
+  id          String   @id
+  nameAr      String
+  nameEn      String
+  baseFare    Int
+  perKmFare   Int
+  minimumFare Int
+  vehicles    Vehicle[]
+  rides       Ride[]
+  createdAt   DateTime @default(now())
+}
+
+model User {
+  id        String   @id @default(cuid())
+  phone     String   @unique
+  name      String?
+  role      UserRole @default(PASSENGER)
+  createdAt DateTime @default(now())
+  rides     Ride[]   @relation("PassengerRides")
+  driver    Driver?
+}
+
+model Driver {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id])
+  cityId     String
+  city       City     @relation(fields: [cityId], references: [id])
+  isOnline   Boolean  @default(false)
+  isVerified Boolean  @default(false)
+  vehicle    Vehicle?
+  rides      Ride[]   @relation("DriverRides")
+  createdAt  DateTime @default(now())
+}
+
+model Vehicle {
+  id            String      @id @default(cuid())
+  driverId      String      @unique
+  driver        Driver      @relation(fields: [driverId], references: [id])
+  vehicleTypeId String
+  vehicleType   VehicleType @relation(fields: [vehicleTypeId], references: [id])
+  plateNo       String?
+  color         String?
+  model         String?
+}
+
+model Ride {
+  id               String      @id @default(cuid())
+  passengerId      String?
+  passenger        User?       @relation("PassengerRides", fields: [passengerId], references: [id])
+  driverId         String?
+  driver           Driver?     @relation("DriverRides", fields: [driverId], references: [id])
+  cityId           String
+  city             City        @relation(fields: [cityId], references: [id])
+  vehicleTypeId    String
+  vehicleType      VehicleType @relation(fields: [vehicleTypeId], references: [id])
+  pickupLabel      String
+  destinationLabel String
+  distanceKm       Float       @default(2)
+  estimatedFare    Int
+  finalFare        Int?
+  status           RideStatus  @default(REQUESTED)
+  rating           Int?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+}
