@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, UserRole } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -44,10 +44,32 @@ async function main() {
   ];
 
   for (const item of vehicleTypes) {
-    await prisma.vehicleType.upsert({
-      where: { id: item.id },
-      update: item,
-      create: item
+    await prisma.vehicleType.upsert({ where: { id: item.id }, update: item, create: item });
+  }
+
+  const demoDrivers = [
+    { phone: '+249900000001', name: 'Mohammed Ahmed', cityId: 'rufaa', vehicleTypeId: 'rickshaw', plateNo: 'RF-001', color: 'Blue', model: 'Rickshaw' },
+    { phone: '+249900000002', name: 'Ali Altayeb', cityId: 'rufaa', vehicleTypeId: 'car', plateNo: 'RF-002', color: 'White', model: 'Sedan' },
+    { phone: '+249900000003', name: 'Khalid Osman', cityId: 'khartoum', vehicleTypeId: 'van', plateNo: 'KH-003', color: 'Silver', model: 'Van' }
+  ];
+
+  for (const item of demoDrivers) {
+    const user = await prisma.user.upsert({
+      where: { phone: item.phone },
+      update: { name: item.name, role: UserRole.DRIVER },
+      create: { phone: item.phone, name: item.name, role: UserRole.DRIVER }
+    });
+
+    const driver = await prisma.driver.upsert({
+      where: { userId: user.id },
+      update: { cityId: item.cityId, isOnline: true, isVerified: true },
+      create: { userId: user.id, cityId: item.cityId, isOnline: true, isVerified: true }
+    });
+
+    await prisma.vehicle.upsert({
+      where: { driverId: driver.id },
+      update: { vehicleTypeId: item.vehicleTypeId, plateNo: item.plateNo, color: item.color, model: item.model },
+      create: { driverId: driver.id, vehicleTypeId: item.vehicleTypeId, plateNo: item.plateNo, color: item.color, model: item.model }
     });
   }
 }
