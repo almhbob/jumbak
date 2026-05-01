@@ -3,17 +3,24 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { colors } from '../src/constants/theme';
-
-const states = ['Searching', 'Accepted', 'Arriving', 'Started'];
+import { dict, Lang } from '../src/i18n';
 
 export default function Ride() {
-  const params = useLocalSearchParams<{ pickup: string; destination: string; fare: string }>();
+  const params = useLocalSearchParams<{ pickup?: string; destination?: string; fare?: string; lang?: Lang }>();
   const [step, setStep] = useState(0);
+  const lang: Lang = params.lang === 'en' ? 'en' : 'ar';
+  const t = dict[lang];
+  const rtl = lang === 'ar';
+  const states = [t.searching, t.accepted, t.arriving, t.started];
+  const pickup = params.pickup || (lang === 'ar' ? 'السوق' : 'Market');
+  const destination = params.destination || (lang === 'ar' ? 'المستشفى' : 'Hospital');
+  const fare = params.fare || '1200';
+
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <Text style={styles.kicker}>Live trip</Text>
-        <Text style={styles.title}>{states[step]}</Text>
+        <Text style={[styles.kicker, rtl && styles.rtl]}>{t.liveTrip}</Text>
+        <Text style={[styles.title, rtl && styles.rtl]}>{states[step]}</Text>
       </View>
       <View style={styles.mapCard}>
         <Text style={styles.logo}>J</Text>
@@ -22,29 +29,29 @@ export default function Ride() {
             <View key={item} style={[styles.dot, index <= step && styles.dotActive]} />
           ))}
         </View>
-        <Text style={styles.route}>{params.pickup} to {params.destination}</Text>
+        <Text style={[styles.route, rtl && styles.rtl]}>{pickup} {t.to} {destination}</Text>
       </View>
       {step > 0 && (
-        <View style={styles.driverCard}>
+        <View style={[styles.driverCard, rtl && styles.driverCardRtl]}>
           <View style={styles.driverAvatar}><Text style={styles.driverInitial}>M</Text></View>
           <View style={styles.driverInfo}>
-            <Text style={styles.section}>Driver</Text>
-            <Text style={styles.name}>Mohammed Ahmed</Text>
-            <Text style={styles.muted}>Blue rickshaw - rating 4.8 - 3 min</Text>
+            <Text style={[styles.section, rtl && styles.rtl]}>{t.driver}</Text>
+            <Text style={[styles.name, rtl && styles.rtl]}>Mohammed Ahmed</Text>
+            <Text style={[styles.muted, rtl && styles.rtl]}>{lang === 'ar' ? 'ركشة زرقاء - تقييم 4.8 - 3 دقائق' : 'Blue rickshaw - rating 4.8 - 3 min'}</Text>
           </View>
         </View>
       )}
       <View style={styles.fareCard}>
-        <Text style={styles.section}>Fare</Text>
-        <Text style={styles.fare}>{params.fare} SDG</Text>
-        <Text style={styles.muted}>Cash payment on arrival.</Text>
+        <Text style={[styles.section, rtl && styles.rtl]}>{t.fare}</Text>
+        <Text style={[styles.fare, rtl && styles.rtl]}>{fare} SDG</Text>
+        <Text style={[styles.muted, rtl && styles.rtl]}>{t.cashNote}</Text>
       </View>
       {step < 3 ? (
-        <Button title='Next status' variant='gold' onPress={() => setStep(Math.min(step + 1, 3))} />
+        <Button title={t.nextStatus} variant='gold' onPress={() => setStep(Math.min(step + 1, 3))} />
       ) : (
-        <Button title='Complete and rate' variant='gold' onPress={() => router.push('/rating')} />
+        <Button title={t.completeRate} variant='gold' onPress={() => router.push({ pathname: '/rating', params: { lang } })} />
       )}
-      <Button title='Cancel' variant='ghost' onPress={() => router.back()} />
+      <Button title={t.cancel} variant='ghost' onPress={() => router.back()} />
     </View>
   );
 }
@@ -61,6 +68,7 @@ const styles = StyleSheet.create({
   dotActive: { backgroundColor: colors.navy },
   route: { color: colors.navy, fontSize: 20, fontWeight: '900' },
   driverCard: { backgroundColor: colors.white, borderRadius: 28, padding: 18, flexDirection: 'row', gap: 14, alignItems: 'center' },
+  driverCardRtl: { flexDirection: 'row-reverse' },
   driverAvatar: { width: 54, height: 54, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.navy },
   driverInitial: { color: colors.gold, fontSize: 26, fontWeight: '900' },
   driverInfo: { flex: 1 },
@@ -68,5 +76,6 @@ const styles = StyleSheet.create({
   section: { color: colors.muted, fontWeight: '800' },
   name: { color: colors.text, fontSize: 24, fontWeight: '900' },
   muted: { color: colors.muted, marginTop: 4 },
-  fare: { color: colors.gold, fontSize: 36, fontWeight: '900' }
+  fare: { color: colors.gold, fontSize: 36, fontWeight: '900' },
+  rtl: { textAlign: 'right', writingDirection: 'rtl' }
 });
