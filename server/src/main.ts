@@ -10,6 +10,9 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
+const APP_NAME = 'Jnbk';
+const APP_NAME_AR = 'جنبك';
+
 const drivers = [
   { id: 'driver_1', name: 'Mohammed Ahmed', phone: '+249900000001', vehicleTypeId: 'rickshaw', vehicle: 'Blue rickshaw', rating: 4.8, online: true, cityId: 'rufaa' },
   { id: 'driver_2', name: 'Ali Altayeb', phone: '+249900000002', vehicleTypeId: 'car', vehicle: 'White car', rating: 4.7, online: true, cityId: 'rufaa' },
@@ -37,11 +40,11 @@ function publicUser(user: any) {
 }
 
 app.get('/', (_req, res) => {
-  res.json({ ok: true, app: 'JUMBAK', message: 'Multi-city transport platform', database: isDatabaseEnabled() });
+  res.json({ ok: true, app: APP_NAME, appAr: APP_NAME_AR, message: 'Multi-city transport platform', database: isDatabaseEnabled() });
 });
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, app: 'JUMBAK', region: 'global-ready', database: isDatabaseEnabled() });
+  res.json({ ok: true, app: APP_NAME, appAr: APP_NAME_AR, region: 'global-ready', database: isDatabaseEnabled() });
 });
 
 app.post('/api/auth/request-otp', (req, res) => {
@@ -284,4 +287,4 @@ app.patch('/api/rides/:id/rating', async (req, res) => {
 });
 
 const port = Number(process.env.PORT || 4000);
-app.listen(port, '0.0.0.0', () => console.log(`JUMBAK API running on port ${port}`));
+app.listen(port, '0.0.0.0', () => console.log(`${APP_NAME} API running on port ${port}`));
