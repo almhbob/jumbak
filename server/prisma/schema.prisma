@@ -110,6 +110,19 @@ model StaffMember {
   updatedAt    DateTime    @updatedAt
 }
 
+model LegalDocument {
+  key       String   @id
+  titleAr   String
+  titleEn   String
+  contentAr String
+  contentEn String
+  status    String   @default("draft")
+  version   Int      @default(1)
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Driver {
   id         String   @id @default(cuid())
   userId     String   @unique
