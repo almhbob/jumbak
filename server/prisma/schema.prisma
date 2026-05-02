@@ -29,6 +29,19 @@ enum SupportStatus {
   CLOSED
 }
 
+enum StaffRole {
+  OPERATIONS
+  SUPPORT
+  FINANCE
+  DEVELOPER
+  BUSINESS
+}
+
+enum StaffStatus {
+  ACTIVE
+  PAUSED
+}
+
 model Country {
   id        String   @id
   nameAr    String
@@ -80,6 +93,21 @@ model User {
   createdAt DateTime @default(now())
   rides     Ride[]   @relation("PassengerRides")
   driver    Driver?
+}
+
+model StaffMember {
+  id           String      @id @default(cuid())
+  name         String
+  phone        String?
+  email        String?
+  username     String      @unique
+  passwordHash String
+  role         StaffRole
+  status       StaffStatus @default(ACTIVE)
+  notes        String?
+  lastLoginAt  DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
 }
 
 model Driver {
