@@ -76,6 +76,12 @@ export async function getRides() {
   return response.json();
 }
 
+export async function getRide(rideId: string) {
+  const response = await fetch(`${API_URL}/api/rides/${rideId}`);
+  if (!response.ok) throw new Error('Failed to load ride');
+  return response.json();
+}
+
 export async function updateRideStatus(rideId: string, status: string) {
   const response = await fetch(`${API_URL}/api/rides/${rideId}/status`, {
     method: 'PATCH',
