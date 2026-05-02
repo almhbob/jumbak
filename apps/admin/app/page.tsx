@@ -6,6 +6,7 @@ type AppConfig = {
 
 type Driver = { id: string; name: string; online?: boolean; verified?: boolean; cityId?: string };
 type Ride = { id: string; status: string; estimatedFare: number; cityId?: string; vehicleTypeId?: string; createdAt?: string };
+type SupportRequest = { id: string; category: string; message: string; lang?: string; status: string; createdAt?: string };
 
 const fallbackConfig: AppConfig = {
   countries: [
@@ -29,6 +30,10 @@ const fallbackDrivers: Driver[] = [
   { id: 'driver_2', name: 'Ali Altayeb', online: true, verified: true, cityId: 'rufaa' }
 ];
 
+const fallbackSupport: SupportRequest[] = [
+  { id: 'support_preview_1', category: 'Request new city', message: 'Preview item: customer support requests will appear here after backend connection.', lang: 'en', status: 'OPEN' }
+];
+
 async function apiGet<T>(path: string, fallback: T): Promise<T> {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   if (!apiUrl) return fallback;
@@ -50,20 +55,26 @@ function zoneCount(city: AppConfig['cities'][number]) {
   return city.zones?.length || city.zonesEn?.length || 0;
 }
 
+function shortMessage(message: string) {
+  return message.length > 74 ? `${message.slice(0, 74)}...` : message;
+}
+
 export default async function Dashboard() {
   const config = await apiGet<AppConfig>('/api/config', fallbackConfig);
   const drivers = await apiGet<Driver[]>('/api/drivers', fallbackDrivers);
   const rides = await apiGet<Ride[]>('/api/rides', []);
+  const supportRequests = await apiGet<SupportRequest[]>('/api/support', fallbackSupport);
 
   const activeDrivers = drivers.filter((driver) => driver.online).length;
   const completedRides = rides.filter((ride) => ride.status === 'COMPLETED').length;
+  const openSupport = supportRequests.filter((item) => item.status === 'OPEN' || item.status === 'IN_REVIEW').length;
   const totalRevenue = rides.reduce((sum, ride) => sum + Number(ride.estimatedFare || 0), 0);
 
   const metrics = [
     ['Trips total', String(rides.length)],
     ['Active drivers', String(activeDrivers)],
-    ['Cities', String(config.cities.length)],
-    ['Vehicle types', String(config.vehicleTypes.length)]
+    ['Support open', String(openSupport)],
+    ['Cities', String(config.cities.length)]
   ];
 
   return (
@@ -71,7 +82,7 @@ export default async function Dashboard() {
       <section className='hero'>
         <p className='kicker'>JUMBAK CONTROL CENTER</p>
         <h1>Operations Dashboard</h1>
-        <p>Live-ready admin view for cities, services, drivers, rides, and pricing.</p>
+        <p>Live-ready admin view for cities, services, drivers, rides, support requests, and pricing.</p>
       </section>
 
       <section className='grid'>
@@ -92,6 +103,22 @@ export default async function Dashboard() {
             <span>Total estimated revenue</span>
             <b>{totalRevenue} SDG</b>
           </div>
+        </div>
+      </section>
+
+      <section className='panel'>
+        <h2>Support requests</h2>
+        <div className='table'>
+          {supportRequests.length === 0 ? (
+            <div className='empty'>No support requests yet.</div>
+          ) : supportRequests.slice(0, 8).map((item) => (
+            <div className='row' key={item.id}>
+              <span>{item.category}</span>
+              <span>{shortMessage(item.message)}</span>
+              <span>{item.lang || 'ar'}</span>
+              <b>{item.status}</b>
+            </div>
+          ))}
         </div>
       </section>
 
