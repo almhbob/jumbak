@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { colors } from '../src/constants/theme';
 import { dict, Lang } from '../src/i18n';
+import { createSupportRequest } from '../src/supportApi';
 
 const issues = {
   ar: ['مشكلة في الرحلة', 'السعر غير واضح', 'سلوك السائق', 'طلب إضافة مدينة', 'اقتراح تحسين'],
@@ -15,12 +16,27 @@ export default function Support() {
   const [lang, setLang] = useState<Lang>(params.lang === 'en' ? 'en' : 'ar');
   const [selected, setSelected] = useState(0);
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
   const t = dict[lang];
   const rtl = lang === 'ar';
 
-  function submit() {
-    Alert.alert('JUMBAK', lang === 'ar' ? 'تم حفظ طلب الدعم كتجربة. سيتم ربطه بالخادم لاحقًا.' : 'Support request saved as preview. It will be connected to the backend later.');
-    router.push({ pathname: '/home', params: { lang } });
+  async function submit() {
+    if (!message.trim()) {
+      Alert.alert('JUMBAK', lang === 'ar' ? 'اكتب تفاصيل الطلب أولًا' : 'Write request details first');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await createSupportRequest({ category: issues[lang][selected], message: message.trim(), lang });
+      Alert.alert('JUMBAK', lang === 'ar' ? 'تم إرسال طلب الدعم بنجاح.' : 'Support request submitted successfully.');
+      router.push({ pathname: '/home', params: { lang } });
+    } catch {
+      Alert.alert('JUMBAK', lang === 'ar' ? 'الخادم غير متصل. تم حفظ الطلب كتجربة محلية.' : 'Backend is offline. Request saved as local preview.');
+      router.push({ pathname: '/home', params: { lang } });
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -56,7 +72,7 @@ export default function Support() {
         onChangeText={setMessage}
       />
 
-      <Button title={lang === 'ar' ? 'إرسال الطلب' : 'Submit request'} variant='gold' onPress={submit} />
+      <Button title={loading ? (lang === 'ar' ? 'جاري الإرسال...' : 'Submitting...') : (lang === 'ar' ? 'إرسال الطلب' : 'Submit request')} variant='gold' onPress={submit} />
       <Button title={t.backHome} variant='ghost' onPress={() => router.push({ pathname: '/home', params: { lang } })} />
     </ScrollView>
   );
