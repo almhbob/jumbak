@@ -18,6 +18,7 @@ const drivers = [
 
 const memoryRides: any[] = [];
 const memoryUsers: any[] = [];
+const memorySupportRequests: any[] = [];
 const memoryCities: any[] = [...cities];
 const memoryVehicleTypes: any[] = [...vehicleTypes];
 
@@ -58,11 +59,7 @@ app.post('/api/auth/verify-otp', async (req, res) => {
   if (code !== '123456') return res.status(401).json({ error: 'Invalid OTP' });
 
   if (prisma) {
-    const user = await prisma.user.upsert({
-      where: { phone },
-      update: { name: name || undefined, role },
-      create: { phone, name, role }
-    });
+    const user = await prisma.user.upsert({ where: { phone }, update: { name: name || undefined, role }, create: { phone, name, role } });
     return res.json({ ok: true, user: publicUser(user), token: `dev_${user.id}` });
   }
 
@@ -99,11 +96,7 @@ app.post('/api/admin/cities', async (req, res) => {
   if (!id || !nameAr || !nameEn) return res.status(400).json({ error: 'id, nameAr and nameEn are required' });
 
   if (prisma) {
-    const city = await prisma.city.upsert({
-      where: { id },
-      update: { countryId, nameAr, nameEn },
-      create: { id, countryId, nameAr, nameEn }
-    });
+    const city = await prisma.city.upsert({ where: { id }, update: { countryId, nameAr, nameEn }, create: { id, countryId, nameAr, nameEn } });
     for (let i = 0; i < Math.max(zonesAr.length, zonesEn.length); i++) {
       await prisma.zone.upsert({
         where: { id: `${id}_${i}` },
@@ -128,16 +121,54 @@ app.post('/api/admin/vehicle-types', async (req, res) => {
   const perKmFare = Number(req.body.perKmFare || 0);
   const minimumFare = Number(req.body.minimumFare || 0);
   if (!id || !nameAr || !nameEn || !baseFare || !perKmFare || !minimumFare) return res.status(400).json({ error: 'Missing vehicle type fields' });
-
   const item = { id, nameAr, nameEn, baseFare, perKmFare, minimumFare };
   if (prisma) {
     const vehicleType = await prisma.vehicleType.upsert({ where: { id }, update: item, create: item });
     return res.status(201).json(vehicleType);
   }
-
   const index = memoryVehicleTypes.findIndex((value) => value.id === id);
   if (index >= 0) memoryVehicleTypes[index] = item; else memoryVehicleTypes.push(item);
   res.status(201).json(item);
+});
+
+app.get('/api/support', async (_req, res) => {
+  if (prisma) {
+    const requests = await prisma.supportRequest.findMany({ orderBy: { createdAt: 'desc' }, take: 100 });
+    return res.json(requests);
+  }
+  res.json(memorySupportRequests.slice().reverse());
+});
+
+app.post('/api/support', async (req, res) => {
+  const category = String(req.body.category || '').trim();
+  const message = String(req.body.message || '').trim();
+  const lang = String(req.body.lang || 'ar').trim();
+  const phone = String(req.body.phone || '').trim() || null;
+  const name = String(req.body.name || '').trim() || null;
+  if (!category || !message) return res.status(400).json({ error: 'category and message are required' });
+
+  if (prisma) {
+    const request = await prisma.supportRequest.create({ data: { category, message, lang, phone, name } });
+    return res.status(201).json({ ok: true, request });
+  }
+
+  const request = { id: `support_${Date.now()}`, category, message, lang, phone, name, status: 'OPEN', createdAt: new Date().toISOString() };
+  memorySupportRequests.push(request);
+  res.status(201).json({ ok: true, request });
+});
+
+app.patch('/api/support/:id/status', async (req, res) => {
+  const status = String(req.body.status || 'OPEN');
+  if (prisma) {
+    const request = await prisma.supportRequest.update({ where: { id: req.params.id }, data: { status: status as any } }).catch(() => null);
+    if (!request) return res.status(404).json({ error: 'Support request not found' });
+    return res.json(request);
+  }
+  const request = memorySupportRequests.find((item) => item.id === req.params.id);
+  if (!request) return res.status(404).json({ error: 'Support request not found' });
+  request.status = status;
+  request.updatedAt = new Date().toISOString();
+  res.json(request);
 });
 
 app.post('/api/drivers/register', async (req, res) => {
@@ -149,26 +180,12 @@ app.post('/api/drivers/register', async (req, res) => {
   const color = String(req.body.color || '').trim();
   const model = String(req.body.model || '').trim();
   if (!phone || !name) return res.status(400).json({ error: 'phone and name are required' });
-
   if (prisma) {
-    const user = await prisma.user.upsert({
-      where: { phone },
-      update: { name, role: UserRole.DRIVER },
-      create: { phone, name, role: UserRole.DRIVER }
-    });
-    const driver = await prisma.driver.upsert({
-      where: { userId: user.id },
-      update: { cityId, isOnline: false, isVerified: false },
-      create: { userId: user.id, cityId, isOnline: false, isVerified: false }
-    });
-    const vehicle = await prisma.vehicle.upsert({
-      where: { driverId: driver.id },
-      update: { vehicleTypeId, plateNo, color, model },
-      create: { driverId: driver.id, vehicleTypeId, plateNo, color, model }
-    });
+    const user = await prisma.user.upsert({ where: { phone }, update: { name, role: UserRole.DRIVER }, create: { phone, name, role: UserRole.DRIVER } });
+    const driver = await prisma.driver.upsert({ where: { userId: user.id }, update: { cityId, isOnline: false, isVerified: false }, create: { userId: user.id, cityId, isOnline: false, isVerified: false } });
+    const vehicle = await prisma.vehicle.upsert({ where: { driverId: driver.id }, update: { vehicleTypeId, plateNo, color, model }, create: { driverId: driver.id, vehicleTypeId, plateNo, color, model } });
     return res.status(201).json({ ok: true, user: publicUser(user), driver, vehicle });
   }
-
   const driver = { id: `driver_${Date.now()}`, name, phone, cityId, vehicleTypeId, vehicle: `${color || 'Vehicle'} ${model || vehicleTypeId}`, rating: 5, online: false, verified: false, plateNo };
   drivers.push(driver);
   res.status(201).json({ ok: true, driver });
@@ -177,32 +194,11 @@ app.post('/api/drivers/register', async (req, res) => {
 app.get('/api/drivers', async (req, res) => {
   const cityId = String(req.query.cityId || '');
   const vehicleTypeId = String(req.query.vehicleTypeId || '');
-
   if (prisma) {
-    const result = await prisma.driver.findMany({
-      where: {
-        ...(cityId ? { cityId } : {}),
-        ...(vehicleTypeId ? { vehicle: { vehicleTypeId } } : {})
-      },
-      include: { user: true, vehicle: { include: { vehicleType: true } } }
-    });
-    return res.json(result.map((driver) => ({
-      id: driver.id,
-      name: driver.user.name || driver.user.phone,
-      vehicleTypeId: driver.vehicle?.vehicleTypeId,
-      vehicle: driver.vehicle?.vehicleType.nameEn || 'Vehicle',
-      rating: 4.8,
-      online: driver.isOnline,
-      verified: driver.isVerified,
-      cityId: driver.cityId
-    })));
+    const result = await prisma.driver.findMany({ where: { ...(cityId ? { cityId } : {}), ...(vehicleTypeId ? { vehicle: { vehicleTypeId } } : {}) }, include: { user: true, vehicle: { include: { vehicleType: true } } } });
+    return res.json(result.map((driver) => ({ id: driver.id, name: driver.user.name || driver.user.phone, vehicleTypeId: driver.vehicle?.vehicleTypeId, vehicle: driver.vehicle?.vehicleType.nameEn || 'Vehicle', rating: 4.8, online: driver.isOnline, verified: driver.isVerified, cityId: driver.cityId })));
   }
-
-  const result = drivers.filter((driver) => {
-    if (cityId && driver.cityId !== cityId) return false;
-    if (vehicleTypeId && driver.vehicleTypeId !== vehicleTypeId) return false;
-    return true;
-  });
+  const result = drivers.filter((driver) => (!cityId || driver.cityId === cityId) && (!vehicleTypeId || driver.vehicleTypeId === vehicleTypeId));
   res.json(result);
 });
 
@@ -210,29 +206,21 @@ app.post('/api/pricing/estimate', async (req, res) => {
   const distanceKm = Number(req.body.distanceKm || 2);
   const vehicleTypeId = String(req.body.vehicleTypeId || 'rickshaw');
   const cityId = String(req.body.cityId || 'rufaa');
-
   if (prisma) {
-    const [city, vehicle] = await Promise.all([
-      prisma.city.findUnique({ where: { id: cityId }, include: { country: true } }),
-      prisma.vehicleType.findUnique({ where: { id: vehicleTypeId } })
-    ]);
+    const [city, vehicle] = await Promise.all([prisma.city.findUnique({ where: { id: cityId }, include: { country: true } }), prisma.vehicleType.findUnique({ where: { id: vehicleTypeId } })]);
     const fallbackCity = findCity(cityId);
     const fallbackVehicle = findVehicleType(vehicleTypeId);
     const selectedVehicle = vehicle || fallbackVehicle;
     const estimatedFare = Math.max(Math.round(selectedVehicle.baseFare + distanceKm * selectedVehicle.perKmFare), selectedVehicle.minimumFare);
     return res.json({ currency: city?.country.currency || (fallbackCity.countryId === 'sa' ? 'SAR' : 'SDG'), city: city || fallbackCity, vehicle: selectedVehicle, distanceKm, estimatedFare });
   }
-
   const city = findCity(cityId);
   const vehicle = findVehicleType(vehicleTypeId);
   res.json({ currency: city.countryId === 'sa' ? 'SAR' : 'SDG', city, vehicle, distanceKm, estimatedFare: estimateFare(distanceKm, vehicleTypeId) });
 });
 
 app.get('/api/rides', async (_req, res) => {
-  if (prisma) {
-    const result = await prisma.ride.findMany({ orderBy: { createdAt: 'desc' }, take: 50, include: { city: true, vehicleType: true, driver: { include: { user: true } } } });
-    return res.json(result);
-  }
+  if (prisma) return res.json(await prisma.ride.findMany({ orderBy: { createdAt: 'desc' }, take: 50, include: { city: true, vehicleType: true, driver: { include: { user: true } } } }));
   res.json(memoryRides.slice().reverse());
 });
 
@@ -251,45 +239,17 @@ app.post('/api/rides', async (req, res) => {
   const distanceKm = Number(req.body.distanceKm || 2);
   const cityId = String(req.body.cityId || 'rufaa');
   const vehicleTypeId = String(req.body.vehicleTypeId || 'rickshaw');
-
   if (prisma) {
     const vehicle = await prisma.vehicleType.findUnique({ where: { id: vehicleTypeId } });
     const selectedVehicle = vehicle || findVehicleType(vehicleTypeId);
     const matchedDriver = await prisma.driver.findFirst({ where: { cityId, isOnline: true, isVerified: true, vehicle: { vehicleTypeId } } });
-    const ride = await prisma.ride.create({
-      data: {
-        cityId,
-        vehicleTypeId,
-        driverId: matchedDriver?.id,
-        pickupLabel: req.body.pickupLabel || 'Pickup',
-        destinationLabel: req.body.destinationLabel || 'Destination',
-        distanceKm,
-        estimatedFare: Math.max(Math.round(selectedVehicle.baseFare + distanceKm * selectedVehicle.perKmFare), selectedVehicle.minimumFare),
-        status: 'REQUESTED'
-      }
-    });
+    const ride = await prisma.ride.create({ data: { cityId, vehicleTypeId, driverId: matchedDriver?.id, pickupLabel: req.body.pickupLabel || 'Pickup', destinationLabel: req.body.destinationLabel || 'Destination', distanceKm, estimatedFare: Math.max(Math.round(selectedVehicle.baseFare + distanceKm * selectedVehicle.perKmFare), selectedVehicle.minimumFare), status: 'REQUESTED' } });
     return res.status(201).json(ride);
   }
-
   const city = findCity(cityId);
   const vehicle = findVehicleType(vehicleTypeId);
   const matchedDriver = drivers.find((driver) => driver.cityId === cityId && driver.vehicleTypeId === vehicleTypeId && driver.online);
-  const ride = {
-    id: `ride_${Date.now()}`,
-    cityId,
-    cityName: city.nameEn,
-    vehicleTypeId,
-    vehicleName: vehicle.nameEn,
-    driverId: matchedDriver?.id || null,
-    driverName: matchedDriver?.name || null,
-    pickupLabel: req.body.pickupLabel || city.zonesEn[0],
-    destinationLabel: req.body.destinationLabel || city.zonesEn[1],
-    distanceKm,
-    estimatedFare: estimateFare(distanceKm, vehicleTypeId),
-    status: 'REQUESTED',
-    rating: null,
-    createdAt: new Date().toISOString()
-  };
+  const ride = { id: `ride_${Date.now()}`, cityId, cityName: city.nameEn, vehicleTypeId, vehicleName: vehicle.nameEn, driverId: matchedDriver?.id || null, driverName: matchedDriver?.name || null, pickupLabel: req.body.pickupLabel || city.zonesEn[0], destinationLabel: req.body.destinationLabel || city.zonesEn[1], distanceKm, estimatedFare: estimateFare(distanceKm, vehicleTypeId), status: 'REQUESTED', rating: null, createdAt: new Date().toISOString() };
   memoryRides.push(ride);
   res.status(201).json(ride);
 });
@@ -310,13 +270,11 @@ app.patch('/api/rides/:id/status', async (req, res) => {
 app.patch('/api/rides/:id/rating', async (req, res) => {
   const rating = Number(req.body.rating || 0);
   if (rating < 1 || rating > 5) return res.status(400).json({ error: 'Rating must be between 1 and 5' });
-
   if (prisma) {
     const ride = await prisma.ride.update({ where: { id: req.params.id }, data: { rating, status: 'COMPLETED' } }).catch(() => null);
     if (!ride) return res.status(404).json({ error: 'Ride not found' });
     return res.json(ride);
   }
-
   const ride = findMemoryRide(req.params.id);
   if (!ride) return res.status(404).json({ error: 'Ride not found' });
   ride.rating = rating;
