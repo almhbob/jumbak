@@ -80,7 +80,7 @@ export default async function Dashboard() {
   return (
     <main>
       <section className='hero'>
-        <p className='kicker'>JUMBAK CONTROL CENTER</p>
+        <p className='kicker'>Jnbk جنبك CONTROL CENTER</p>
         <h1>Operations Dashboard</h1>
         <p>Live-ready admin view for cities, services, drivers, rides, support requests, and pricing.</p>
       </section>
