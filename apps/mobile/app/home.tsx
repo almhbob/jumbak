@@ -1,10 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, Text, StyleSheet, Pressable, View, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { colors } from '../src/constants/theme';
 import { dict, Lang } from '../src/i18n';
-import { cities as fallbackCities, vehicleTypes as fallbackVehicleTypes, estimateFare, City, VehicleType } from '../src/serviceConfig';
+import { cities as fallbackCities, vehicleTypes as fallbackVehicleTypes, serviceModes, estimateFare, City, VehicleType } from '../src/serviceConfig';
 import { createRide, estimatePrice, getAppConfig } from '../src/api';
 
 function normalizeCity(item: any): City {
@@ -39,6 +39,7 @@ export default function Home() {
   const [source, setSource] = useState<'api' | 'preview'>('preview');
   const [cityIndex, setCityIndex] = useState(0);
   const [vehicleIndex, setVehicleIndex] = useState(0);
+  const [serviceIndex, setServiceIndex] = useState(0);
   const [pickupIndex, setPickupIndex] = useState(0);
   const [destinationIndex, setDestinationIndex] = useState(1);
   const [fareOverride, setFareOverride] = useState<number | null>(null);
@@ -46,15 +47,17 @@ export default function Home() {
   const t = dict[lang];
   const city = appCities[cityIndex] || fallbackCities[0];
   const vehicle = appVehicles[vehicleIndex] || fallbackVehicleTypes[0];
+  const mode = serviceModes[serviceIndex];
   const zones = lang === 'ar' ? city.zonesAr : city.zonesEn;
   const safeZones = zones.length ? zones : (lang === 'ar' ? ['السوق', 'المستشفى'] : ['Market', 'Hospital']);
   const distanceKm = pickupIndex === destinationIndex ? 1 : Math.max(2, Math.abs(destinationIndex - pickupIndex) + 1);
-  const localFare = estimateFare(distanceKm, vehicle);
-  const fare = fareOverride || localFare;
+  const localFare = estimateFare(distanceKm, vehicle, mode.fareMultiplier);
+  const fare = fareOverride ? Math.round(fareOverride * mode.fareMultiplier) : localFare;
   const pickup = safeZones[pickupIndex] || safeZones[0];
   const destination = safeZones[destinationIndex] || safeZones[1] || safeZones[0];
   const cityName = lang === 'ar' ? city.nameAr : city.nameEn;
   const vehicleName = lang === 'ar' ? vehicle.nameAr : vehicle.nameEn;
+  const modeName = lang === 'ar' ? mode.nameAr : mode.nameEn;
   const rtl = lang === 'ar';
 
   useEffect(() => {
@@ -89,16 +92,21 @@ export default function Home() {
   }
 
   function rideParams(extra: Record<string, string> = {}) {
-    return { pickup, destination, fare: String(fare), lang, city: cityName, vehicle: vehicleName, cityId: city.id, vehicleTypeId: vehicle.id, distanceKm: String(distanceKm), ...extra };
+    return { pickup, destination, fare: String(fare), lang, city: cityName, vehicle: vehicleName, serviceMode: modeName, cityId: city.id, vehicleTypeId: vehicle.id, distanceKm: String(distanceKm), ...extra };
   }
 
   async function requestRide() {
+    if (mode.id === 'offline_sms') {
+      Alert.alert('Jnbk', lang === 'ar' ? 'سيتم تجهيز طلب SMS عند ربط رقم السنتر وخدمة الرسائل.' : 'SMS request will be enabled after hotline and SMS provider setup.');
+      router.push({ pathname: '/support', params: { lang } });
+      return;
+    }
     setLoading(true);
     try {
-      const ride = await createRide({ cityId: city.id, vehicleTypeId: vehicle.id, pickupLabel: pickup, destinationLabel: destination, distanceKm });
+      const ride = await createRide({ cityId: city.id, vehicleTypeId: vehicle.id, pickupLabel: `${pickup} - ${modeName}`, destinationLabel: destination, distanceKm });
       router.push({ pathname: '/ride', params: rideParams({ fare: String(ride.estimatedFare || fare), rideId: ride.id }) });
     } catch (error) {
-      Alert.alert('JUMBAK', lang === 'ar' ? 'الخادم غير متصل الآن. سيتم تشغيل الرحلة كتجربة محلية.' : 'Backend is offline. Starting local preview ride.');
+      Alert.alert('Jnbk', lang === 'ar' ? 'الخادم غير متصل الآن. سيتم تشغيل الرحلة كتجربة محلية.' : 'Backend is offline. Starting local preview ride.');
       router.push({ pathname: '/ride', params: rideParams() });
     } finally {
       setLoading(false);
@@ -118,9 +126,9 @@ export default function Home() {
       </View>
 
       <View style={[styles.quickRow, rtl && styles.reverse]}>
-        <Pressable style={styles.quickCard} onPress={() => router.push({ pathname: '/trips', params: { lang } })}>
-          <Text style={styles.quickIcon}>⌁</Text>
-          <Text style={[styles.quickText, rtl && styles.rtl]}>{t.tripHistory}</Text>
+        <Pressable style={styles.quickCard} onPress={() => router.push({ pathname: '/settings', params: { lang } })}>
+          <Text style={styles.quickIcon}>⚙</Text>
+          <Text style={[styles.quickText, rtl && styles.rtl]}>{t.settings}</Text>
         </Pressable>
         <Pressable style={styles.quickCard} onPress={() => router.push({ pathname: '/support', params: { lang } })}>
           <Text style={styles.quickIcon}>?</Text>
@@ -128,8 +136,24 @@ export default function Home() {
         </Pressable>
       </View>
 
+      <View style={styles.brandCard}>
+        <Text style={[styles.brandTitle, rtl && styles.rtl]}>{lang === 'ar' ? 'مشوارك جنبك في رفاعة' : 'Your Rufaa ride is near you'}</Text>
+        <Text style={[styles.brandText, rtl && styles.rtl]}>{lang === 'ar' ? 'خيارات محلية: ركشة سريعة، وقار، دليفري، طوارئ، وطلب SMS عند ضعف الإنترنت.' : 'Local options: fast ride, Waqar, delivery, emergency, and SMS fallback for weak internet.'}</Text>
+      </View>
+
       <View style={styles.sourceCard}>
         <Text style={[styles.sourceText, rtl && styles.rtl]}>{source === 'api' ? (lang === 'ar' ? 'متصل بالخادم: المدن والأسعار من لوحة الإدارة' : 'Connected: cities and prices from admin') : (lang === 'ar' ? 'وضع المعاينة: بيانات محلية حتى ربط الخادم' : 'Preview mode: local data until backend is connected')}</Text>
+      </View>
+
+      <Text style={[styles.label, rtl && styles.rtl]}>{lang === 'ar' ? 'اختر نوع الطلب' : 'Choose request type'}</Text>
+      <View style={styles.modeGrid}>
+        {serviceModes.map((item, index) => (
+          <Pressable key={item.id} onPress={() => setServiceIndex(index)} style={[styles.modeCard, serviceIndex === index && styles.modeActive]}>
+            <Text style={[styles.modeIcon, serviceIndex === index && styles.activeText]}>{item.icon}</Text>
+            <Text style={[styles.modeTitle, serviceIndex === index && styles.activeText, rtl && styles.rtl]}>{lang === 'ar' ? item.nameAr : item.nameEn}</Text>
+            <Text style={[styles.modeDescription, serviceIndex === index && styles.activeText, rtl && styles.rtl]}>{lang === 'ar' ? item.descriptionAr : item.descriptionEn}</Text>
+          </Pressable>
+        ))}
       </View>
 
       <Text style={[styles.label, rtl && styles.rtl]}>{lang === 'ar' ? 'المدينة' : 'City'}</Text>
@@ -141,7 +165,7 @@ export default function Home() {
         ))}
       </View>
 
-      <Text style={[styles.label, rtl && styles.rtl]}>{lang === 'ar' ? 'نوع الخدمة' : 'Service type'}</Text>
+      <Text style={[styles.label, rtl && styles.rtl]}>{lang === 'ar' ? 'نوع المركبة' : 'Vehicle type'}</Text>
       <View style={[styles.wrap, rtl && styles.reverseWrap]}>
         {appVehicles.map((item, index) => (
           <Pressable key={item.id} onPress={() => changeVehicle(index)} style={[styles.serviceChip, vehicleIndex === index && styles.active]}>
@@ -153,13 +177,13 @@ export default function Home() {
 
       <View style={styles.mapCard}>
         <Text style={[styles.mapTitle, rtl && styles.rtl]}>{cityName}</Text>
-        <Text style={[styles.mapSub, rtl && styles.rtl]}>{vehicleName} - {pickup} {t.to} {destination}</Text>
+        <Text style={[styles.mapSub, rtl && styles.rtl]}>{modeName} - {vehicleName} - {pickup} {t.to} {destination}</Text>
         <View style={styles.routeLine}><View style={styles.pin} /><View style={styles.line} /><View style={[styles.pin, styles.pinGold]} /></View>
       </View>
 
       <Text style={[styles.label, rtl && styles.rtl]}>{t.pickup}</Text>
       <View style={[styles.wrap, rtl && styles.reverseWrap]}>
-        {safeZones.slice(0, 5).map((z, index) => (
+        {safeZones.slice(0, 10).map((z, index) => (
           <Pressable key={`${z}-${index}`} onPress={() => setPickupIndex(index)} style={[styles.chip, pickupIndex === index && styles.active]}>
             <Text style={[styles.chipText, pickupIndex === index && styles.activeText]}>{z}</Text>
           </Pressable>
@@ -178,7 +202,7 @@ export default function Home() {
       <View style={styles.fareCard}>
         <Text style={[styles.fareLabel, rtl && styles.rtl]}>{t.estimatedFare}</Text>
         <Text style={[styles.fare, rtl && styles.rtl]}>{fare} {city.countryId === 'sa' ? 'SAR' : 'SDG'}</Text>
-        <Text style={[styles.note, rtl && styles.rtl]}>{t.fareNote}</Text>
+        <Text style={[styles.note, rtl && styles.rtl]}>{lang === 'ar' ? 'يشمل نوع الطلب والمسافة المحلية. الأسعار قابلة للضبط من الإدارة حسب الوقود.' : 'Includes service mode and local distance. Admin can adjust pricing based on fuel.'}</Text>
       </View>
       <Button title={loading ? (lang === 'ar' ? 'جاري الطلب...' : 'Requesting...') : t.requestRickshaw} onPress={requestRide} />
       <Button title={t.tripHistory} variant='ghost' onPress={() => router.push({ pathname: '/trips', params: { lang } })} />
@@ -200,8 +224,17 @@ const styles = StyleSheet.create({
   quickCard: { flex: 1, backgroundColor: colors.white, borderRadius: 22, padding: 15, borderWidth: 1, borderColor: '#E7EEF5' },
   quickIcon: { color: colors.gold, fontSize: 22, fontWeight: '900' },
   quickText: { color: colors.navy, fontWeight: '900', marginTop: 6 },
+  brandCard: { backgroundColor: colors.navy, borderRadius: 28, padding: 18 },
+  brandTitle: { color: colors.white, fontSize: 22, fontWeight: '900' },
+  brandText: { color: 'rgba(255,255,255,.78)', marginTop: 8, lineHeight: 22, fontWeight: '700' },
   sourceCard: { backgroundColor: '#E7F7EF', borderRadius: 20, padding: 12 },
   sourceText: { color: colors.teal, fontWeight: '900' },
+  modeGrid: { gap: 10 },
+  modeCard: { backgroundColor: colors.white, borderRadius: 22, padding: 15, borderWidth: 1, borderColor: '#E7EEF5' },
+  modeActive: { backgroundColor: colors.navy, borderColor: colors.navy },
+  modeIcon: { color: colors.gold, fontSize: 22, fontWeight: '900' },
+  modeTitle: { color: colors.navy, fontSize: 17, fontWeight: '900', marginTop: 4 },
+  modeDescription: { color: colors.muted, marginTop: 4, lineHeight: 20, fontWeight: '700' },
   mapCard: { height: 235, borderRadius: 30, padding: 22, justifyContent: 'space-between', backgroundColor: '#DDF3FA' },
   mapTitle: { color: colors.teal, fontSize: 28, fontWeight: '900' },
   mapSub: { color: colors.navy, fontSize: 16, fontWeight: '800' },
