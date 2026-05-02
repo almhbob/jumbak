@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import crypto from 'crypto';
 import { UserRole } from '@prisma/client';
 import { cities, countries, estimateFare, findCity, findVehicleType, vehicleTypes } from './config.js';
 import { prisma, isDatabaseEnabled } from './db.js';
@@ -12,6 +13,37 @@ app.use(express.json());
 
 const APP_NAME = 'Jnbk';
 const APP_NAME_AR = 'جنبك';
+
+type StaffRoleInput = 'operations' | 'support' | 'finance' | 'developer' | 'business';
+const memoryStaff: any[] = [];
+
+function hashPassword(password: string) {
+  return crypto.createHash('sha256').update(password).digest('hex');
+}
+
+function normalizeStaffRole(role: string): StaffRoleInput {
+  if (role === 'support' || role === 'finance' || role === 'developer' || role === 'business') return role;
+  return 'operations';
+}
+
+function dbStaffRole(role: StaffRoleInput) {
+  return role.toUpperCase() as any;
+}
+
+function publicStaff(member: any) {
+  return {
+    id: member.id,
+    name: member.name,
+    phone: member.phone,
+    email: member.email,
+    username: member.username,
+    role: String(member.role || '').toLowerCase(),
+    status: String(member.status || '').toLowerCase(),
+    notes: member.notes,
+    lastLoginAt: member.lastLoginAt,
+    createdAt: member.createdAt
+  };
+}
 
 const drivers = [
   { id: 'driver_1', name: 'Mohammed Ahmed', phone: '+249900000001', vehicleTypeId: 'rickshaw', vehicle: 'Blue rickshaw', rating: 4.8, online: true, cityId: 'rufaa' },
@@ -45,6 +77,69 @@ app.get('/', (_req, res) => {
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true, app: APP_NAME, appAr: APP_NAME_AR, region: 'global-ready', database: isDatabaseEnabled() });
+});
+
+app.post('/api/staff/login', async (req, res) => {
+  const username = String(req.body.username || '').trim().toLowerCase();
+  const password = String(req.body.password || '');
+  const role = normalizeStaffRole(String(req.body.role || 'operations'));
+  if (!username || !password) return res.status(400).json({ error: 'username and password are required' });
+  const passwordHash = hashPassword(password);
+
+  if (prisma) {
+    const member = await prisma.staffMember.findUnique({ where: { username } as any }).catch(() => null as any);
+    if (!member || member.passwordHash !== passwordHash || String(member.role).toLowerCase() !== role || member.status !== 'ACTIVE') return res.status(401).json({ error: 'Invalid credentials or role' });
+    const updated = await prisma.staffMember.update({ where: { id: member.id }, data: { lastLoginAt: new Date() } as any });
+    return res.json({ ok: true, staff: publicStaff(updated), token: `staff_${updated.id}_${Date.now()}` });
+  }
+
+  const member = memoryStaff.find((item) => item.username === username && item.passwordHash === passwordHash && item.role === role && item.status === 'active');
+  if (!member) return res.status(401).json({ error: 'Invalid credentials or role' });
+  member.lastLoginAt = new Date().toISOString();
+  res.json({ ok: true, staff: publicStaff(member), token: `staff_${member.id}_${Date.now()}` });
+});
+
+app.get('/api/staff', async (_req, res) => {
+  if (prisma) {
+    const staff = await prisma.staffMember.findMany({ orderBy: { createdAt: 'desc' } as any }).catch(() => [] as any[]);
+    return res.json(staff.map(publicStaff));
+  }
+  res.json(memoryStaff.slice().reverse().map(publicStaff));
+});
+
+app.post('/api/staff', async (req, res) => {
+  const name = String(req.body.name || '').trim();
+  const role = normalizeStaffRole(String(req.body.role || 'operations'));
+  const phone = String(req.body.phone || '').trim() || null;
+  const email = String(req.body.email || '').trim() || null;
+  const notes = String(req.body.notes || '').trim() || null;
+  const username = String(req.body.username || `${name.toLowerCase().replace(/\s+/g, '.')}.${role}`).trim().toLowerCase();
+  const temporaryPassword = String(req.body.password || `Jnbk@${Math.floor(1000 + Math.random() * 9000)}#`);
+  if (!name || !username) return res.status(400).json({ error: 'name and username are required' });
+  const passwordHash = hashPassword(temporaryPassword);
+
+  if (prisma) {
+    const member = await prisma.staffMember.create({ data: { name, phone, email, username, passwordHash, role: dbStaffRole(role), notes } as any });
+    return res.status(201).json({ ok: true, staff: publicStaff(member), temporaryPassword });
+  }
+
+  const member = { id: `staff_${Date.now()}`, name, phone, email, username, passwordHash, role, status: 'active', notes, createdAt: new Date().toISOString(), lastLoginAt: null };
+  memoryStaff.push(member);
+  res.status(201).json({ ok: true, staff: publicStaff(member), temporaryPassword });
+});
+
+app.patch('/api/staff/:id', async (req, res) => {
+  const status = String(req.body.status || '').toUpperCase();
+  if (prisma) {
+    const member = await prisma.staffMember.update({ where: { id: req.params.id }, data: { ...(status ? { status } : {}), ...(req.body.role ? { role: dbStaffRole(normalizeStaffRole(String(req.body.role))) } : {}) } as any }).catch(() => null as any);
+    if (!member) return res.status(404).json({ error: 'Staff member not found' });
+    return res.json({ ok: true, staff: publicStaff(member) });
+  }
+  const member = memoryStaff.find((item) => item.id === req.params.id);
+  if (!member) return res.status(404).json({ error: 'Staff member not found' });
+  if (status) member.status = status.toLowerCase();
+  if (req.body.role) member.role = normalizeStaffRole(String(req.body.role));
+  res.json({ ok: true, staff: publicStaff(member) });
 });
 
 app.post('/api/auth/request-otp', (req, res) => {
