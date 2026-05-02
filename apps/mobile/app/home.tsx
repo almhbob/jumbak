@@ -1,63 +1,101 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, Text, StyleSheet, Pressable, View, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { colors } from '../src/constants/theme';
 import { dict, Lang } from '../src/i18n';
-import { cities, vehicleTypes, estimateFare } from '../src/serviceConfig';
-import { createRide } from '../src/api';
+import { cities as fallbackCities, vehicleTypes as fallbackVehicleTypes, estimateFare, City, VehicleType } from '../src/serviceConfig';
+import { createRide, estimatePrice, getAppConfig } from '../src/api';
+
+function normalizeCity(item: any): City {
+  const zones = Array.isArray(item.zones) ? item.zones : [];
+  return {
+    id: item.id,
+    countryId: item.countryId || 'sd',
+    nameAr: item.nameAr || item.nameEn || item.id,
+    nameEn: item.nameEn || item.nameAr || item.id,
+    zonesAr: item.zonesAr || zones.map((z: any) => z.nameAr).filter(Boolean) || item.zonesEn || ['السوق', 'المستشفى'],
+    zonesEn: item.zonesEn || zones.map((z: any) => z.nameEn).filter(Boolean) || item.zonesAr || ['Market', 'Hospital']
+  };
+}
+
+function normalizeVehicle(item: any): VehicleType {
+  return {
+    id: item.id,
+    nameAr: item.nameAr || item.nameEn || item.id,
+    nameEn: item.nameEn || item.nameAr || item.id,
+    baseFare: Number(item.baseFare || 0),
+    perKmFare: Number(item.perKmFare || 0),
+    minimumFare: Number(item.minimumFare || 0),
+    icon: item.icon || String(item.nameEn || item.id || 'V').slice(0, 1).toUpperCase()
+  };
+}
 
 export default function Home() {
   const params = useLocalSearchParams<{ lang?: Lang }>();
   const [lang, setLang] = useState<Lang>(params.lang === 'en' ? 'en' : 'ar');
+  const [appCities, setAppCities] = useState<City[]>(fallbackCities);
+  const [appVehicles, setAppVehicles] = useState<VehicleType[]>(fallbackVehicleTypes);
+  const [source, setSource] = useState<'api' | 'preview'>('preview');
   const [cityIndex, setCityIndex] = useState(0);
   const [vehicleIndex, setVehicleIndex] = useState(0);
   const [pickupIndex, setPickupIndex] = useState(0);
   const [destinationIndex, setDestinationIndex] = useState(1);
+  const [fareOverride, setFareOverride] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const t = dict[lang];
-  const city = cities[cityIndex];
-  const vehicle = vehicleTypes[vehicleIndex];
+  const city = appCities[cityIndex] || fallbackCities[0];
+  const vehicle = appVehicles[vehicleIndex] || fallbackVehicleTypes[0];
   const zones = lang === 'ar' ? city.zonesAr : city.zonesEn;
-  const distanceKm = pickupIndex === destinationIndex ? 1 : 2;
-  const fare = estimateFare(distanceKm, vehicle);
-  const pickup = zones[pickupIndex] || zones[0];
-  const destination = zones[destinationIndex] || zones[1];
+  const safeZones = zones.length ? zones : (lang === 'ar' ? ['السوق', 'المستشفى'] : ['Market', 'Hospital']);
+  const distanceKm = pickupIndex === destinationIndex ? 1 : Math.max(2, Math.abs(destinationIndex - pickupIndex) + 1);
+  const localFare = estimateFare(distanceKm, vehicle);
+  const fare = fareOverride || localFare;
+  const pickup = safeZones[pickupIndex] || safeZones[0];
+  const destination = safeZones[destinationIndex] || safeZones[1] || safeZones[0];
   const cityName = lang === 'ar' ? city.nameAr : city.nameEn;
   const vehicleName = lang === 'ar' ? vehicle.nameAr : vehicle.nameEn;
   const rtl = lang === 'ar';
+
+  useEffect(() => {
+    getAppConfig()
+      .then((config) => {
+        const nextCities = Array.isArray(config.cities) && config.cities.length ? config.cities.map(normalizeCity) : fallbackCities;
+        const nextVehicles = Array.isArray(config.vehicleTypes) && config.vehicleTypes.length ? config.vehicleTypes.map(normalizeVehicle) : fallbackVehicleTypes;
+        setAppCities(nextCities);
+        setAppVehicles(nextVehicles);
+        setSource('api');
+      })
+      .catch(() => setSource('preview'));
+  }, []);
+
+  useEffect(() => {
+    setFareOverride(null);
+    estimatePrice({ cityId: city.id, vehicleTypeId: vehicle.id, distanceKm })
+      .then((result) => setFareOverride(Number(result.estimatedFare || localFare)))
+      .catch(() => setFareOverride(null));
+  }, [city.id, vehicle.id, distanceKm]);
 
   function changeCity(index: number) {
     setCityIndex(index);
     setPickupIndex(0);
     setDestinationIndex(1);
+    setFareOverride(null);
+  }
+
+  function changeVehicle(index: number) {
+    setVehicleIndex(index);
+    setFareOverride(null);
   }
 
   function rideParams(extra: Record<string, string> = {}) {
-    return {
-      pickup,
-      destination,
-      fare: String(fare),
-      lang,
-      city: cityName,
-      vehicle: vehicleName,
-      cityId: city.id,
-      vehicleTypeId: vehicle.id,
-      distanceKm: String(distanceKm),
-      ...extra
-    };
+    return { pickup, destination, fare: String(fare), lang, city: cityName, vehicle: vehicleName, cityId: city.id, vehicleTypeId: vehicle.id, distanceKm: String(distanceKm), ...extra };
   }
 
   async function requestRide() {
     setLoading(true);
     try {
-      const ride = await createRide({
-        cityId: city.id,
-        vehicleTypeId: vehicle.id,
-        pickupLabel: pickup,
-        destinationLabel: destination,
-        distanceKm
-      });
+      const ride = await createRide({ cityId: city.id, vehicleTypeId: vehicle.id, pickupLabel: pickup, destinationLabel: destination, distanceKm });
       router.push({ pathname: '/ride', params: rideParams({ fare: String(ride.estimatedFare || fare), rideId: ride.id }) });
     } catch (error) {
       Alert.alert('JUMBAK', lang === 'ar' ? 'الخادم غير متصل الآن. سيتم تشغيل الرحلة كتجربة محلية.' : 'Backend is offline. Starting local preview ride.');
@@ -90,9 +128,13 @@ export default function Home() {
         </Pressable>
       </View>
 
+      <View style={styles.sourceCard}>
+        <Text style={[styles.sourceText, rtl && styles.rtl]}>{source === 'api' ? (lang === 'ar' ? 'متصل بالخادم: المدن والأسعار من لوحة الإدارة' : 'Connected: cities and prices from admin') : (lang === 'ar' ? 'وضع المعاينة: بيانات محلية حتى ربط الخادم' : 'Preview mode: local data until backend is connected')}</Text>
+      </View>
+
       <Text style={[styles.label, rtl && styles.rtl]}>{lang === 'ar' ? 'المدينة' : 'City'}</Text>
       <View style={[styles.wrap, rtl && styles.reverseWrap]}>
-        {cities.map((item, index) => (
+        {appCities.map((item, index) => (
           <Pressable key={item.id} onPress={() => changeCity(index)} style={[styles.chip, cityIndex === index && styles.active]}>
             <Text style={[styles.chipText, cityIndex === index && styles.activeText]}>{lang === 'ar' ? item.nameAr : item.nameEn}</Text>
           </Pressable>
@@ -101,8 +143,8 @@ export default function Home() {
 
       <Text style={[styles.label, rtl && styles.rtl]}>{lang === 'ar' ? 'نوع الخدمة' : 'Service type'}</Text>
       <View style={[styles.wrap, rtl && styles.reverseWrap]}>
-        {vehicleTypes.map((item, index) => (
-          <Pressable key={item.id} onPress={() => setVehicleIndex(index)} style={[styles.serviceChip, vehicleIndex === index && styles.active]}>
+        {appVehicles.map((item, index) => (
+          <Pressable key={item.id} onPress={() => changeVehicle(index)} style={[styles.serviceChip, vehicleIndex === index && styles.active]}>
             <Text style={[styles.serviceIcon, vehicleIndex === index && styles.activeText]}>{item.icon}</Text>
             <Text style={[styles.chipText, vehicleIndex === index && styles.activeText]}>{lang === 'ar' ? item.nameAr : item.nameEn}</Text>
           </Pressable>
@@ -112,17 +154,13 @@ export default function Home() {
       <View style={styles.mapCard}>
         <Text style={[styles.mapTitle, rtl && styles.rtl]}>{cityName}</Text>
         <Text style={[styles.mapSub, rtl && styles.rtl]}>{vehicleName} - {pickup} {t.to} {destination}</Text>
-        <View style={styles.routeLine}>
-          <View style={styles.pin} />
-          <View style={styles.line} />
-          <View style={[styles.pin, styles.pinGold]} />
-        </View>
+        <View style={styles.routeLine}><View style={styles.pin} /><View style={styles.line} /><View style={[styles.pin, styles.pinGold]} /></View>
       </View>
 
       <Text style={[styles.label, rtl && styles.rtl]}>{t.pickup}</Text>
       <View style={[styles.wrap, rtl && styles.reverseWrap]}>
-        {zones.slice(0, 5).map((z, index) => (
-          <Pressable key={z} onPress={() => setPickupIndex(index)} style={[styles.chip, pickupIndex === index && styles.active]}>
+        {safeZones.slice(0, 5).map((z, index) => (
+          <Pressable key={`${z}-${index}`} onPress={() => setPickupIndex(index)} style={[styles.chip, pickupIndex === index && styles.active]}>
             <Text style={[styles.chipText, pickupIndex === index && styles.activeText]}>{z}</Text>
           </Pressable>
         ))}
@@ -130,8 +168,8 @@ export default function Home() {
 
       <Text style={[styles.label, rtl && styles.rtl]}>{t.destination}</Text>
       <View style={[styles.wrap, rtl && styles.reverseWrap]}>
-        {zones.map((z, index) => (
-          <Pressable key={z} onPress={() => setDestinationIndex(index)} style={[styles.chip, destinationIndex === index && styles.active]}>
+        {safeZones.map((z, index) => (
+          <Pressable key={`${z}-${index}`} onPress={() => setDestinationIndex(index)} style={[styles.chip, destinationIndex === index && styles.active]}>
             <Text style={[styles.chipText, destinationIndex === index && styles.activeText]}>{z}</Text>
           </Pressable>
         ))}
@@ -162,6 +200,8 @@ const styles = StyleSheet.create({
   quickCard: { flex: 1, backgroundColor: colors.white, borderRadius: 22, padding: 15, borderWidth: 1, borderColor: '#E7EEF5' },
   quickIcon: { color: colors.gold, fontSize: 22, fontWeight: '900' },
   quickText: { color: colors.navy, fontWeight: '900', marginTop: 6 },
+  sourceCard: { backgroundColor: '#E7F7EF', borderRadius: 20, padding: 12 },
+  sourceText: { color: colors.teal, fontWeight: '900' },
   mapCard: { height: 235, borderRadius: 30, padding: 22, justifyContent: 'space-between', backgroundColor: '#DDF3FA' },
   mapTitle: { color: colors.teal, fontSize: 28, fontWeight: '900' },
   mapSub: { color: colors.navy, fontSize: 16, fontWeight: '800' },
