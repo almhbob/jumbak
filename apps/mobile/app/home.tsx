@@ -79,6 +79,17 @@ export default function Home() {
         </Pressable>
       </View>
 
+      <View style={[styles.quickRow, rtl && styles.reverse]}>
+        <Pressable style={styles.quickCard} onPress={() => router.push({ pathname: '/trips', params: { lang } })}>
+          <Text style={styles.quickIcon}>⌁</Text>
+          <Text style={[styles.quickText, rtl && styles.rtl]}>{t.tripHistory}</Text>
+        </Pressable>
+        <Pressable style={styles.quickCard} onPress={() => router.push({ pathname: '/support', params: { lang } })}>
+          <Text style={styles.quickIcon}>?</Text>
+          <Text style={[styles.quickText, rtl && styles.rtl]}>{t.support}</Text>
+        </Pressable>
+      </View>
+
       <Text style={[styles.label, rtl && styles.rtl]}>{lang === 'ar' ? 'المدينة' : 'City'}</Text>
       <View style={[styles.wrap, rtl && styles.reverseWrap]}>
         {cities.map((item, index) => (
@@ -133,6 +144,7 @@ export default function Home() {
       </View>
       <Button title={loading ? (lang === 'ar' ? 'جاري الطلب...' : 'Requesting...') : t.requestRickshaw} onPress={requestRide} />
       <Button title={t.tripHistory} variant='ghost' onPress={() => router.push({ pathname: '/trips', params: { lang } })} />
+      <Button title={t.support} variant='ghost' onPress={() => router.push({ pathname: '/support', params: { lang } })} />
     </ScrollView>
   );
 }
@@ -146,6 +158,10 @@ const styles = StyleSheet.create({
   title: { fontSize: 30, fontWeight: '900', color: colors.navy },
   langButton: { borderRadius: 18, backgroundColor: colors.navy, paddingVertical: 11, paddingHorizontal: 14 },
   langText: { color: colors.white, fontWeight: '900' },
+  quickRow: { flexDirection: 'row', gap: 12 },
+  quickCard: { flex: 1, backgroundColor: colors.white, borderRadius: 22, padding: 15, borderWidth: 1, borderColor: '#E7EEF5' },
+  quickIcon: { color: colors.gold, fontSize: 22, fontWeight: '900' },
+  quickText: { color: colors.navy, fontWeight: '900', marginTop: 6 },
   mapCard: { height: 235, borderRadius: 30, padding: 22, justifyContent: 'space-between', backgroundColor: '#DDF3FA' },
   mapTitle: { color: colors.teal, fontSize: 28, fontWeight: '900' },
   mapSub: { color: colors.navy, fontSize: 16, fontWeight: '800' },
