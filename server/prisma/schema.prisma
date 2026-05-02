@@ -22,6 +22,13 @@ enum RideStatus {
   CANCELLED
 }
 
+enum SupportStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  CLOSED
+}
+
 model Country {
   id        String   @id
   nameAr    String
@@ -118,4 +125,16 @@ model Ride {
   rating           Int?
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
+}
+
+model SupportRequest {
+  id        String        @id @default(cuid())
+  category  String
+  message   String
+  lang      String        @default("ar")
+  phone     String?
+  name      String?
+  status    SupportStatus @default(OPEN)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 }
