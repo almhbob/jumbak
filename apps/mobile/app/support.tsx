@@ -5,6 +5,7 @@ import { Button } from '../src/components/Button';
 import { colors } from '../src/constants/theme';
 import { dict, Lang } from '../src/i18n';
 import { createSupportRequest } from '../src/supportApi';
+import { autosaveLabel, useAutosave } from '../src/hooks/useAutosave';
 
 const issues = {
   ar: ['مشكلة في الرحلة', 'السعر غير واضح', 'سلوك السائق', 'طلب إضافة مدينة', 'اقتراح تحسين'],
@@ -19,20 +20,26 @@ export default function Support() {
   const [loading, setLoading] = useState(false);
   const t = dict[lang];
   const rtl = lang === 'ar';
+  const autosave = useAutosave('jnbk.support.draft', { lang, selected, message }, (draft) => {
+    if (draft.lang === 'ar' || draft.lang === 'en') setLang(draft.lang);
+    if (typeof draft.selected === 'number') setSelected(draft.selected);
+    if (typeof draft.message === 'string') setMessage(draft.message);
+  });
 
   async function submit() {
     if (!message.trim()) {
-      Alert.alert('JUMBAK', lang === 'ar' ? 'اكتب تفاصيل الطلب أولًا' : 'Write request details first');
+      Alert.alert('Jnbk', lang === 'ar' ? 'اكتب تفاصيل الطلب أولًا' : 'Write request details first');
       return;
     }
 
     setLoading(true);
     try {
       await createSupportRequest({ category: issues[lang][selected], message: message.trim(), lang });
-      Alert.alert('JUMBAK', lang === 'ar' ? 'تم إرسال طلب الدعم بنجاح.' : 'Support request submitted successfully.');
+      await autosave.clearDraft();
+      Alert.alert('Jnbk', lang === 'ar' ? 'تم إرسال طلب الدعم بنجاح.' : 'Support request submitted successfully.');
       router.push({ pathname: '/home', params: { lang } });
     } catch {
-      Alert.alert('JUMBAK', lang === 'ar' ? 'الخادم غير متصل. تم حفظ الطلب كتجربة محلية.' : 'Backend is offline. Request saved as local preview.');
+      Alert.alert('Jnbk', lang === 'ar' ? 'الخادم غير متصل. تم حفظ الطلب كتجربة محلية.' : 'Backend is offline. Request saved as local preview.');
       router.push({ pathname: '/home', params: { lang } });
     } finally {
       setLoading(false);
@@ -43,7 +50,7 @@ export default function Support() {
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={[styles.header, rtl && styles.reverse]}>
         <View>
-          <Text style={[styles.kicker, rtl && styles.rtl]}>JUMBAK</Text>
+          <Text style={[styles.kicker, rtl && styles.rtl]}>Jnbk</Text>
           <Text style={[styles.title, rtl && styles.rtl]}>{lang === 'ar' ? 'الدعم والمساعدة' : 'Support & help'}</Text>
         </View>
         <Pressable style={styles.langButton} onPress={() => setLang(lang === 'ar' ? 'en' : 'ar')}>
@@ -51,9 +58,13 @@ export default function Support() {
         </Pressable>
       </View>
 
+      <View style={styles.saveCard}>
+        <Text style={[styles.saveText, rtl && styles.rtl]}>{autosaveLabel(autosave.status, lang)}</Text>
+      </View>
+
       <View style={styles.card}>
         <Text style={[styles.cardTitle, rtl && styles.rtl]}>{lang === 'ar' ? 'كيف يمكننا مساعدتك؟' : 'How can we help?'}</Text>
-        <Text style={[styles.cardText, rtl && styles.rtl]}>{lang === 'ar' ? 'اختر نوع الطلب واكتب التفاصيل بوضوح ليتم التعامل معه بسرعة.' : 'Choose a request type and describe the issue clearly for faster handling.'}</Text>
+        <Text style={[styles.cardText, rtl && styles.rtl]}>{lang === 'ar' ? 'اختر نوع الطلب واكتب التفاصيل بوضوح. سيتم حفظ ما تكتبه تلقائيًا.' : 'Choose a request type and describe the issue clearly. Your input is saved automatically.'}</Text>
       </View>
 
       <View style={[styles.wrap, rtl && styles.reverseWrap]}>
@@ -87,6 +98,8 @@ const styles = StyleSheet.create({
   title: { color: colors.navy, fontSize: 30, fontWeight: '900' },
   langButton: { borderRadius: 18, backgroundColor: colors.navy, paddingVertical: 11, paddingHorizontal: 14 },
   langText: { color: colors.white, fontWeight: '900' },
+  saveCard: { backgroundColor: '#E7F7EF', borderRadius: 18, padding: 12 },
+  saveText: { color: colors.teal, fontWeight: '900' },
   card: { backgroundColor: colors.white, borderRadius: 28, padding: 20 },
   cardTitle: { color: colors.navy, fontSize: 22, fontWeight: '900' },
   cardText: { color: colors.muted, lineHeight: 23, marginTop: 8 },
