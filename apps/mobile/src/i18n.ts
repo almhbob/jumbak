@@ -2,9 +2,9 @@ export type Lang = 'ar' | 'en';
 
 export const dict = {
   ar: {
-    appName: 'جمبك',
-    appNameEn: 'JUMBAK',
-    tagline: 'ركشة قريبة منك',
+    appName: 'جنبك',
+    appNameEn: 'Jnbk',
+    tagline: 'مشوارك جنبك',
     intro: 'رحلات محلية سريعة في رفاعة بتسعير واضح وسائقين موثوقين.',
     startRide: 'ابدأ كراكب',
     driverMode: 'وضع السائق',
@@ -43,9 +43,9 @@ export const dict = {
     language: 'English'
   },
   en: {
-    appName: 'JUMBAK',
-    appNameEn: 'JUMBAK',
-    tagline: 'Rickshaw near you',
+    appName: 'Jnbk',
+    appNameEn: 'Jnbk',
+    tagline: 'Your ride near you',
     intro: 'Fast local rides in Rufaa with clear fares and trusted drivers.',
     startRide: 'Start ride',
     driverMode: 'Driver mode',
