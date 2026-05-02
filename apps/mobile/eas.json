@@ -7,11 +7,17 @@
     "preview": {
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://workspaceapi-server-production-3e22.up.railway.app"
       }
     },
     "production": {
       "android": {
         "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://workspaceapi-server-production-3e22.up.railway.app"
       }
     }
   },
