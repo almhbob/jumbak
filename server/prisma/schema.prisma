@@ -31,7 +31,9 @@ enum SupportStatus {
 
 enum StaffRole {
   OPERATIONS
+  SUPERVISOR
   SUPPORT
+  ACCOUNTANT
   FINANCE
   DEVELOPER
   BUSINESS
