@@ -70,6 +70,12 @@ export async function createRide(input: {
   return response.json();
 }
 
+export async function getRides() {
+  const response = await fetch(`${API_URL}/api/rides`);
+  if (!response.ok) throw new Error('Failed to load rides');
+  return response.json();
+}
+
 export async function updateRideStatus(rideId: string, status: string) {
   const response = await fetch(`${API_URL}/api/rides/${rideId}/status`, {
     method: 'PATCH',
