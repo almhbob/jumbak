@@ -2,13 +2,16 @@
   "name": "jumbak",
   "version": "0.1.0",
   "private": true,
-  "description": "JUMBAK - Rickshaw ride-hailing app for Rufaa, Sudan",
+  "description": "Jnbk - Rickshaw ride-hailing app for Rufaa, Sudan",
   "scripts": {
     "dev": "pnpm --parallel --filter @jumbak/server --filter @jumbak/admin dev",
     "server:dev": "pnpm --filter @jumbak/server dev",
     "admin:dev": "pnpm --filter @jumbak/admin dev",
     "mobile:start": "pnpm --filter @jumbak/mobile start",
-    "build": "pnpm --recursive build"
+    "build": "pnpm --filter @jumbak/server build",
+    "start": "pnpm --filter @jumbak/server start:prod",
+    "railway:build": "pnpm install --frozen-lockfile=false && pnpm --filter @jumbak/server build",
+    "railway:start": "pnpm --filter @jumbak/server start:prod"
   },
   "workspaces": ["apps/*", "server"],
   "engines": { "node": ">=20" },
