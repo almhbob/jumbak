@@ -1,6 +1,6 @@
-# JUMBAK | جمبك
+# Jnbk | جنبك
 
-JUMBAK is a bilingual multi-city transport platform inspired by modern ride-hailing apps and adapted for Sudanese local mobility. The first launch area is Rufaa, with support for adding more cities inside or outside Sudan.
+Jnbk جنبك is a bilingual multi-city transport platform inspired by modern ride-hailing apps and adapted for Sudanese local mobility. The first launch area is Rufaa, with support for adding more cities inside or outside Sudan.
 
 ## What is included
 
@@ -106,7 +106,7 @@ pnpm --filter @jumbak/server seed
 
 ## Current status
 
-JUMBAK is now beyond the initial prototype stage. It includes a working app flow, API routes, database-ready models, admin dashboard, driver onboarding, OTP preview login, and deployment preparation.
+Jnbk جنبك is now beyond the initial prototype stage. It includes a working app flow, API routes, database-ready models, admin dashboard, driver onboarding, OTP preview login, support requests, and deployment preparation.
 
 ## Next production steps
 
