@@ -2,6 +2,23 @@ import { addFirebaseDocument, isFirebaseConfigured } from './firebase';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || '';
 
+type DriverApplicationInput = {
+  phone: string;
+  name: string;
+  cityId: string;
+  vehicleTypeId: string;
+  plateNo?: string;
+  color?: string;
+  model?: string;
+  nationalId?: string;
+  chassisNo?: string;
+  trafficId?: string;
+  bankAccount?: string;
+  guarantorName?: string;
+  guarantorPhone?: string;
+  guarantorAddress?: string;
+};
+
 async function apiFetch(path: string, options?: RequestInit) {
   if (!API_URL) throw new Error('No backend configured');
   const response = await fetch(`${API_URL}${path}`, options);
@@ -30,23 +47,22 @@ export async function verifyOtp(input: { phone: string; code: string; name?: str
   });
 }
 
-export async function registerDriver(input: {
-  phone: string;
-  name: string;
-  cityId: string;
-  vehicleTypeId: string;
-  plateNo?: string;
-  color?: string;
-  model?: string;
-}) {
+export async function registerDriver(input: DriverApplicationInput) {
+  const payload = {
+    ...input,
+    status: 'pending_review',
+    freeMonth: true,
+    complianceStatus: 'needs_admin_review'
+  };
+
   if (isFirebaseConfigured()) {
-    const driver = await addFirebaseDocument('driverApplications', { ...input, status: 'pending_review' });
+    const driver = await addFirebaseDocument('driverApplications', payload);
     return { ok: true, driver };
   }
   return apiFetch('/api/drivers/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input)
+    body: JSON.stringify(payload)
   });
 }
 
