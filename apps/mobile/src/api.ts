@@ -1,23 +1,33 @@
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000';
+import { addFirebaseDocument, isFirebaseConfigured } from './firebase';
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL || '';
+
+async function apiFetch(path: string, options?: RequestInit) {
+  if (!API_URL) throw new Error('No backend configured');
+  const response = await fetch(`${API_URL}${path}`, options);
+  if (!response.ok) throw new Error(`Request failed: ${path}`);
+  return response.json();
+}
 
 export async function requestOtp(phone: string) {
-  const response = await fetch(`${API_URL}/api/auth/request-otp`, {
+  if (isFirebaseConfigured()) return { ok: true, phone, devOtp: '123456', provider: 'firebase-preview' };
+  return apiFetch('/api/auth/request-otp', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ phone })
   });
-  if (!response.ok) throw new Error('Failed to request OTP');
-  return response.json();
 }
 
 export async function verifyOtp(input: { phone: string; code: string; name?: string; role?: 'PASSENGER' | 'DRIVER' | 'ADMIN' }) {
-  const response = await fetch(`${API_URL}/api/auth/verify-otp`, {
+  if (isFirebaseConfigured()) {
+    const user = await addFirebaseDocument('users', input);
+    return { ok: true, user: { id: user.id, phone: input.phone, name: input.name, role: input.role || 'PASSENGER' }, token: `firebase_${user.id}` };
+  }
+  return apiFetch('/api/auth/verify-otp', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input)
   });
-  if (!response.ok) throw new Error('Failed to verify OTP');
-  return response.json();
 }
 
 export async function registerDriver(input: {
@@ -29,29 +39,27 @@ export async function registerDriver(input: {
   color?: string;
   model?: string;
 }) {
-  const response = await fetch(`${API_URL}/api/drivers/register`, {
+  if (isFirebaseConfigured()) {
+    const driver = await addFirebaseDocument('driverApplications', { ...input, status: 'pending_review' });
+    return { ok: true, driver };
+  }
+  return apiFetch('/api/drivers/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input)
   });
-  if (!response.ok) throw new Error('Failed to register driver');
-  return response.json();
 }
 
 export async function getAppConfig() {
-  const response = await fetch(`${API_URL}/api/config`);
-  if (!response.ok) throw new Error('Failed to load app config');
-  return response.json();
+  return apiFetch('/api/config');
 }
 
 export async function estimatePrice(input: { cityId: string; vehicleTypeId: string; distanceKm: number }) {
-  const response = await fetch(`${API_URL}/api/pricing/estimate`, {
+  return apiFetch('/api/pricing/estimate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input)
   });
-  if (!response.ok) throw new Error('Failed to estimate price');
-  return response.json();
 }
 
 export async function createRide(input: {
@@ -61,45 +69,39 @@ export async function createRide(input: {
   destinationLabel: string;
   distanceKm: number;
 }) {
-  const response = await fetch(`${API_URL}/api/rides`, {
+  if (isFirebaseConfigured()) {
+    const ride = await addFirebaseDocument('rides', { ...input, status: 'REQUESTED' });
+    return { id: ride.id, ...input, status: 'REQUESTED', estimatedFare: 0 };
+  }
+  return apiFetch('/api/rides', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input)
   });
-  if (!response.ok) throw new Error('Failed to create ride');
-  return response.json();
 }
 
 export async function getRides() {
-  const response = await fetch(`${API_URL}/api/rides`);
-  if (!response.ok) throw new Error('Failed to load rides');
-  return response.json();
+  return apiFetch('/api/rides');
 }
 
 export async function getRide(rideId: string) {
-  const response = await fetch(`${API_URL}/api/rides/${rideId}`);
-  if (!response.ok) throw new Error('Failed to load ride');
-  return response.json();
+  return apiFetch(`/api/rides/${rideId}`);
 }
 
 export async function updateRideStatus(rideId: string, status: string) {
-  const response = await fetch(`${API_URL}/api/rides/${rideId}/status`, {
+  return apiFetch(`/api/rides/${rideId}/status`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status })
   });
-  if (!response.ok) throw new Error('Failed to update ride status');
-  return response.json();
 }
 
 export async function submitRideRating(rideId: string, rating: number) {
-  const response = await fetch(`${API_URL}/api/rides/${rideId}/rating`, {
+  return apiFetch(`/api/rides/${rideId}/rating`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ rating })
   });
-  if (!response.ok) throw new Error('Failed to submit rating');
-  return response.json();
 }
 
 export async function getDrivers(cityId?: string, vehicleTypeId?: string) {
@@ -107,7 +109,5 @@ export async function getDrivers(cityId?: string, vehicleTypeId?: string) {
   if (cityId) params.set('cityId', cityId);
   if (vehicleTypeId) params.set('vehicleTypeId', vehicleTypeId);
   const query = params.toString();
-  const response = await fetch(`${API_URL}/api/drivers${query ? `?${query}` : ''}`);
-  if (!response.ok) throw new Error('Failed to load drivers');
-  return response.json();
+  return apiFetch(`/api/drivers${query ? `?${query}` : ''}`);
 }
