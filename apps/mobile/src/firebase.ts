@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, query, where, doc, updateDoc } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -25,4 +25,24 @@ export async function addFirebaseDocument(collectionName: string, data: Record<s
     source: 'mobile-app'
   });
   return { id: docRef.id };
+}
+
+export async function updateFirebaseDocument(collectionName: string, id: string, data: Record<string, unknown>) {
+  if (!firestore) throw new Error('Firebase is not configured');
+  await updateDoc(doc(firestore, collectionName, id), {
+    ...data,
+    updatedAt: serverTimestamp()
+  });
+  return { id, ...data };
+}
+
+export function subscribeFirebaseCollection<T>(collectionName: string, statuses: string[] | null, onData: (items: T[]) => void, onError?: () => void) {
+  if (!firestore) return () => undefined;
+  const base = collection(firestore, collectionName);
+  const q = statuses && statuses.length ? query(base, where('status', 'in', statuses.slice(0, 10))) : query(base);
+  return onSnapshot(
+    q,
+    (snapshot) => onData(snapshot.docs.map((item) => ({ id: item.id, ...item.data() } as T))),
+    () => onError?.()
+  );
 }
