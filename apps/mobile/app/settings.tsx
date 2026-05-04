@@ -21,7 +21,7 @@ export default function Settings() {
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={[styles.header, rtl && styles.reverse]}>
         <View>
-          <Text style={[styles.kicker, rtl && styles.rtl]}>JUMBAK</Text>
+          <Text style={[styles.kicker, rtl && styles.rtl]}>JNBK</Text>
           <Text style={[styles.title, rtl && styles.rtl]}>{t.settings}</Text>
         </View>
         <Pressable style={styles.langButton} onPress={() => setLang(lang === 'ar' ? 'en' : 'ar')}>
@@ -30,9 +30,9 @@ export default function Settings() {
       </View>
 
       <View style={styles.card}>
-        <Text style={[styles.cardTitle, rtl && styles.rtl]}>{lang === 'ar' ? 'تفضيلات التطبيق' : 'App preferences'}</Text>
+        <Text style={[styles.cardTitle, rtl && styles.rtl]}>{lang === 'ar' ? 'تفضيلات جنبك' : 'JNBK preferences'}</Text>
         <Text style={[styles.cardText, rtl && styles.rtl]}>
-          {lang === 'ar' ? 'اضبط المدينة الافتراضية، نوع الخدمة، والتنبيهات لتجربة أسرع داخل جمبك.' : 'Set your default city, service type, and alerts for a faster JUMBAK experience.'}
+          {lang === 'ar' ? 'اضبط المدينة الافتراضية، نوع الخدمة، والتنبيهات لتجربة أسرع داخل جنبك.' : 'Set your default city, service type, and alerts for a faster JNBK experience.'}
         </Text>
       </View>
 
