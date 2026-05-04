@@ -17,6 +17,11 @@ type DriverApplicationInput = {
   guarantorName?: string;
   guarantorPhone?: string;
   guarantorAddress?: string;
+  idDocumentUrl?: string;
+  licenseDocumentUrl?: string;
+  vehicleFrontUrl?: string;
+  vehicleBackUrl?: string;
+  guarantorDocumentUrl?: string;
 };
 
 async function apiFetch(path: string, options?: RequestInit) {
@@ -48,8 +53,19 @@ export async function verifyOtp(input: { phone: string; code: string; name?: str
 }
 
 export async function registerDriver(input: DriverApplicationInput) {
+  const documents = {
+    idDocumentUrl: input.idDocumentUrl || '',
+    licenseDocumentUrl: input.licenseDocumentUrl || '',
+    vehicleFrontUrl: input.vehicleFrontUrl || '',
+    vehicleBackUrl: input.vehicleBackUrl || '',
+    guarantorDocumentUrl: input.guarantorDocumentUrl || ''
+  };
+  const completedDocuments = Object.values(documents).filter(Boolean).length;
   const payload = {
     ...input,
+    documents,
+    completedDocuments,
+    documentsStatus: completedDocuments >= 3 ? 'ready_for_review' : 'missing_documents',
     status: 'pending_review',
     freeMonth: true,
     complianceStatus: 'needs_admin_review'
