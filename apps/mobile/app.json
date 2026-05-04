@@ -1,1 +1,1 @@
-{"expo":{"name":"Jnbk جنبك","slug":"jnbk","scheme":"jnbk","version":"0.1.0","orientation":"portrait","userInterfaceStyle":"light","android":{"package":"com.almhbob.jnbk","adaptiveIcon":{"backgroundColor":"#063B63"}},"plugins":["expo-router"]}}
+{"expo":{"name":"ركشة.. جنبك","slug":"riksha-jnbk","scheme":"jnbk","version":"0.1.1","orientation":"portrait","userInterfaceStyle":"light","android":{"package":"com.almhbob.jnbk","versionCode":2,"adaptiveIcon":{"backgroundColor":"#063B63"}},"plugins":["expo-router"],"extra":{"brandName":"ركشة.. جنبك","tagline":"أقرب إليك دائمًا"}}}
