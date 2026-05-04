@@ -2,7 +2,19 @@
 
 This guide documents the latest approved visual direction for the JNBK app and admin dashboard.
 
-## Brand direction
+## Final brand direction
+
+The approved public-facing phrase is:
+
+```text
+ركشة.. جنبك
+```
+
+English supporting phrase:
+
+```text
+Rickshaw near you
+```
 
 JNBK should feel like a modern, trusted ride-hailing product for Sudan with a premium but simple interface.
 
@@ -19,11 +31,12 @@ Core feeling:
 
 Use the JNBK / جنبك identity consistently:
 
-- Arabic name: جنبك
-- English name: JNBK
-- Tagline: Rickshaw Near You
-- Arabic tagline: رحلتك... جنبك
-- Promise: أقرب ريكشة إليك في السودان
+- Arabic brand: جنبك
+- English brand: JNBK
+- Product phrase: ركشة.. جنبك
+- English support: Rickshaw near you
+- Arabic promise: أقرب إليك دائمًا
+- Service promise: أقرب ريكشة إليك في السودان
 
 The logo direction includes:
 
