@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, Text, StyleSheet, Pressable, View, Alert } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../src/components/Button';
-import { colors } from '../src/constants/theme';
+import { BrandLogo } from '../src/components/BrandLogo';
+import { brand, colors } from '../src/constants/theme';
 import { dict, Lang } from '../src/i18n';
 import { cities as fallbackCities, vehicleTypes as fallbackVehicleTypes, serviceModes, estimateFare, City, VehicleType } from '../src/serviceConfig';
 import { createRide, estimatePrice, getAppConfig } from '../src/api';
@@ -115,30 +117,30 @@ export default function Home() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <View style={[styles.header, rtl && styles.reverse]}>
-        <View>
-          <Text style={[styles.hello, rtl && styles.rtl]}>{t.appNameEn}</Text>
-          <Text style={[styles.title, rtl && styles.rtl]}>{t.whereTo}</Text>
+      <LinearGradient colors={brand.gradient} style={styles.heroCard}>
+        <View style={[styles.header, rtl && styles.reverse]}>
+          <View>
+            <Text style={[styles.hello, rtl && styles.rtl]}>{brand.nameEn}</Text>
+            <Text style={[styles.heroTitle, rtl && styles.rtl]}>{lang === 'ar' ? brand.productAr : brand.productEn}</Text>
+          </View>
+          <Pressable style={styles.langButton} onPress={() => setLang(lang === 'ar' ? 'en' : 'ar')}>
+            <Text style={styles.langText}>{t.language}</Text>
+          </Pressable>
         </View>
-        <Pressable style={styles.langButton} onPress={() => setLang(lang === 'ar' ? 'en' : 'ar')}>
-          <Text style={styles.langText}>{t.language}</Text>
-        </Pressable>
-      </View>
+        <View style={styles.logoWrap}><BrandLogo size='sm' onDark showTagline={false} /></View>
+        <Text style={[styles.heroPromise, rtl && styles.rtl]}>{lang === 'ar' ? brand.promiseAr : brand.promiseEn}</Text>
+        <Text style={[styles.heroSub, rtl && styles.rtl]}>{lang === 'ar' ? brand.serviceAr : brand.serviceEn}</Text>
+      </LinearGradient>
 
       <View style={[styles.quickRow, rtl && styles.reverse]}>
         <Pressable style={styles.quickCard} onPress={() => router.push({ pathname: '/settings', params: { lang } })}>
-          <Text style={styles.quickIcon}>⚙</Text>
+          <Text style={styles.quickIcon}>SET</Text>
           <Text style={[styles.quickText, rtl && styles.rtl]}>{t.settings}</Text>
         </Pressable>
         <Pressable style={styles.quickCard} onPress={() => router.push({ pathname: '/support', params: { lang } })}>
-          <Text style={styles.quickIcon}>?</Text>
+          <Text style={styles.quickIcon}>24/7</Text>
           <Text style={[styles.quickText, rtl && styles.rtl]}>{t.support}</Text>
         </Pressable>
-      </View>
-
-      <View style={styles.brandCard}>
-        <Text style={[styles.brandTitle, rtl && styles.rtl]}>{lang === 'ar' ? 'مشوارك جنبك في رفاعة' : 'Your Rufaa ride is near you'}</Text>
-        <Text style={[styles.brandText, rtl && styles.rtl]}>{lang === 'ar' ? 'خيارات محلية: ركشة سريعة، وقار، دليفري، طوارئ، وطلب SMS عند ضعف الإنترنت.' : 'Local options: fast ride, Waqar, delivery, emergency, and SMS fallback for weak internet.'}</Text>
       </View>
 
       <View style={styles.sourceCard}>
@@ -151,7 +153,7 @@ export default function Home() {
           <Pressable key={item.id} onPress={() => setServiceIndex(index)} style={[styles.modeCard, serviceIndex === index && styles.modeActive]}>
             <Text style={[styles.modeIcon, serviceIndex === index && styles.activeText]}>{item.icon}</Text>
             <Text style={[styles.modeTitle, serviceIndex === index && styles.activeText, rtl && styles.rtl]}>{lang === 'ar' ? item.nameAr : item.nameEn}</Text>
-            <Text style={[styles.modeDescription, serviceIndex === index && styles.activeText, rtl && styles.rtl]}>{lang === 'ar' ? item.descriptionAr : item.descriptionEn}</Text>
+            <Text style={[styles.modeDescription, serviceIndex === index && styles.activeDescription, rtl && styles.rtl]}>{lang === 'ar' ? item.descriptionAr : item.descriptionEn}</Text>
           </Pressable>
         ))}
       </View>
@@ -176,9 +178,18 @@ export default function Home() {
       </View>
 
       <View style={styles.mapCard}>
-        <Text style={[styles.mapTitle, rtl && styles.rtl]}>{cityName}</Text>
-        <Text style={[styles.mapSub, rtl && styles.rtl]}>{modeName} - {vehicleName} - {pickup} {t.to} {destination}</Text>
+        <View style={[styles.mapHeader, rtl && styles.reverse]}>
+          <View>
+            <Text style={[styles.mapTitle, rtl && styles.rtl]}>{cityName}</Text>
+            <Text style={[styles.mapSub, rtl && styles.rtl]}>{modeName} - {vehicleName}</Text>
+          </View>
+          <View style={styles.etaBadge}><Text style={styles.etaText}>{distanceKm + 3} min</Text></View>
+        </View>
         <View style={styles.routeLine}><View style={styles.pin} /><View style={styles.line} /><View style={[styles.pin, styles.pinGold]} /></View>
+        <View style={styles.routeCards}>
+          <View style={styles.routeCard}><Text style={styles.routeLabel}>{t.pickup}</Text><Text style={[styles.routeValue, rtl && styles.rtl]}>{pickup}</Text></View>
+          <View style={styles.routeCard}><Text style={styles.routeLabel}>{t.destination}</Text><Text style={[styles.routeValue, rtl && styles.rtl]}>{destination}</Text></View>
+        </View>
       </View>
 
       <Text style={[styles.label, rtl && styles.rtl]}>{t.pickup}</Text>
@@ -213,35 +224,44 @@ export default function Home() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 22, paddingTop: 58, gap: 14 },
+  content: { padding: 22, paddingTop: 54, gap: 14 },
+  heroCard: { borderRadius: 34, padding: 20, gap: 12, overflow: 'hidden' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   reverse: { flexDirection: 'row-reverse' },
   hello: { color: colors.gold, fontWeight: '900', letterSpacing: 2 },
-  title: { fontSize: 30, fontWeight: '900', color: colors.navy },
-  langButton: { borderRadius: 18, backgroundColor: colors.navy, paddingVertical: 11, paddingHorizontal: 14 },
+  heroTitle: { fontSize: 32, fontWeight: '900', color: colors.white },
+  heroPromise: { color: colors.gold, fontWeight: '900', fontSize: 20, textAlign: 'center' },
+  heroSub: { color: 'rgba(255,255,255,.82)', fontWeight: '800', textAlign: 'center', lineHeight: 22 },
+  logoWrap: { alignItems: 'center', paddingTop: 2 },
+  langButton: { borderRadius: 18, backgroundColor: 'rgba(255,255,255,.14)', paddingVertical: 11, paddingHorizontal: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,.18)' },
   langText: { color: colors.white, fontWeight: '900' },
   quickRow: { flexDirection: 'row', gap: 12 },
-  quickCard: { flex: 1, backgroundColor: colors.white, borderRadius: 22, padding: 15, borderWidth: 1, borderColor: '#E7EEF5' },
-  quickIcon: { color: colors.gold, fontSize: 22, fontWeight: '900' },
+  quickCard: { flex: 1, backgroundColor: colors.white, borderRadius: 24, padding: 15, borderWidth: 1, borderColor: colors.border },
+  quickIcon: { color: colors.gold, fontSize: 15, fontWeight: '900', letterSpacing: 1 },
   quickText: { color: colors.navy, fontWeight: '900', marginTop: 6 },
-  brandCard: { backgroundColor: colors.navy, borderRadius: 28, padding: 18 },
-  brandTitle: { color: colors.white, fontSize: 22, fontWeight: '900' },
-  brandText: { color: 'rgba(255,255,255,.78)', marginTop: 8, lineHeight: 22, fontWeight: '700' },
   sourceCard: { backgroundColor: '#E7F7EF', borderRadius: 20, padding: 12 },
   sourceText: { color: colors.teal, fontWeight: '900' },
   modeGrid: { gap: 10 },
-  modeCard: { backgroundColor: colors.white, borderRadius: 22, padding: 15, borderWidth: 1, borderColor: '#E7EEF5' },
+  modeCard: { backgroundColor: colors.white, borderRadius: 24, padding: 16, borderWidth: 1, borderColor: colors.border },
   modeActive: { backgroundColor: colors.navy, borderColor: colors.navy },
   modeIcon: { color: colors.gold, fontSize: 22, fontWeight: '900' },
   modeTitle: { color: colors.navy, fontSize: 17, fontWeight: '900', marginTop: 4 },
   modeDescription: { color: colors.muted, marginTop: 4, lineHeight: 20, fontWeight: '700' },
-  mapCard: { height: 235, borderRadius: 30, padding: 22, justifyContent: 'space-between', backgroundColor: '#DDF3FA' },
-  mapTitle: { color: colors.teal, fontSize: 28, fontWeight: '900' },
-  mapSub: { color: colors.navy, fontSize: 16, fontWeight: '800' },
-  routeLine: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  activeDescription: { color: 'rgba(255,255,255,.76)' },
+  mapCard: { borderRadius: 32, padding: 20, gap: 16, backgroundColor: colors.sky, borderWidth: 1, borderColor: colors.border },
+  mapHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 },
+  mapTitle: { color: colors.navy, fontSize: 28, fontWeight: '900' },
+  mapSub: { color: colors.teal, fontSize: 15, fontWeight: '900', marginTop: 3 },
+  etaBadge: { backgroundColor: colors.white, borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: colors.border },
+  etaText: { color: colors.gold, fontWeight: '900' },
+  routeLine: { flexDirection: 'row', alignItems: 'center', marginVertical: 6 },
   pin: { width: 18, height: 18, borderRadius: 9, backgroundColor: colors.teal },
   pinGold: { backgroundColor: colors.gold },
-  line: { flex: 1, height: 4, backgroundColor: colors.white, marginHorizontal: 8, borderRadius: 999 },
+  line: { flex: 1, height: 5, backgroundColor: colors.white, marginHorizontal: 8, borderRadius: 999 },
+  routeCards: { gap: 10 },
+  routeCard: { backgroundColor: colors.white, borderRadius: 18, padding: 14, borderWidth: 1, borderColor: colors.border },
+  routeLabel: { color: colors.muted, fontWeight: '800' },
+  routeValue: { color: colors.navy, fontWeight: '900', marginTop: 4 },
   label: { color: colors.text, fontWeight: '900', fontSize: 16, marginTop: 4 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   reverseWrap: { flexDirection: 'row-reverse' },
@@ -251,7 +271,7 @@ const styles = StyleSheet.create({
   active: { backgroundColor: colors.navy },
   chipText: { color: colors.navy, fontWeight: '900' },
   activeText: { color: colors.white },
-  fareCard: { backgroundColor: colors.white, borderRadius: 28, padding: 18 },
+  fareCard: { backgroundColor: colors.white, borderRadius: 30, padding: 18, borderWidth: 1, borderColor: colors.border },
   fareLabel: { color: colors.muted, fontWeight: '800' },
   fare: { color: colors.gold, fontSize: 38, fontWeight: '900' },
   note: { color: colors.muted, marginTop: 4 },
