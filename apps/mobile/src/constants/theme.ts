@@ -18,10 +18,14 @@ export const colors = {
 export const brand = {
   nameAr: 'جنبك',
   nameEn: 'JNBK',
-  taglineAr: 'رحلتك... جنبك',
+  productAr: 'ركشة.. جنبك',
+  productEn: 'Rickshaw JNBK',
+  taglineAr: 'ركشة.. جنبك',
   taglineEn: 'Rickshaw near you',
-  promiseAr: 'أقرب ريكشة إليك في السودان',
-  promiseEn: 'Your ride, right beside you.',
+  promiseAr: 'أقرب إليك دائمًا',
+  promiseEn: 'Always near you.',
+  serviceAr: 'أقرب ريكشة إليك في السودان',
+  serviceEn: 'Your rickshaw, always nearby.',
   gradient: [colors.navyDeep, colors.navy, colors.teal] as const
 };
 
