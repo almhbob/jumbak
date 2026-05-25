@@ -143,3 +143,19 @@ export async function getDrivers(cityId?: string, vehicleTypeId?: string) {
   const query = params.toString();
   return apiFetch(`/api/drivers${query ? `?${query}` : ''}`);
 }
+
+export async function registerPushToken(token: string, userId: string) {
+  return apiFetch('/api/notifications/register-token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, userId }),
+  });
+}
+
+export async function unregisterPushToken(token: string) {
+  return apiFetch('/api/notifications/register-token', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  });
+}

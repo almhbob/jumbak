@@ -13,6 +13,7 @@ import ridesRoutes from './routes/ridesRoutes.js';
 import driversRoutes from './routes/driversRoutes.js';
 import supportRoutes from './routes/supportRoutes.js';
 import legalRoutes from './routes/legalRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 
 const app = express();
 
@@ -46,6 +47,7 @@ app.use('/api/rides', ridesRoutes);
 app.use('/api/drivers', driversRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/legal', legalRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Public config endpoint
 app.get('/api/config', async (_req, res) => {

@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Button } from '../src/components/Button';
 import { BrandLogo } from '../src/components/BrandLogo';
 import { brand, colors } from '../src/constants/theme';
 import { dict, Lang } from '../src/i18n';
 import { requestOtp, verifyOtp } from '../src/api';
+import { saveTokenToServer } from '../src/notifications';
 
 type Role = 'PASSENGER' | 'DRIVER';
 
@@ -57,14 +59,26 @@ export default function Login() {
     }
     setLoading(true);
     try {
-      await verifyOtp({ phone: phone.trim(), code: code.trim(), name: name.trim() || undefined, role });
-      nextRoute();
-    } catch {
-      if (code.trim() === '123456') {
-        nextRoute();
-      } else {
-        Alert.alert('Jnbk', lang === 'ar' ? 'رمز غير صحيح' : 'Invalid OTP');
+      let userId: string | null = null;
+      try {
+        const result = await verifyOtp({ phone: phone.trim(), code: code.trim(), name: name.trim() || undefined, role });
+        userId = result?.user?.id || null;
+      } catch {
+        if (code.trim() !== '123456') {
+          Alert.alert('Jnbk', lang === 'ar' ? 'رمز غير صحيح' : 'Invalid OTP');
+          setLoading(false);
+          return;
+        }
+        userId = `preview_${phone.trim()}`;
       }
+
+      if (userId) {
+        await AsyncStorage.setItem('jnbk_user_id', userId);
+        const storedToken = await AsyncStorage.getItem('jnbk_push_token');
+        if (storedToken) await saveTokenToServer(storedToken, userId);
+      }
+
+      nextRoute();
     } finally {
       setLoading(false);
     }

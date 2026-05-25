@@ -27,6 +27,7 @@ export type MemRide = {
   cityName: string;
   vehicleTypeId: string;
   vehicleName: string;
+  passengerId?: string | null;
   driverId: string | null;
   driverName: string | null;
   pickupLabel: string;
@@ -78,7 +79,14 @@ export type MemLegalDoc = {
   updatedAt: string;
 };
 
+export type MemDeviceToken = {
+  token: string;
+  userId: string;
+  platform: string;
+};
+
 export const memoryUsers: MemUser[] = [];
+export const memoryTokens: MemDeviceToken[] = [];
 export const memoryRides: MemRide[] = [];
 export const memorySupportRequests: MemSupport[] = [];
 export const memoryStaff: MemStaff[] = [];

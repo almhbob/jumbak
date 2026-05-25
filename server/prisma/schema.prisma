@@ -88,13 +88,24 @@ model VehicleType {
 }
 
 model User {
+  id           String        @id @default(cuid())
+  phone        String        @unique
+  name         String?
+  role         UserRole      @default(PASSENGER)
+  createdAt    DateTime      @default(now())
+  rides        Ride[]        @relation("PassengerRides")
+  driver       Driver?
+  deviceTokens DeviceToken[]
+}
+
+model DeviceToken {
   id        String   @id @default(cuid())
-  phone     String   @unique
-  name      String?
-  role      UserRole @default(PASSENGER)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  platform  String   @default("expo")
   createdAt DateTime @default(now())
-  rides     Ride[]   @relation("PassengerRides")
-  driver    Driver?
+  updatedAt DateTime @updatedAt
 }
 
 model StaffMember {

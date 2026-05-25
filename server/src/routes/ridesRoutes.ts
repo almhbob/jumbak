@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import { prisma } from '../db.js';
-import { memoryRides, memoryDrivers } from '../store.js';
+import { memoryRides, memoryDrivers, memoryTokens } from '../store.js';
 import { memoryCities, memoryVehicleTypes } from './configStore.js';
 import { findCity, findVehicleType, estimateFare } from '../config.js';
 import { RideStatus } from '@prisma/client';
+import { sendPushNotifications, rideStatusMessage } from '../services/notificationService.js';
 
 const router = Router();
 
@@ -67,6 +68,22 @@ router.post('/', async (req, res) => {
         status: RideStatus.REQUESTED,
       },
     });
+
+    // Notify online drivers in the city about the new ride request
+    const onlineDrivers = await prisma.driver.findMany({
+      where: { cityId, isOnline: true, isVerified: true },
+      include: { user: { include: { deviceTokens: true } } },
+    });
+    const driverTokens = onlineDrivers.flatMap((d) => d.user.deviceTokens.map((t) => t.token));
+    if (driverTokens.length) {
+      sendPushNotifications(
+        driverTokens,
+        'طلب رحلة جديد',
+        `من ${ride.pickupLabel} إلى ${ride.destinationLabel}`,
+        { rideId: ride.id, type: 'new_ride' }
+      ).catch(() => null);
+    }
+
     return res.status(201).json(ride);
   }
 
@@ -99,8 +116,34 @@ router.patch('/:id/status', async (req, res) => {
   const status = toRideStatus(String(req.body.status || 'REQUESTED'));
 
   if (prisma) {
-    const ride = await prisma.ride.update({ where: { id: req.params.id }, data: { status } }).catch(() => null);
+    const ride = await prisma.ride
+      .update({
+        where: { id: req.params.id },
+        data: { status },
+        include: { passenger: { include: { deviceTokens: true } }, driver: { include: { user: { include: { deviceTokens: true } } } } },
+      })
+      .catch(() => null);
     if (!ride) return res.status(404).json({ error: 'Ride not found' });
+
+    // Notify passenger about their ride status
+    const passengerTokens = ride.passenger?.deviceTokens.map((d) => d.token) || [];
+    if (passengerTokens.length) {
+      const msg = rideStatusMessage(status, 'ar');
+      if (msg) sendPushNotifications(passengerTokens, msg.title, msg.body, { rideId: ride.id, status }).catch(() => null);
+    }
+
+    // Notify driver when a new ride is requested in their city
+    if (status === RideStatus.REQUESTED && !ride.driverId) {
+      const onlineDrivers = await prisma.driver.findMany({
+        where: { cityId: ride.cityId, isOnline: true, isVerified: true },
+        include: { user: { include: { deviceTokens: true } } },
+      });
+      const driverTokens = onlineDrivers.flatMap((d) => d.user.deviceTokens.map((t) => t.token));
+      if (driverTokens.length) {
+        sendPushNotifications(driverTokens, 'طلب رحلة جديد', `وصل طلب من ${ride.pickupLabel} إلى ${ride.destinationLabel}`, { rideId: ride.id, type: 'new_ride' }).catch(() => null);
+      }
+    }
+
     return res.json(ride);
   }
 
@@ -108,6 +151,14 @@ router.patch('/:id/status', async (req, res) => {
   if (!ride) return res.status(404).json({ error: 'Ride not found' });
   ride.status = status;
   ride.updatedAt = new Date().toISOString();
+
+  // In-memory: best-effort push using stored tokens
+  const passengerTokens = memoryTokens.filter((t) => ride.passengerId && t.userId === ride.passengerId).map((t) => t.token);
+  if (passengerTokens.length) {
+    const msg = rideStatusMessage(status, 'ar');
+    if (msg) sendPushNotifications(passengerTokens, msg.title, msg.body, { rideId: ride.id, status }).catch(() => null);
+  }
+
   res.json(ride);
 });
 
