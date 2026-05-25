@@ -1,5 +1,6 @@
 'use client';
 import { FormEvent, useState } from 'react';
+import Image from 'next/image';
 import { staffLogin } from '../lib/apiClient';
 
 type Role = 'operations' | 'supervisor' | 'support' | 'accountant' | 'finance' | 'developer' | 'business';
@@ -119,16 +120,23 @@ export default function Portal() {
 
   return (
     <main dir={ar ? 'rtl' : 'ltr'} style={{ textAlign: ar ? 'right' : 'left' }}>
+      <header className="site-header">
+        <Image src="/logo.png" alt="Jnbk جنبك" width={120} height={52} className="site-logo" priority />
+        <div style={{ marginInlineStart: 'auto', display: 'flex', gap: 8 }}>
+          <a className="languageSwitch" href="/">{t.home}</a>
+          <a className="languageSwitch" href={`/portal?lang=${ar ? 'en' : 'ar'}`}>{t.toggle}</a>
+        </div>
+      </header>
+
       <section className="hero">
         <div className="heroTop">
           <div>
+            <div className="hero-logo">
+              <Image src="/logo.png" alt="Jnbk" width={64} height={64} style={{ filter: 'brightness(0) invert(1)', height: 52, width: 'auto' }} />
+            </div>
             <p className="kicker">Jnbk جنبك</p>
             <h1>{t.title}</h1>
             <p>{t.sub}</p>
-          </div>
-          <div className="topActions">
-            <a className="languageSwitch" href="/">{t.home}</a>
-            <a className="languageSwitch" href={`/portal?lang=${ar ? 'en' : 'ar'}`}>{t.toggle}</a>
           </div>
         </div>
       </section>
