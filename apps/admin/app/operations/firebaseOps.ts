@@ -1,27 +1,16 @@
 'use client';
 
 import { getClientFirebaseCollection, isClientFirebaseConfigured } from '../lib/firebaseClient';
+import { apiGet } from '../lib/apiClient';
 
 export type OpsDriver = { id: string; name?: string; phone?: string; online?: boolean; verified?: boolean; cityId?: string; status?: string };
 export type OpsRide = { id: string; status?: string; estimatedFare?: number; pickupLabel?: string; destinationLabel?: string };
 export type OpsSupport = { id: string; category?: string; message?: string; lang?: string; status?: string };
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
-
-async function apiGet<T>(path: string, fallback: T): Promise<T> {
-  if (!apiUrl) return fallback;
-  try {
-    const response = await fetch(`${apiUrl}${path}`);
-    return response.ok ? response.json() : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
 export function getOpsSource(lang: 'ar' | 'en') {
-  if (isClientFirebaseConfigured()) return lang === 'ar' ? 'Firebase Firestore' : 'Firebase Firestore';
-  if (apiUrl) return lang === 'ar' ? 'Backend API' : 'Backend API';
-  return lang === 'ar' ? 'Preview' : 'Preview';
+  if (isClientFirebaseConfigured()) return 'Firebase Firestore';
+  if (process.env.NEXT_PUBLIC_API_URL) return lang === 'ar' ? 'Backend API' : 'Backend API';
+  return 'Preview';
 }
 
 export async function loadOpsDrivers(fallback: OpsDriver[]) {
