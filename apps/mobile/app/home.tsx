@@ -8,6 +8,7 @@ import { brand, colors } from '../src/constants/theme';
 import { dict, Lang } from '../src/i18n';
 import { cities as fallbackCities, vehicleTypes as fallbackVehicleTypes, serviceModes, estimateFare, City, VehicleType } from '../src/serviceConfig';
 import { createRide, estimatePrice, getAppConfig } from '../src/api';
+import LocationPicker, { LocationItem } from '../src/components/LocationPicker';
 
 function normalizeCity(item: any): City {
   const zones = Array.isArray(item.zones) ? item.zones : [];
@@ -45,6 +46,9 @@ export default function Home() {
   const [pickupIndex, setPickupIndex] = useState(0);
   const [destinationIndex, setDestinationIndex] = useState(1);
   const [fareOverride, setFareOverride] = useState<number | null>(null);
+  const [showPickupPicker, setShowPickupPicker] = useState(false);
+  const [showDestinationPicker, setShowDestinationPicker] = useState(false);
+  const [cityZoneItems, setCityZoneItems] = useState<LocationItem[]>([]);
   const [loading, setLoading] = useState(false);
   const t = dict[lang];
   const city = appCities[cityIndex] || fallbackCities[0];
@@ -52,6 +56,12 @@ export default function Home() {
   const mode = serviceModes[serviceIndex];
   const zones = lang === 'ar' ? city.zonesAr : city.zonesEn;
   const safeZones = zones.length ? zones : (lang === 'ar' ? ['السوق', 'المستشفى'] : ['Market', 'Hospital']);
+
+  // Use rich zone items with categories when available, fall back to plain list
+  const locationItems: LocationItem[] = cityZoneItems.length > 0
+    ? cityZoneItems
+    : safeZones.map((name, i) => ({ id: String(i), name }));
+
   const distanceKm = pickupIndex === destinationIndex ? 1 : Math.max(2, Math.abs(destinationIndex - pickupIndex) + 1);
   const localFare = estimateFare(distanceKm, vehicle, mode.fareMultiplier);
   const fare = fareOverride ? Math.round(fareOverride * mode.fareMultiplier) : localFare;
@@ -70,6 +80,16 @@ export default function Home() {
         setAppCities(nextCities);
         setAppVehicles(nextVehicles);
         setSource('api');
+        // Extract zone items with categories from the first matched city (or cityIndex)
+        const rawCity = Array.isArray(config.cities) ? config.cities[cityIndex] || config.cities[0] : null;
+        if (rawCity && Array.isArray(rawCity.zones) && rawCity.zones.length) {
+          const items: LocationItem[] = rawCity.zones.map((z: any, i: number) => ({
+            id: String(z.id || i),
+            name: z.nameAr || z.nameEn || String(i),
+            category: z.category || undefined,
+          }));
+          setCityZoneItems(items);
+        }
       })
       .catch(() => setSource('preview'));
   }, []);
@@ -86,6 +106,7 @@ export default function Home() {
     setPickupIndex(0);
     setDestinationIndex(1);
     setFareOverride(null);
+    setCityZoneItems([]);
   }
 
   function changeVehicle(index: number) {
@@ -192,23 +213,55 @@ export default function Home() {
         </View>
       </View>
 
+      {/* Pickup picker button */}
       <Text style={[styles.label, rtl && styles.rtl]}>{t.pickup}</Text>
-      <View style={[styles.wrap, rtl && styles.reverseWrap]}>
-        {safeZones.slice(0, 10).map((z, index) => (
-          <Pressable key={`${z}-${index}`} onPress={() => setPickupIndex(index)} style={[styles.chip, pickupIndex === index && styles.active]}>
-            <Text style={[styles.chipText, pickupIndex === index && styles.activeText]}>{z}</Text>
-          </Pressable>
-        ))}
-      </View>
+      <Pressable style={[styles.pickerButton, rtl && styles.rowRev]} onPress={() => setShowPickupPicker(true)}>
+        <Text style={styles.pickerIcon}>📍</Text>
+        <View style={styles.pickerContent}>
+          <Text style={[styles.pickerValue, rtl && styles.rtl]}>{pickup}</Text>
+          <Text style={[styles.pickerHint, rtl && styles.rtl]}>{lang === 'ar' ? 'اضغط للتغيير' : 'Tap to change'}</Text>
+        </View>
+        <Text style={styles.pickerArrow}>{rtl ? '←' : '→'}</Text>
+      </Pressable>
 
+      {/* Destination picker button */}
       <Text style={[styles.label, rtl && styles.rtl]}>{t.destination}</Text>
-      <View style={[styles.wrap, rtl && styles.reverseWrap]}>
-        {safeZones.map((z, index) => (
-          <Pressable key={`${z}-${index}`} onPress={() => setDestinationIndex(index)} style={[styles.chip, destinationIndex === index && styles.active]}>
-            <Text style={[styles.chipText, destinationIndex === index && styles.activeText]}>{z}</Text>
-          </Pressable>
-        ))}
-      </View>
+      <Pressable style={[styles.pickerButton, styles.pickerButtonGold, rtl && styles.rowRev]} onPress={() => setShowDestinationPicker(true)}>
+        <Text style={styles.pickerIcon}>🎯</Text>
+        <View style={styles.pickerContent}>
+          <Text style={[styles.pickerValue, rtl && styles.rtl]}>{destination}</Text>
+          <Text style={[styles.pickerHint, rtl && styles.rtl]}>{lang === 'ar' ? 'اضغط للتغيير' : 'Tap to change'}</Text>
+        </View>
+        <Text style={styles.pickerArrow}>{rtl ? '←' : '→'}</Text>
+      </Pressable>
+
+      {/* Pickup modal */}
+      <LocationPicker
+        visible={showPickupPicker}
+        title={lang === 'ar' ? 'اختر نقطة الانطلاق' : 'Select Pickup'}
+        items={locationItems}
+        selected={pickup}
+        lang={lang}
+        onSelect={(name) => {
+          const idx = safeZones.indexOf(name);
+          if (idx >= 0) { setPickupIndex(idx); setFareOverride(null); }
+        }}
+        onClose={() => setShowPickupPicker(false)}
+      />
+
+      {/* Destination modal */}
+      <LocationPicker
+        visible={showDestinationPicker}
+        title={lang === 'ar' ? 'اختر الوجهة' : 'Select Destination'}
+        items={locationItems}
+        selected={destination}
+        lang={lang}
+        onSelect={(name) => {
+          const idx = safeZones.indexOf(name);
+          if (idx >= 0) { setDestinationIndex(idx); setFareOverride(null); }
+        }}
+        onClose={() => setShowDestinationPicker(false)}
+      />
 
       <View style={styles.fareCard}>
         <Text style={[styles.fareLabel, rtl && styles.rtl]}>{t.estimatedFare}</Text>
@@ -275,5 +328,18 @@ const styles = StyleSheet.create({
   fareLabel: { color: colors.muted, fontWeight: '800' },
   fare: { color: colors.gold, fontSize: 38, fontWeight: '900' },
   note: { color: colors.muted, marginTop: 4 },
-  rtl: { textAlign: 'right', writingDirection: 'rtl' }
+  rtl: { textAlign: 'right', writingDirection: 'rtl' },
+  pickerButton: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: colors.white, borderRadius: 22, padding: 16,
+    borderWidth: 1.5, borderColor: colors.border,
+    shadowColor: colors.navy, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
+  },
+  pickerButtonGold: { borderColor: colors.gold, backgroundColor: '#FFFDF5' },
+  rowRev: { flexDirection: 'row-reverse' },
+  pickerIcon: { fontSize: 22 },
+  pickerContent: { flex: 1 },
+  pickerValue: { color: colors.navy, fontWeight: '900', fontSize: 16 },
+  pickerHint: { color: colors.muted, fontWeight: '700', fontSize: 12, marginTop: 2 },
+  pickerArrow: { color: colors.muted, fontSize: 18, fontWeight: '900' },
 });

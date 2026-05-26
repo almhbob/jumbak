@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import { prisma, isDatabaseEnabled } from './db.js';
 import { countries } from './config.js';
 import { memoryCities, memoryVehicleTypes } from './routes/configStore.js';
+import { rufaaZones } from './data/rufaaZones.js';
 import { findCity, findVehicleType, estimateFare } from './config.js';
 
 import authRoutes from './routes/authRoutes.js';
@@ -59,7 +60,11 @@ app.get('/api/config', async (_req, res) => {
     ]);
     return res.json({ countries: dbCountries, cities: dbCities, vehicleTypes: dbVehicleTypes });
   }
-  res.json({ countries, cities: memoryCities, vehicleTypes: memoryVehicleTypes });
+  const citiesWithZones = memoryCities.map((city) => ({
+    ...city,
+    zones: rufaaZones.filter((z) => z.cityId === city.id),
+  }));
+  res.json({ countries, cities: citiesWithZones, vehicleTypes: memoryVehicleTypes });
 });
 
 // Fare estimation
