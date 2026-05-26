@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, Pressable,
   Alert, KeyboardAvoidingView, Platform, ScrollView,
@@ -6,20 +6,11 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
 import { Button } from '../src/components/Button';
 import { BrandLogo } from '../src/components/BrandLogo';
 import { brand, colors } from '../src/constants/theme';
 import { dict, Lang } from '../src/i18n';
-import {
-  firebaseAuth,
-  isFirebaseConfigured,
-  sendPhoneOtp,
-  confirmPhoneOtp,
-  OtpConfirmation,
-} from '../src/auth';
-import { firebaseApp } from '../src/firebase';
-import { verifyWithFirebase, verifyOtp, requestOtp } from '../src/api';
+import { verifyOtp, requestOtp } from '../src/api';
 import { saveTokenToServer } from '../src/notifications';
 
 type Role = 'PASSENGER' | 'DRIVER';
@@ -33,13 +24,9 @@ export default function Login() {
   const [role, setRole] = useState<Role>('PASSENGER');
   const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [confirmation, setConfirmation] = useState<OtpConfirmation | null>(null);
-
-  const recaptchaRef = useRef<FirebaseRecaptchaVerifierModal>(null);
 
   const t = dict[lang];
   const rtl = lang === 'ar';
-  const firebaseReady = isFirebaseConfigured() && !!firebaseAuth;
 
   function nextRoute() {
     if (role === 'DRIVER') {
@@ -58,46 +45,9 @@ export default function Login() {
     if (pushToken) await saveTokenToServer(pushToken, userId);
   }
 
-  // ─── Firebase path ───────────────────────────────────────────────────────────
+  // ─── OTP via server ──────────────────────────────────────────────────────────
 
-  async function sendFirebaseOtp() {
-    const trimmed = phone.trim();
-    if (!trimmed) {
-      Alert.alert('Jnbk', lang === 'ar' ? 'أدخل رقم الهاتف أولًا' : 'Enter your phone number first');
-      return;
-    }
-    setLoading(true);
-    try {
-      const result = await sendPhoneOtp(trimmed, recaptchaRef.current!);
-      setConfirmation(result);
-      setOtpSent(true);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      Alert.alert('Jnbk', lang === 'ar' ? `خطأ في الإرسال: ${msg}` : `Send error: ${msg}`);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function verifyFirebaseOtp() {
-    if (!confirmation || !code.trim()) return;
-    setLoading(true);
-    try {
-      const idToken = await confirmPhoneOtp(confirmation, code.trim());
-      const result = await verifyWithFirebase({ idToken, name: name.trim() || undefined, role });
-      await persistSession(result.user.id, result.token);
-      nextRoute();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      Alert.alert('Jnbk', lang === 'ar' ? `رمز غير صحيح أو منتهي: ${msg}` : `Invalid or expired code: ${msg}`);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // ─── Fallback path (no Firebase) ─────────────────────────────────────────────
-
-  async function sendLegacyOtp() {
+  async function handleSend() {
     const trimmed = phone.trim();
     if (!trimmed) {
       Alert.alert('Jnbk', lang === 'ar' ? 'أدخل رقم الهاتف أولًا' : 'Enter your phone number first');
@@ -115,7 +65,7 @@ export default function Login() {
     }
   }
 
-  async function verifyLegacyOtp() {
+  async function handleVerify() {
     if (!phone.trim() || !code.trim()) return;
     setLoading(true);
     try {
@@ -127,16 +77,6 @@ export default function Login() {
     } finally {
       setLoading(false);
     }
-  }
-
-  // ─── Dispatch ─────────────────────────────────────────────────────────────────
-
-  function handleSend() {
-    return firebaseReady ? sendFirebaseOtp() : sendLegacyOtp();
-  }
-
-  function handleVerify() {
-    return firebaseReady ? verifyFirebaseOtp() : verifyLegacyOtp();
   }
 
   const sendLabel = loading
@@ -151,15 +91,6 @@ export default function Login() {
 
   return (
     <LinearGradient colors={brand.gradient} style={styles.screen}>
-      {/* Firebase reCAPTCHA modal — invisible by default */}
-      {firebaseReady && firebaseApp && (
-        <FirebaseRecaptchaVerifierModal
-          ref={recaptchaRef}
-          firebaseConfig={firebaseApp.options}
-          attemptInvisibleVerification
-        />
-      )}
-
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <Pressable style={styles.langButton} onPress={() => setLang(lang === 'ar' ? 'en' : 'ar')}>
@@ -177,16 +108,6 @@ export default function Login() {
               ? 'سجّل برقم الهاتف — سيصلك رمز تحقق قصير'
               : "Enter your phone number — you'll receive an OTP"}
           </Text>
-
-          {!firebaseReady && (
-            <View style={styles.notice}>
-              <Text style={styles.noticeText}>
-                {lang === 'ar'
-                  ? '⚠️ Firebase غير مُفعّل — وضع التطوير فقط'
-                  : '⚠️ Firebase not configured — development mode only'}
-              </Text>
-            </View>
-          )}
 
           <View style={styles.card}>
             <TextInput
@@ -243,7 +164,7 @@ export default function Login() {
               <Button title={verifyLabel} variant="gold" onPress={handleVerify} />
               <Pressable
                 style={styles.resend}
-                onPress={() => { setOtpSent(false); setCode(''); setConfirmation(null); }}
+                onPress={() => { setOtpSent(false); setCode(''); }}
               >
                 <Text style={styles.resendText}>
                   {lang === 'ar' ? 'تغيير الرقم أو إعادة الإرسال' : 'Change number or resend'}
@@ -266,8 +187,6 @@ const styles = StyleSheet.create({
   brandBox: { alignItems: 'center', marginTop: 20 },
   title: { color: colors.white, fontSize: 32, fontWeight: '900', textAlign: 'center' },
   subtitle: { color: 'rgba(255,255,255,.88)', fontSize: 16, lineHeight: 25, textAlign: 'center' },
-  notice: { backgroundColor: 'rgba(255,200,0,.18)', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: 'rgba(255,200,0,.4)' },
-  noticeText: { color: colors.white, fontSize: 13, textAlign: 'center' },
   card: { backgroundColor: colors.white, borderRadius: 34, padding: 18, gap: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,.35)' },
   input: { backgroundColor: '#F1F5F9', borderRadius: 20, padding: 16, color: colors.text, fontWeight: '900', fontSize: 16, borderWidth: 1, borderColor: '#DCE6EF' },
   roleRow: { flexDirection: 'row', gap: 10 },
