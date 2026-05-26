@@ -315,7 +315,7 @@ export default function Zones() {
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
           <input
             className="input"
-            style={{ flex: 1, minWidth: 200 }}
+            style={{ flex: 1, minWidth: 0 }}
             placeholder={t.search}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -327,9 +327,9 @@ export default function Zones() {
 
         {/* Add form */}
         {showAdd && (
-          <form onSubmit={submitAdd} style={{ background: 'var(--card-bg, #f7fafc)', borderRadius: 16, padding: 20, marginBottom: 16, border: '1px solid var(--border, #e2e8f0)' }}>
+          <form onSubmit={submitAdd} style={{ background: 'var(--surface)', borderRadius: 16, padding: 20, marginBottom: 16, border: '1px solid var(--glass-border-dark)' }}>
             <h3 style={{ marginBottom: 12 }}>{t.addZone}</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 12 }}>
               <div>
                 <label className="label">{t.nameAr}</label>
                 <input className="input" value={addNameAr} onChange={(e) => setAddNameAr(e.target.value)} required dir="rtl" />
@@ -368,8 +368,8 @@ export default function Zones() {
             {filtered.map((zone) => (
               <div key={zone.id}>
                 {editId === zone.id ? (
-                  <form onSubmit={submitEdit} style={{ padding: '12px 0', borderBottom: '1px solid var(--border, #e2e8f0)' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, alignItems: 'center' }}>
+                  <form onSubmit={submitEdit} style={{ padding: '12px 0', borderBottom: '1px solid var(--glass-border-dark)' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, alignItems: 'center' }}>
                       <select className="input" value={editCategory} onChange={(e) => setEditCategory(e.target.value)}>
                         {CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_ICONS[c]} {c}</option>)}
                       </select>

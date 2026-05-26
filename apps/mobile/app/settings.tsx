@@ -3,6 +3,7 @@ import { ScrollView, View, Text, StyleSheet, Pressable, Switch } from 'react-nat
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { colors } from '../src/constants/theme';
+import { sw } from '../src/constants/responsive';
 import { dict, Lang } from '../src/i18n';
 import { cities, vehicleTypes } from '../src/serviceConfig';
 
@@ -86,29 +87,29 @@ function SettingRow({ title, subtitle, value, onChange, rtl }: { title: string; 
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 22, paddingTop: 58, gap: 16 },
+  content: { padding: sw(20), paddingTop: sw(52), gap: sw(14) },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   reverse: { flexDirection: 'row-reverse' },
   kicker: { color: colors.gold, fontWeight: '900', letterSpacing: 2 },
-  title: { color: colors.navy, fontSize: 30, fontWeight: '900' },
-  langButton: { borderRadius: 18, backgroundColor: colors.navy, paddingVertical: 11, paddingHorizontal: 14 },
-  langText: { color: colors.white, fontWeight: '900' },
-  card: { backgroundColor: colors.navy, borderRadius: 28, padding: 20 },
-  cardTitle: { color: colors.white, fontSize: 23, fontWeight: '900' },
+  title: { color: colors.navy, fontSize: sw(26), fontWeight: '900' },
+  langButton: { borderRadius: 18, backgroundColor: colors.navy, paddingVertical: 10, paddingHorizontal: 13 },
+  langText: { color: colors.white, fontWeight: '900', fontSize: sw(13) },
+  card: { backgroundColor: colors.navy, borderRadius: 28, padding: sw(18) },
+  cardTitle: { color: colors.white, fontSize: sw(20), fontWeight: '900' },
   cardText: { color: 'rgba(255,255,255,.78)', marginTop: 8, lineHeight: 23 },
-  label: { color: colors.text, fontWeight: '900', fontSize: 16 },
+  label: { color: colors.text, fontWeight: '900', fontSize: sw(15) },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   reverseWrap: { flexDirection: 'row-reverse', flexWrap: 'wrap' },
-  chip: { paddingVertical: 11, paddingHorizontal: 15, borderRadius: 999, backgroundColor: '#E7EEF5' },
+  chip: { paddingVertical: 10, paddingHorizontal: 13, borderRadius: 999, backgroundColor: '#E7EEF5' },
   active: { backgroundColor: colors.navy },
-  chipText: { color: colors.navy, fontWeight: '900' },
+  chipText: { color: colors.navy, fontWeight: '900', fontSize: sw(14) },
   activeText: { color: colors.white },
-  panel: { backgroundColor: colors.white, borderRadius: 28, padding: 16, gap: 10 },
+  panel: { backgroundColor: colors.white, borderRadius: 28, padding: sw(14), gap: 8 },
   settingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, gap: 12 },
-  settingCopy: { flex: 1 },
-  settingTitle: { color: colors.text, fontSize: 16, fontWeight: '900' },
-  settingSubtitle: { color: colors.muted, marginTop: 4, lineHeight: 20 },
-  infoCard: { backgroundColor: '#EAF6FA', borderRadius: 24, padding: 18 },
+  settingCopy: { flex: 1, marginInlineEnd: 8 },
+  settingTitle: { color: colors.text, fontSize: sw(15), fontWeight: '900' },
+  settingSubtitle: { color: colors.muted, marginTop: 3, lineHeight: 20, fontSize: sw(13) },
+  infoCard: { backgroundColor: '#EAF6FA', borderRadius: 24, padding: 16 },
   infoTitle: { color: colors.navy, fontWeight: '900', fontSize: 18 },
   infoText: { color: colors.muted, marginTop: 7, fontWeight: '700' },
   rtl: { textAlign: 'right', writingDirection: 'rtl' }

@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, Pressable } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { colors } from '../src/constants/theme';
 import { dict, Lang } from '../src/i18n';
+import { sw } from '../src/constants/responsive';
 import { getDrivers, getRide } from '../src/api';
 
 type Driver = { id: string; name: string; vehicle: string; rating: number; online?: boolean };
@@ -36,7 +37,7 @@ export default function Ride() {
   useEffect(() => { async function loadDrivers() { try { const result = await getDrivers(params.cityId, params.vehicleTypeId); if (Array.isArray(result) && result.length > 0) setDrivers(result); } catch { setDrivers([]); } } loadDrivers(); loadRide(true); }, [params.cityId, params.vehicleTypeId, params.rideId]);
   useEffect(() => { if (!params.rideId || !autoRefresh || completed) return; const timer = setInterval(() => loadRide(true), 5000); return () => clearInterval(timer); }, [params.rideId, autoRefresh, completed]);
   return (
-    <View style={styles.screen}>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View style={styles.header}>
         <View style={[styles.topLine, rtl && styles.reverse]}>
           <View><Text style={[styles.kicker, rtl && styles.rtl]}>{t.liveTrip}</Text><Text style={[styles.title, rtl && styles.rtl]}>{titleFor(currentStatus, t, lang)}</Text></View>
@@ -55,16 +56,17 @@ export default function Ride() {
       {completed ? <Button title={t.completeRate} variant='gold' onPress={() => router.push({ pathname: '/rating', params: { lang, rideId: params.rideId } })} /> : <Button title={loading ? (lang === 'ar' ? 'جاري التحديث...' : 'Refreshing...') : (lang === 'ar' ? 'تحديث حالة الرحلة' : 'Refresh trip status')} variant='gold' onPress={() => loadRide()} />}
       <Button title={completed ? t.tripHistory : t.cancel} variant='ghost' onPress={() => completed ? router.push({ pathname: '/trips', params: { lang } }) : router.back()} />
       <Pressable style={styles.autoToggle} onPress={() => setAutoRefresh(!autoRefresh)}><Text style={styles.autoText}>{autoRefresh ? (lang === 'ar' ? 'التحديث التلقائي مفعل' : 'Auto-refresh on') : (lang === 'ar' ? 'التحديث التلقائي متوقف' : 'Auto-refresh off')}</Text></Pressable>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, padding: 22, paddingTop: 58, gap: 16, backgroundColor: colors.bg },
+  screen: { flex: 1, backgroundColor: colors.bg },
+  content: { padding: sw(20), paddingTop: sw(52), gap: sw(14) },
   header: { gap: 2 }, topLine: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, reverse: { flexDirection: 'row-reverse' },
-  kicker: { color: colors.gold, fontWeight: '900', letterSpacing: 2 }, title: { fontSize: 32, fontWeight: '900', color: colors.navy }, rideId: { color: colors.muted, fontWeight: '800' },
-  refreshButton: { backgroundColor: colors.navy, borderRadius: 16, paddingVertical: 10, paddingHorizontal: 12 }, refreshText: { color: colors.white, fontWeight: '900' },
-  mapCard: { height: 275, borderRadius: 32, padding: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: '#DDF3FA' }, logo: { color: colors.gold, fontSize: 72, fontWeight: '900' }, progressRow: { flexDirection: 'row', gap: 8, marginVertical: 22 }, dot: { width: 42, height: 7, borderRadius: 999, backgroundColor: colors.white }, dotActive: { backgroundColor: colors.navy }, route: { color: colors.navy, fontSize: 20, fontWeight: '900' },
-  driverCard: { backgroundColor: colors.white, borderRadius: 28, padding: 18, flexDirection: 'row', gap: 14, alignItems: 'center' }, driverCardRtl: { flexDirection: 'row-reverse' }, driverAvatar: { width: 54, height: 54, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.navy }, driverInitial: { color: colors.gold, fontSize: 26, fontWeight: '900' }, driverInfo: { flex: 1 },
-  fareCard: { backgroundColor: colors.white, borderRadius: 28, padding: 18 }, section: { color: colors.muted, fontWeight: '800' }, name: { color: colors.text, fontSize: 24, fontWeight: '900' }, muted: { color: colors.muted, marginTop: 4 }, fare: { color: colors.gold, fontSize: 36, fontWeight: '900' }, autoToggle: { alignItems: 'center', padding: 10 }, autoText: { color: colors.teal, fontWeight: '900' }, rtl: { textAlign: 'right', writingDirection: 'rtl' }
+  kicker: { color: colors.gold, fontWeight: '900', letterSpacing: 2 }, title: { fontSize: sw(26), fontWeight: '900', color: colors.navy }, rideId: { color: colors.muted, fontWeight: '800' },
+  refreshButton: { backgroundColor: colors.navy, borderRadius: 16, paddingVertical: 10, paddingHorizontal: 12 }, refreshText: { color: colors.white, fontWeight: '900', fontSize: sw(13) },
+  mapCard: { height: sw(220), borderRadius: 32, padding: sw(18), alignItems: 'center', justifyContent: 'center', backgroundColor: '#DDF3FA' }, logo: { color: colors.gold, fontSize: sw(56), fontWeight: '900' }, progressRow: { flexDirection: 'row', gap: 8, marginVertical: sw(14) }, dot: { width: sw(36), height: 7, borderRadius: 999, backgroundColor: colors.white }, dotActive: { backgroundColor: colors.navy }, route: { color: colors.navy, fontSize: sw(17), fontWeight: '900', textAlign: 'center' },
+  driverCard: { backgroundColor: colors.white, borderRadius: 28, padding: sw(16), flexDirection: 'row', gap: 12, alignItems: 'center' }, driverCardRtl: { flexDirection: 'row-reverse' }, driverAvatar: { width: sw(48), height: sw(48), borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.navy }, driverInitial: { color: colors.gold, fontSize: sw(22), fontWeight: '900' }, driverInfo: { flex: 1 },
+  fareCard: { backgroundColor: colors.white, borderRadius: 28, padding: sw(16) }, section: { color: colors.muted, fontWeight: '800' }, name: { color: colors.text, fontSize: sw(20), fontWeight: '900' }, muted: { color: colors.muted, marginTop: 4 }, fare: { color: colors.gold, fontSize: sw(32), fontWeight: '900' }, autoToggle: { alignItems: 'center', padding: 10 }, autoText: { color: colors.teal, fontWeight: '900' }, rtl: { textAlign: 'right', writingDirection: 'rtl' }
 });

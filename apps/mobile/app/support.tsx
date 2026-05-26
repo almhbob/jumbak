@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Pressable, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { colors } from '../src/constants/theme';
 import { dict, Lang } from '../src/i18n';
 import { createSupportRequest } from '../src/supportApi';
 import { autosaveLabel, useAutosave } from '../src/hooks/useAutosave';
+import { sw } from '../src/constants/responsive';
 
 const issues = {
   ar: ['مشكلة في الرحلة', 'السعر غير واضح', 'سلوك السائق', 'طلب إضافة مدينة', 'اقتراح تحسين'],
@@ -47,7 +48,8 @@ export default function Support() {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View style={[styles.header, rtl && styles.reverse]}>
         <View>
           <Text style={[styles.kicker, rtl && styles.rtl]}>Jnbk</Text>
@@ -86,18 +88,19 @@ export default function Support() {
       <Button title={loading ? (lang === 'ar' ? 'جاري الإرسال...' : 'Submitting...') : (lang === 'ar' ? 'إرسال الطلب' : 'Submit request')} variant='gold' onPress={submit} />
       <Button title={t.backHome} variant='ghost' onPress={() => router.push({ pathname: '/home', params: { lang } })} />
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 22, paddingTop: 58, gap: 16 },
+  content: { padding: sw(20), paddingTop: sw(52), gap: sw(14) },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   reverse: { flexDirection: 'row-reverse' },
   kicker: { color: colors.gold, fontWeight: '900', letterSpacing: 2 },
-  title: { color: colors.navy, fontSize: 30, fontWeight: '900' },
-  langButton: { borderRadius: 18, backgroundColor: colors.navy, paddingVertical: 11, paddingHorizontal: 14 },
-  langText: { color: colors.white, fontWeight: '900' },
+  title: { color: colors.navy, fontSize: sw(26), fontWeight: '900' },
+  langButton: { borderRadius: 18, backgroundColor: colors.navy, paddingVertical: 10, paddingHorizontal: 13 },
+  langText: { color: colors.white, fontWeight: '900', fontSize: sw(13) },
   saveCard: { backgroundColor: '#E7F7EF', borderRadius: 18, padding: 12 },
   saveText: { color: colors.teal, fontWeight: '900' },
   card: { backgroundColor: colors.white, borderRadius: 28, padding: 20 },
