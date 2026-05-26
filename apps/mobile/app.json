@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "ركشة.. جنبك",
+    "name": "جنبك",
     "slug": "riksha-jnbk",
     "scheme": "jnbk",
     "version": "0.1.1",
@@ -46,7 +46,7 @@
       ]
     ],
     "extra": {
-      "brandName": "ركشة.. جنبك",
+      "brandName": "جنبك",
       "tagline": "أقرب إليك دائمًا",
       "eas": {
         "projectId": "60e32314-35d0-441b-a380-979598635781"

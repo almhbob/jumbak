@@ -1,5 +1,3 @@
-import { addFirebaseDocument, isFirebaseConfigured } from './firebase';
-
 const API_URL = process.env.EXPO_PUBLIC_API_URL || '';
 
 type DriverApplicationInput = {
@@ -31,19 +29,6 @@ async function apiFetch(path: string, options?: RequestInit) {
   return response.json();
 }
 
-/**
- * Verify a Firebase ID token with our backend.
- * Backend creates/updates the user in DB and returns a JWT.
- */
-export async function verifyWithFirebase(input: { idToken: string; name?: string; role?: 'PASSENGER' | 'DRIVER' | 'ADMIN' }) {
-  return apiFetch('/api/auth/firebase-verify', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
-  });
-}
-
-/** Legacy OTP — used as fallback when Firebase is not configured */
 export async function requestOtp(phone: string) {
   return apiFetch('/api/auth/request-otp', {
     method: 'POST',
@@ -66,7 +51,7 @@ export async function registerDriver(input: DriverApplicationInput) {
     licenseDocumentUrl: input.licenseDocumentUrl || '',
     vehicleFrontUrl: input.vehicleFrontUrl || '',
     vehicleBackUrl: input.vehicleBackUrl || '',
-    guarantorDocumentUrl: input.guarantorDocumentUrl || ''
+    guarantorDocumentUrl: input.guarantorDocumentUrl || '',
   };
   const completedDocuments = Object.values(documents).filter(Boolean).length;
   const payload = {
@@ -76,17 +61,12 @@ export async function registerDriver(input: DriverApplicationInput) {
     documentsStatus: completedDocuments >= 3 ? 'ready_for_review' : 'missing_documents',
     status: 'pending_review',
     freeMonth: true,
-    complianceStatus: 'needs_admin_review'
+    complianceStatus: 'needs_admin_review',
   };
-
-  if (isFirebaseConfigured()) {
-    const driver = await addFirebaseDocument('driverApplications', payload);
-    return { ok: true, driver };
-  }
   return apiFetch('/api/drivers/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
 }
 
@@ -98,7 +78,7 @@ export async function estimatePrice(input: { cityId: string; vehicleTypeId: stri
   return apiFetch('/api/pricing/estimate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input)
+    body: JSON.stringify(input),
   });
 }
 
@@ -109,14 +89,10 @@ export async function createRide(input: {
   destinationLabel: string;
   distanceKm: number;
 }) {
-  if (isFirebaseConfigured()) {
-    const ride = await addFirebaseDocument('rides', { ...input, status: 'REQUESTED' });
-    return { id: ride.id, ...input, status: 'REQUESTED', estimatedFare: 0 };
-  }
   return apiFetch('/api/rides', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input)
+    body: JSON.stringify(input),
   });
 }
 
@@ -132,7 +108,7 @@ export async function updateRideStatus(rideId: string, status: string) {
   return apiFetch(`/api/rides/${rideId}/status`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status })
+    body: JSON.stringify({ status }),
   });
 }
 
@@ -140,7 +116,7 @@ export async function submitRideRating(rideId: string, rating: number) {
   return apiFetch(`/api/rides/${rideId}/rating`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ rating })
+    body: JSON.stringify({ rating }),
   });
 }
 
