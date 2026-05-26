@@ -31,24 +31,32 @@ async function apiFetch(path: string, options?: RequestInit) {
   return response.json();
 }
 
+/**
+ * Verify a Firebase ID token with our backend.
+ * Backend creates/updates the user in DB and returns a JWT.
+ */
+export async function verifyWithFirebase(input: { idToken: string; name?: string; role?: 'PASSENGER' | 'DRIVER' | 'ADMIN' }) {
+  return apiFetch('/api/auth/firebase-verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+}
+
+/** Legacy OTP — used as fallback when Firebase is not configured */
 export async function requestOtp(phone: string) {
-  if (isFirebaseConfigured()) return { ok: true, phone, devOtp: '123456', provider: 'firebase-preview' };
   return apiFetch('/api/auth/request-otp', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ phone })
+    body: JSON.stringify({ phone }),
   });
 }
 
 export async function verifyOtp(input: { phone: string; code: string; name?: string; role?: 'PASSENGER' | 'DRIVER' | 'ADMIN' }) {
-  if (isFirebaseConfigured()) {
-    const user = await addFirebaseDocument('users', input);
-    return { ok: true, user: { id: user.id, phone: input.phone, name: input.name, role: input.role || 'PASSENGER' }, token: `firebase_${user.id}` };
-  }
   return apiFetch('/api/auth/verify-otp', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input)
+    body: JSON.stringify(input),
   });
 }
 

@@ -5,6 +5,7 @@ import { prisma } from '../db.js';
 import { memoryStaff, memoryUsers } from '../store.js';
 import { signToken } from '../middleware/auth.js';
 import { UserRole } from '@prisma/client';
+import { verifyFirebaseIdToken } from '../services/firebaseAdmin.js';
 
 const router = Router();
 
@@ -80,6 +81,42 @@ router.post('/auth/verify-otp', async (req, res) => {
     user.role = role;
   }
   res.json({ ok: true, user: { id: user.id, phone: user.phone, name: user.name, role: user.role }, token: `user_${user.id}` });
+});
+
+// Firebase Phone Auth verification
+// Mobile sends Firebase ID token → server verifies → returns app JWT
+router.post('/auth/firebase-verify', loginLimiter, async (req, res) => {
+  const idToken = String(req.body.idToken || '').trim();
+  const name = String(req.body.name || '').trim() || null;
+  const role = normalizeUserRole(String(req.body.role || 'PASSENGER'));
+
+  if (!idToken) return res.status(400).json({ error: 'idToken is required' });
+
+  const decoded = await verifyFirebaseIdToken(idToken);
+  if (!decoded) return res.status(401).json({ error: 'Invalid Firebase token' });
+
+  const { phone } = decoded;
+
+  if (prisma) {
+    const user = await prisma.user.upsert({
+      where: { phone },
+      update: { name: name || undefined, role },
+      create: { phone, name, role },
+    });
+    const token = signToken({ staffId: user.id, username: user.phone, role: user.role.toLowerCase() });
+    return res.json({ ok: true, user: { id: user.id, phone: user.phone, name: user.name, role: user.role }, token });
+  }
+
+  let user = memoryUsers.find((u) => u.phone === phone);
+  if (!user) {
+    user = { id: `user_${Date.now()}`, phone, name, role, createdAt: new Date().toISOString() };
+    memoryUsers.push(user);
+  } else {
+    if (name) user.name = name;
+    user.role = role;
+  }
+  const token = signToken({ staffId: user.id, username: user.phone, role: user.role.toLowerCase() });
+  res.json({ ok: true, user: { id: user.id, phone: user.phone, name: user.name, role: user.role }, token });
 });
 
 // Staff login
