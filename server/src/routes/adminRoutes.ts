@@ -92,7 +92,7 @@ router.post('/zones', requireAuth, requireRole('developer', 'operations'), async
   if (!nameAr) return res.status(400).json({ error: 'nameAr is required' });
 
   if (prisma) {
-    const zone = await prisma.zone.create({ data: { cityId, nameAr, nameEn } });
+    const zone = await prisma.zone.create({ data: { cityId, nameAr, nameEn, category } });
     return res.status(201).json(zone);
   }
 
@@ -112,7 +112,9 @@ router.patch('/zones/:id', requireAuth, requireRole('developer', 'operations'), 
   if (!nameAr) return res.status(400).json({ error: 'nameAr is required' });
 
   if (prisma) {
-    const zone = await prisma.zone.update({ where: { id }, data: { nameAr, nameEn } }).catch(() => null);
+    const data: Record<string, string> = { nameAr, nameEn };
+    if (category) data.category = category;
+    const zone = await prisma.zone.update({ where: { id }, data }).catch(() => null);
     if (!zone) return res.status(404).json({ error: 'Zone not found' });
     return res.json(zone);
   }

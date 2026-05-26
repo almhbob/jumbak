@@ -598,6 +598,77 @@ article:hover {
   .primaryAction { min-height: 48px; }
 }
 
+/* ── Utility classes (zones page + shared) ── */
+.input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border, #D9E2EC);
+  background: var(--card-bg, #fff);
+  color: var(--navy, #1A2B4A);
+  font-size: 15px;
+  font-weight: 700;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+.input:focus { border-color: var(--teal, #2DB5A0); }
+select.input { appearance: none; cursor: pointer; }
+
+.label {
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--muted, #6B7A90);
+  margin-bottom: 4px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: 1.5px solid var(--teal, #2DB5A0);
+  background: var(--teal, #2DB5A0);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+.btn:hover { opacity: 0.85; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnGhost {
+  background: transparent;
+  color: var(--navy, #1A2B4A);
+  border-color: var(--border, #D9E2EC);
+}
+.btnGhost:hover { background: var(--sky, #EBF4FB); }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border, #D9E2EC);
+  background: var(--sky, #EBF4FB);
+  color: var(--navy, #1A2B4A);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.chip:hover { border-color: var(--teal, #2DB5A0); }
+.chipActive {
+  background: var(--navy, #1A2B4A);
+  border-color: var(--navy, #1A2B4A);
+  color: #fff;
+}
+
 /* ── Print ── */
 @media print {
   body { background: white; }

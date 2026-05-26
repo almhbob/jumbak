@@ -54,6 +54,18 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
   return res.json();
 }
 
+export async function apiDelete(path: string): Promise<void> {
+  if (!API_URL) throw new Error('API not configured');
+  const res = await fetch(`${API_URL}${path}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Request failed' }));
+    throw new Error(err.error || 'Request failed');
+  }
+}
+
 export async function staffLogin(username: string, password: string, role: string): Promise<{ staff: Record<string, unknown>; token: string }> {
   if (!API_URL) throw new Error('API not configured');
   const res = await fetch(`${API_URL}/api/staff/login`, {

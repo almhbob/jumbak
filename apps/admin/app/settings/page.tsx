@@ -215,6 +215,9 @@ export default function Settings() {
           </div>
           <div className="topActions">
             <button className="languageSwitch buttonReset" onClick={() => go('/')}>{t.back}</button>
+            <button className="languageSwitch buttonReset" onClick={() => go(`/zones?lang=${lang}`)}>
+              {lang === 'ar' ? 'المناطق' : 'Zones'}
+            </button>
             <button className="languageSwitch buttonReset" onClick={() => go(`/settings?lang=${lang === 'ar' ? 'en' : 'ar'}`)}>
               {t.toggle}
             </button>

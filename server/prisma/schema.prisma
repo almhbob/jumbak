@@ -71,6 +71,7 @@ model Zone {
   city      City     @relation(fields: [cityId], references: [id])
   nameAr    String
   nameEn    String
+  category  String   @default("مرافق ومعالم")
   multiplier Float   @default(1)
   createdAt DateTime @default(now())
 }
