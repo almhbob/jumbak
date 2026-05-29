@@ -50,6 +50,7 @@ export default function Home() {
   const [showPickupPicker, setShowPickupPicker] = useState(false);
   const [showDestinationPicker, setShowDestinationPicker] = useState(false);
   const [cityZoneItems, setCityZoneItems] = useState<LocationItem[]>([]);
+  const [allCityZones, setAllCityZones] = useState<Record<string, LocationItem[]>>({});
   const [loading, setLoading] = useState(false);
   const t = dict[lang];
   const city = appCities[cityIndex] || fallbackCities[0];
@@ -65,7 +66,7 @@ export default function Home() {
 
   const distanceKm = pickupIndex === destinationIndex ? 1 : Math.max(2, Math.abs(destinationIndex - pickupIndex) + 1);
   const localFare = estimateFare(distanceKm, vehicle, mode.fareMultiplier);
-  const fare = fareOverride ? Math.round(fareOverride * mode.fareMultiplier) : localFare;
+  const fare = fareOverride !== null ? Math.round(fareOverride * mode.fareMultiplier) : localFare;
   const pickup = safeZones[pickupIndex] || safeZones[0];
   const destination = safeZones[destinationIndex] || safeZones[1] || safeZones[0];
   const cityName = lang === 'ar' ? city.nameAr : city.nameEn;
@@ -81,15 +82,23 @@ export default function Home() {
         setAppCities(nextCities);
         setAppVehicles(nextVehicles);
         setSource('api');
-        // Extract zone items with categories from the first matched city (or cityIndex)
-        const rawCity = Array.isArray(config.cities) ? config.cities[cityIndex] || config.cities[0] : null;
-        if (rawCity && Array.isArray(rawCity.zones) && rawCity.zones.length) {
-          const items: LocationItem[] = rawCity.zones.map((z: any, i: number) => ({
-            id: String(z.id || i),
-            name: z.nameAr || z.nameEn || String(i),
-            category: z.category || undefined,
-          }));
-          setCityZoneItems(items);
+        // Build a zones map for all cities so city-change works correctly
+        const zonesMap: Record<string, LocationItem[]> = {};
+        if (Array.isArray(config.cities)) {
+          config.cities.forEach((c: any) => {
+            if (Array.isArray(c.zones) && c.zones.length) {
+              zonesMap[c.id] = c.zones.map((z: any, i: number) => ({
+                id: String(z.id || i),
+                name: z.nameAr || z.nameEn || String(i),
+                category: z.category || undefined,
+              }));
+            }
+          });
+        }
+        setAllCityZones(zonesMap);
+        const firstCity = Array.isArray(config.cities) ? config.cities[0] : null;
+        if (firstCity && zonesMap[firstCity.id]) {
+          setCityZoneItems(zonesMap[firstCity.id]);
         }
       })
       .catch(() => setSource('preview'));
@@ -103,11 +112,12 @@ export default function Home() {
   }, [city.id, vehicle.id, distanceKm]);
 
   function changeCity(index: number) {
+    const newCity = appCities[index];
     setCityIndex(index);
     setPickupIndex(0);
     setDestinationIndex(1);
     setFareOverride(null);
-    setCityZoneItems([]);
+    setCityZoneItems(newCity && allCityZones[newCity.id] ? allCityZones[newCity.id] : []);
   }
 
   function changeVehicle(index: number) {
@@ -244,7 +254,7 @@ export default function Home() {
         selected={pickup}
         lang={lang}
         onSelect={(name) => {
-          const idx = safeZones.indexOf(name);
+          const idx = locationItems.findIndex((item) => item.name === name);
           if (idx >= 0) { setPickupIndex(idx); setFareOverride(null); }
         }}
         onClose={() => setShowPickupPicker(false)}
@@ -258,7 +268,7 @@ export default function Home() {
         selected={destination}
         lang={lang}
         onSelect={(name) => {
-          const idx = safeZones.indexOf(name);
+          const idx = locationItems.findIndex((item) => item.name === name);
           if (idx >= 0) { setDestinationIndex(idx); setFareOverride(null); }
         }}
         onClose={() => setShowDestinationPicker(false)}

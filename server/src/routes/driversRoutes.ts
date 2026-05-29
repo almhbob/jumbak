@@ -45,6 +45,13 @@ router.post('/register', async (req, res) => {
   const plateNo = String(req.body.plateNo || '').trim();
   const color = String(req.body.color || '').trim();
   const model = String(req.body.model || '').trim();
+  const nationalId = String(req.body.nationalId || '').trim() || null;
+  const chassisNo = String(req.body.chassisNo || '').trim() || null;
+  const trafficId = String(req.body.trafficId || '').trim() || null;
+  const bankAccount = String(req.body.bankAccount || '').trim() || null;
+  const guarantorName = String(req.body.guarantorName || '').trim() || null;
+  const guarantorPhone = String(req.body.guarantorPhone || '').trim() || null;
+  const guarantorAddress = String(req.body.guarantorAddress || '').trim() || null;
 
   if (!phone || !name) return res.status(400).json({ error: 'phone and name are required' });
 
@@ -63,6 +70,11 @@ router.post('/register', async (req, res) => {
       where: { driverId: driver.id },
       update: { vehicleTypeId, plateNo, color, model },
       create: { driverId: driver.id, vehicleTypeId, plateNo, color, model },
+    });
+    await prisma.driverApplication.upsert({
+      where: { driverId: driver.id },
+      update: { phone, name, cityId, vehicleTypeId, plateNo, color, model, nationalId, chassisNo, trafficId, bankAccount, guarantorName, guarantorPhone, guarantorAddress, status: 'pending_review', complianceStatus: 'needs_admin_review' },
+      create: { driverId: driver.id, phone, name, cityId, vehicleTypeId, plateNo, color, model, nationalId, chassisNo, trafficId, bankAccount, guarantorName, guarantorPhone, guarantorAddress },
     });
     return res.status(201).json({
       ok: true,
@@ -86,6 +98,16 @@ router.post('/register', async (req, res) => {
     online: false,
     verified: false,
     plateNo,
+    nationalId,
+    chassisNo,
+    trafficId,
+    bankAccount,
+    guarantorName,
+    guarantorPhone,
+    guarantorAddress,
+    status: 'pending_review',
+    complianceStatus: 'needs_admin_review',
+    freeMonth: true,
   };
   memoryDrivers.push(driver);
 
@@ -95,6 +117,45 @@ router.post('/register', async (req, res) => {
     memoryUsers.push(user);
   }
   res.status(201).json({ ok: true, driver });
+});
+
+router.get('/applications', async (_req, res) => {
+  if (prisma) {
+    const applications = await prisma.driverApplication.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+    return res.json(applications);
+  }
+  res.json(memoryDrivers.filter((d: any) => d.status === 'pending_review' || d.guarantorName));
+});
+
+router.patch('/applications/:id/review', async (req, res) => {
+  const { status, reviewedBy } = req.body;
+  if (!['approved', 'rejected'].includes(String(status))) {
+    return res.status(400).json({ error: 'status must be approved or rejected' });
+  }
+  if (prisma) {
+    const app = await prisma.driverApplication.update({
+      where: { id: req.params.id },
+      data: {
+        status: String(status),
+        complianceStatus: status === 'approved' ? 'approved' : 'rejected',
+        reviewedBy: String(reviewedBy || ''),
+        approvedAt: status === 'approved' ? new Date() : undefined,
+        rejectedAt: status === 'rejected' ? new Date() : undefined,
+      },
+    }).catch(() => null);
+    if (!app) return res.status(404).json({ error: 'Application not found' });
+    if (status === 'approved' && app.driverId) {
+      await prisma.driver.update({ where: { id: app.driverId }, data: { isVerified: true } }).catch(() => null);
+    }
+    return res.json(app);
+  }
+  const driver = memoryDrivers.find((d: any) => d.id === req.params.id);
+  if (!driver) return res.status(404).json({ error: 'Application not found' });
+  (driver as any).status = status;
+  res.json(driver);
 });
 
 export default router;

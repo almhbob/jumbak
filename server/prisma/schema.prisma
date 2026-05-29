@@ -138,16 +138,17 @@ model LegalDocument {
 }
 
 model Driver {
-  id         String   @id @default(cuid())
-  userId     String   @unique
-  user       User     @relation(fields: [userId], references: [id])
-  cityId     String
-  city       City     @relation(fields: [cityId], references: [id])
-  isOnline   Boolean  @default(false)
-  isVerified Boolean  @default(false)
-  vehicle    Vehicle?
-  rides      Ride[]   @relation("DriverRides")
-  createdAt  DateTime @default(now())
+  id          String             @id @default(cuid())
+  userId      String             @unique
+  user        User               @relation(fields: [userId], references: [id])
+  cityId      String
+  city        City               @relation(fields: [cityId], references: [id])
+  isOnline    Boolean            @default(false)
+  isVerified  Boolean            @default(false)
+  vehicle     Vehicle?
+  rides       Ride[]             @relation("DriverRides")
+  application DriverApplication?
+  createdAt   DateTime           @default(now())
 }
 
 model Vehicle {
@@ -192,4 +193,32 @@ model SupportRequest {
   status    SupportStatus @default(OPEN)
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
+}
+
+model DriverApplication {
+  id               String    @id @default(cuid())
+  driverId         String?   @unique
+  driver           Driver?   @relation(fields: [driverId], references: [id])
+  phone            String
+  name             String
+  cityId           String?
+  vehicleTypeId    String?
+  plateNo          String?
+  color            String?
+  model            String?
+  nationalId       String?
+  chassisNo        String?
+  trafficId        String?
+  bankAccount      String?
+  guarantorName    String?
+  guarantorPhone   String?
+  guarantorAddress String?
+  status           String    @default("pending_review")
+  complianceStatus String    @default("needs_admin_review")
+  freeMonth        Boolean   @default(true)
+  approvedAt       DateTime?
+  rejectedAt       DateTime?
+  reviewedBy       String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }

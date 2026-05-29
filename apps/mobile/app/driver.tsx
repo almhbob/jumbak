@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Switch, Pressable, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Switch, Pressable, ScrollView, Alert } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { colors } from '../src/constants/theme';
@@ -50,7 +50,8 @@ export default function Driver() {
     try {
       await updateRideStatus(ride.id, status);
     } catch {
-      // offline — update local state optimistically
+      Alert.alert('Jnbk', lang === 'ar' ? 'تعذر تحديث حالة الرحلة — يُرجى إعادة المحاولة' : 'Could not update ride status — please try again');
+      return;
     }
     if (status === 'COMPLETED') {
       setActiveRide(null);

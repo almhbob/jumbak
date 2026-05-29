@@ -56,12 +56,12 @@ export default function Login() {
     setLoading(true);
     try {
       await requestOtp(trimmed);
-    } catch {
-      // no-op — show OTP field anyway
-    } finally {
       setOtpSent(true);
-      setLoading(false);
       Alert.alert('Jnbk', lang === 'ar' ? 'تم إرسال رمز التحقق' : 'OTP sent');
+    } catch {
+      Alert.alert('Jnbk', lang === 'ar' ? 'تعذّر الإرسال، تحقق من الاتصال' : 'Could not send OTP. Check your connection.');
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -72,8 +72,11 @@ export default function Login() {
       const result = await verifyOtp({ phone: phone.trim(), code: code.trim(), name: name.trim() || undefined, role });
       await persistSession(result.user.id, result.token);
       nextRoute();
-    } catch {
-      Alert.alert('Jnbk', lang === 'ar' ? 'رمز غير صحيح' : 'Invalid OTP');
+    } catch (err: any) {
+      const msg = err?.message?.includes('401') || err?.message?.includes('Invalid')
+        ? (lang === 'ar' ? 'رمز التحقق غير صحيح' : 'Invalid OTP code')
+        : (lang === 'ar' ? 'تعذر الاتصال بالخادم' : 'Could not reach server. Check your connection.');
+      Alert.alert('Jnbk', msg);
     } finally {
       setLoading(false);
     }
@@ -158,10 +161,10 @@ export default function Login() {
           </View>
 
           {!otpSent ? (
-            <Button title={sendLabel} variant="gold" onPress={handleSend} />
+            <Button title={sendLabel} variant="gold" onPress={handleSend} disabled={loading} />
           ) : (
             <>
-              <Button title={verifyLabel} variant="gold" onPress={handleVerify} />
+              <Button title={verifyLabel} variant="gold" onPress={handleVerify} disabled={loading} />
               <Pressable
                 style={styles.resend}
                 onPress={() => { setOtpSent(false); setCode(''); }}
