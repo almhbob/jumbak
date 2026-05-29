@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import { fileURLToPath } from 'url';
+import path from 'path';
 import { prisma, isDatabaseEnabled } from './db.js';
 import { countries } from './config.js';
 import { memoryCities, memoryVehicleTypes } from './routes/configStore.js';
@@ -15,6 +17,9 @@ import driversRoutes from './routes/driversRoutes.js';
 import supportRoutes from './routes/supportRoutes.js';
 import legalRoutes from './routes/legalRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const publicDir = path.join(__dirname, '..', 'public');
 
 const app = express();
 
@@ -110,8 +115,12 @@ app.get('/health', (_req, res) => {
   res.json({ ok: true, app: 'Jnbk', appAr: 'جنبك', region: 'global-ready', database: isDatabaseEnabled() });
 });
 
+// Serve web app at /app
+app.use('/app', express.static(publicDir));
+app.get('/app/*', (_req, res) => res.sendFile(path.join(publicDir, 'index.html')));
+
 app.get('/', (_req, res) => {
-  res.json({ ok: true, app: 'Jnbk', appAr: 'جنبك', message: 'Multi-city transport platform', database: isDatabaseEnabled() });
+  res.json({ ok: true, app: 'Jnbk', appAr: 'جنبك', message: 'Multi-city transport platform', database: isDatabaseEnabled(), webApp: '/app' });
 });
 
 const port = Number(process.env.PORT || 4000);
