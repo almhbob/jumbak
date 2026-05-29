@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Switch, Pressable, ScrollView, Alert } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { colors } from '../src/constants/theme';
 import { dict, Lang } from '../src/i18n';
-import { getRides, updateRideStatus } from '../src/api';
+import { getRides, updateRideStatus, getWallet, walletEarn } from '../src/api';
 
 type Ride = { id: string; pickupLabel?: string; destinationLabel?: string; estimatedFare?: number; distanceKm?: number; status?: string };
 
@@ -15,6 +16,16 @@ export default function Driver() {
   const [rides, setRides] = useState<Ride[]>([]);
   const [activeRide, setActiveRide] = useState<Ride | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem('jnbk_user_id').then((uid) => {
+      if (!uid) return;
+      setUserId(uid);
+      getWallet(uid).then((w) => setWalletBalance(w.balance)).catch(() => null);
+    });
+  }, []);
 
   const t = dict[lang];
   const rtl = lang === 'ar';
@@ -55,6 +66,12 @@ export default function Driver() {
     }
     if (status === 'COMPLETED') {
       setActiveRide(null);
+      // Credit driver earnings
+      if (userId && ride.estimatedFare) {
+        walletEarn(userId, ride.estimatedFare, ride.id, lang === 'ar' ? 'أرباح رحلة' : 'Ride earnings')
+          .then((w) => setWalletBalance(w.balance))
+          .catch(() => null);
+      }
     } else {
       setActiveRide({ ...ride, status });
     }
@@ -74,6 +91,16 @@ export default function Driver() {
         <Text style={styles.status}>{online ? t.online : t.offline}</Text>
         <Switch value={online} onValueChange={toggle} />
       </View>
+
+      <Pressable style={[styles.earningsCard, rtl && styles.reverse]} onPress={() => router.push({ pathname: '/wallet', params: { lang, role: 'DRIVER' } })}>
+        <View>
+          <Text style={[styles.earningsLabel, rtl && styles.rtl]}>{t.walletEarnings}</Text>
+          <Text style={styles.earningsAmount}>
+            {walletBalance !== null ? walletBalance.toLocaleString('en') : '—'} SDG
+          </Text>
+        </View>
+        <Text style={styles.earningsArrow}>{rtl ? '←' : '→'}</Text>
+      </Pressable>
 
       {online && !activeRide && rides.map((ride) => (
         <View key={ride.id} style={styles.rideCard}>
@@ -113,4 +140,11 @@ const styles = StyleSheet.create({
   fare: { color: colors.gold, fontWeight: '900', fontSize: 22 },
   active: { backgroundColor: colors.white, padding: 20, borderRadius: 20, gap: 10 },
   rtl: { textAlign: 'right', writingDirection: 'rtl' },
+  earningsCard: {
+    backgroundColor: colors.navy, borderRadius: 20, padding: 16,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+  },
+  earningsLabel: { color: 'rgba(255,255,255,.75)', fontWeight: '800', fontSize: 13 },
+  earningsAmount: { color: colors.gold, fontWeight: '900', fontSize: 26, marginTop: 2 },
+  earningsArrow: { color: colors.gold, fontWeight: '900', fontSize: 20 },
 });

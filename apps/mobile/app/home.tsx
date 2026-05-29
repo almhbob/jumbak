@@ -187,6 +187,10 @@ export default function Home() {
       </LinearGradient>
 
       <View style={[styles.quickRow, rtl && styles.reverse]}>
+        <Pressable style={styles.quickCard} onPress={() => router.push({ pathname: '/wallet', params: { lang } })}>
+          <Text style={styles.quickIcon}>💳</Text>
+          <Text style={[styles.quickText, rtl && styles.rtl]}>{t.wallet}</Text>
+        </Pressable>
         <Pressable style={styles.quickCard} onPress={() => router.push({ pathname: '/settings', params: { lang } })}>
           <Text style={styles.quickIcon}>SET</Text>
           <Text style={[styles.quickText, rtl && styles.rtl]}>{t.settings}</Text>

@@ -41,7 +41,20 @@ export const dict = {
     rateRide: 'قيّم الرحلة',
     backHome: 'الرئيسية',
     to: 'إلى',
-    language: 'English'
+    language: 'English',
+    wallet: 'محفظتي',
+    walletBalance: 'رصيد المحفظة',
+    walletTopup: 'شحن الرصيد',
+    walletWithdraw: 'طلب سحب',
+    walletHistory: 'سجل المعاملات',
+    walletPay: 'ادفع من المحفظة',
+    walletInsufficient: 'رصيد غير كافٍ',
+    walletTopupRequest: 'إرسال طلب شحن',
+    walletTopupSent: 'تم إرسال طلب الشحن للإدارة',
+    walletEarnings: 'أرباح الرحلات',
+    walletNoHistory: 'لا توجد معاملات بعد',
+    walletCreditLabel: 'إيداع',
+    walletDebitLabel: 'خصم',
   },
   en: {
     appName: 'Jnbk',
@@ -83,7 +96,20 @@ export const dict = {
     rateRide: 'Rate your ride',
     backHome: 'Back home',
     to: 'to',
-    language: 'العربية'
+    language: 'العربية',
+    wallet: 'My Wallet',
+    walletBalance: 'Wallet Balance',
+    walletTopup: 'Add Funds',
+    walletWithdraw: 'Request Withdrawal',
+    walletHistory: 'Transaction History',
+    walletPay: 'Pay from Wallet',
+    walletInsufficient: 'Insufficient balance',
+    walletTopupRequest: 'Send Top-up Request',
+    walletTopupSent: 'Top-up request sent to admin',
+    walletEarnings: 'Ride Earnings',
+    walletNoHistory: 'No transactions yet',
+    walletCreditLabel: 'Credit',
+    walletDebitLabel: 'Debit',
   }
 };
 

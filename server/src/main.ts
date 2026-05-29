@@ -17,6 +17,7 @@ import driversRoutes from './routes/driversRoutes.js';
 import supportRoutes from './routes/supportRoutes.js';
 import legalRoutes from './routes/legalRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import walletRoutes from './routes/walletRoutes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, '..', 'public');
@@ -54,6 +55,7 @@ app.use('/api/drivers', driversRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/legal', legalRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/wallet', walletRoutes);
 
 // Public config endpoint
 app.get('/api/config', async (_req, res) => {

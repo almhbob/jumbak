@@ -29,6 +29,14 @@ enum SupportStatus {
   CLOSED
 }
 
+enum TransactionType {
+  TOPUP
+  RIDE_PAYMENT
+  REFUND
+  DRIVER_EARNING
+  WITHDRAWAL
+}
+
 enum StaffRole {
   OPERATIONS
   SUPERVISOR
@@ -97,6 +105,29 @@ model User {
   rides        Ride[]        @relation("PassengerRides")
   driver       Driver?
   deviceTokens DeviceToken[]
+  wallet       Wallet?
+}
+
+model Wallet {
+  id           String               @id @default(cuid())
+  userId       String               @unique
+  user         User                 @relation(fields: [userId], references: [id])
+  balance      Int                  @default(0)
+  currency     String               @default("SDG")
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  transactions WalletTransaction[]
+}
+
+model WalletTransaction {
+  id          String          @id @default(cuid())
+  walletId    String
+  wallet      Wallet          @relation(fields: [walletId], references: [id])
+  amount      Int
+  type        TransactionType
+  description String?
+  rideId      String?
+  createdAt   DateTime        @default(now())
 }
 
 model DeviceToken {

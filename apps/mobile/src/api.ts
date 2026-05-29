@@ -137,6 +137,34 @@ export async function registerPushToken(token: string, userId: string) {
   });
 }
 
+export async function getWallet(userId: string) {
+  return apiFetch(`/api/wallet/${encodeURIComponent(userId)}`);
+}
+
+export async function walletPay(userId: string, amount: number, rideId: string, description?: string) {
+  return apiFetch(`/api/wallet/${encodeURIComponent(userId)}/pay`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ amount, rideId, description }),
+  });
+}
+
+export async function walletTopup(userId: string, amount: number, description?: string) {
+  return apiFetch(`/api/wallet/${encodeURIComponent(userId)}/topup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ amount, description }),
+  });
+}
+
+export async function walletEarn(userId: string, amount: number, rideId: string, description?: string) {
+  return apiFetch(`/api/wallet/${encodeURIComponent(userId)}/earn`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ amount, rideId, description }),
+  });
+}
+
 export async function unregisterPushToken(token: string) {
   return apiFetch('/api/notifications/register-token', {
     method: 'DELETE',
