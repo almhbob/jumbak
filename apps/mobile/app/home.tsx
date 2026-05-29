@@ -52,10 +52,16 @@ export default function Home() {
   const [cityZoneItems, setCityZoneItems] = useState<LocationItem[]>([]);
   const [allCityZones, setAllCityZones] = useState<Record<string, LocationItem[]>>({});
   const [loading, setLoading] = useState(false);
+  // Multi-stop open ride state
+  const [openStops, setOpenStops] = useState<string[]>(['', '']);
+  const [activeOpenStopIdx, setActiveOpenStopIdx] = useState<number | null>(null);
+
   const t = dict[lang];
   const city = appCities[cityIndex] || fallbackCities[0];
   const vehicle = appVehicles[vehicleIndex] || fallbackVehicleTypes[0];
   const mode = serviceModes[serviceIndex];
+  const isOpenRide = mode.isMultiStop === true;
+  const maxStops = mode.maxStops ?? 5;
   const zones = lang === 'ar' ? city.zonesAr : city.zonesEn;
   const safeZones = zones.length ? zones : (lang === 'ar' ? ['السوق', 'المستشفى'] : ['Market', 'Hospital']);
 
@@ -65,7 +71,11 @@ export default function Home() {
     : safeZones.map((name, i) => ({ id: String(i), name }));
 
   const distanceKm = pickupIndex === destinationIndex ? 1 : Math.max(2, Math.abs(destinationIndex - pickupIndex) + 1);
-  const localFare = estimateFare(distanceKm, vehicle, mode.fareMultiplier);
+  const filledStops = openStops.filter(Boolean);
+  const openRideDistanceKm = Math.max(filledStops.length * 2.5, 2);
+  const localFare = isOpenRide
+    ? estimateFare(openRideDistanceKm, vehicle, mode.fareMultiplier)
+    : estimateFare(distanceKm, vehicle, mode.fareMultiplier);
   const fare = fareOverride !== null ? Math.round(fareOverride * mode.fareMultiplier) : localFare;
   const pickup = safeZones[pickupIndex] || safeZones[0];
   const destination = safeZones[destinationIndex] || safeZones[1] || safeZones[0];
@@ -117,6 +127,7 @@ export default function Home() {
     setPickupIndex(0);
     setDestinationIndex(1);
     setFareOverride(null);
+    setOpenStops(['', '']);
     setCityZoneItems(newCity && allCityZones[newCity.id] ? allCityZones[newCity.id] : []);
   }
 
@@ -135,11 +146,22 @@ export default function Home() {
       router.push({ pathname: '/support', params: { lang } });
       return;
     }
+    if (isOpenRide) {
+      const filled = openStops.filter(Boolean);
+      if (filled.length < 2) {
+        Alert.alert('Jnbk', lang === 'ar' ? 'أضف توقفين على الأقل لبدء المشوار المفتوح' : 'Add at least 2 stops to start an open ride');
+        return;
+      }
+    }
     setLoading(true);
     try {
-      const ride = await createRide({ cityId: city.id, vehicleTypeId: vehicle.id, pickupLabel: `${pickup} - ${modeName}`, destinationLabel: destination, distanceKm });
+      const ridePickup = isOpenRide ? (openStops[0] || pickup) : `${pickup} - ${modeName}`;
+      const rideDest = isOpenRide ? (openStops[openStops.length - 1] || destination) : destination;
+      const rideDistance = isOpenRide ? openRideDistanceKm : distanceKm;
+      const rideStops = isOpenRide ? openStops.filter(Boolean) : undefined;
+      const ride = await createRide({ cityId: city.id, vehicleTypeId: vehicle.id, pickupLabel: ridePickup, destinationLabel: rideDest, distanceKm: rideDistance, stops: rideStops });
       router.push({ pathname: '/ride', params: rideParams({ fare: String(ride.estimatedFare || fare), rideId: ride.id }) });
-    } catch (error) {
+    } catch {
       Alert.alert('Jnbk', lang === 'ar' ? 'الخادم غير متصل الآن. سيتم تشغيل الرحلة كتجربة محلية.' : 'Backend is offline. Starting local preview ride.');
       router.push({ pathname: '/ride', params: rideParams() });
     } finally {
@@ -182,7 +204,7 @@ export default function Home() {
       <Text style={[styles.label, rtl && styles.rtl]}>{lang === 'ar' ? 'اختر نوع الطلب' : 'Choose request type'}</Text>
       <View style={styles.modeGrid}>
         {serviceModes.map((item, index) => (
-          <Pressable key={item.id} onPress={() => setServiceIndex(index)} style={[styles.modeCard, serviceIndex === index && styles.modeActive]}>
+          <Pressable key={item.id} onPress={() => { setServiceIndex(index); if (!item.isMultiStop) setOpenStops(['', '']); }} style={[styles.modeCard, serviceIndex === index && styles.modeActive]}>
             <Text style={[styles.modeIcon, serviceIndex === index && styles.activeText]}>{item.icon}</Text>
             <Text style={[styles.modeTitle, serviceIndex === index && styles.activeText, rtl && styles.rtl]}>{lang === 'ar' ? item.nameAr : item.nameEn}</Text>
             <Text style={[styles.modeDescription, serviceIndex === index && styles.activeDescription, rtl && styles.rtl]}>{lang === 'ar' ? item.descriptionAr : item.descriptionEn}</Text>
@@ -209,44 +231,110 @@ export default function Home() {
         ))}
       </View>
 
-      <View style={styles.mapCard}>
-        <View style={[styles.mapHeader, rtl && styles.reverse]}>
-          <View>
-            <Text style={[styles.mapTitle, rtl && styles.rtl]}>{cityName}</Text>
-            <Text style={[styles.mapSub, rtl && styles.rtl]}>{modeName} - {vehicleName}</Text>
+      {isOpenRide ? (
+        /* ── Open Ride: multi-stop builder ─────────────────────────────── */
+        <View style={styles.openRideCard}>
+          <View style={[styles.openRideHeader, rtl && styles.reverse]}>
+            <View>
+              <Text style={[styles.mapTitle, rtl && styles.rtl]}>{lang === 'ar' ? 'مشوار مفتوح' : 'Open Ride'}</Text>
+              <Text style={[styles.mapSub, rtl && styles.rtl]}>{cityName} · {vehicleName}</Text>
+            </View>
+            <View style={styles.stopBadge}>
+              <Text style={styles.stopBadgeText}>{filledStops.length}/{maxStops}</Text>
+            </View>
           </View>
-          <View style={styles.etaBadge}><Text style={styles.etaText}>{distanceKm + 3} min</Text></View>
-        </View>
-        <View style={styles.routeLine}><View style={styles.pin} /><View style={styles.line} /><View style={[styles.pin, styles.pinGold]} /></View>
-        <View style={styles.routeCards}>
-          <View style={styles.routeCard}><Text style={styles.routeLabel}>{t.pickup}</Text><Text style={[styles.routeValue, rtl && styles.rtl]}>{pickup}</Text></View>
-          <View style={styles.routeCard}><Text style={styles.routeLabel}>{t.destination}</Text><Text style={[styles.routeValue, rtl && styles.rtl]}>{destination}</Text></View>
-        </View>
-      </View>
 
-      {/* Pickup picker button */}
-      <Text style={[styles.label, rtl && styles.rtl]}>{t.pickup}</Text>
-      <Pressable style={[styles.pickerButton, rtl && styles.rowRev]} onPress={() => setShowPickupPicker(true)}>
-        <Text style={styles.pickerIcon}>📍</Text>
-        <View style={styles.pickerContent}>
-          <Text style={[styles.pickerValue, rtl && styles.rtl]}>{pickup}</Text>
-          <Text style={[styles.pickerHint, rtl && styles.rtl]}>{lang === 'ar' ? 'اضغط للتغيير' : 'Tap to change'}</Text>
-        </View>
-        <Text style={styles.pickerArrow}>{rtl ? '←' : '→'}</Text>
-      </Pressable>
+          {openStops.map((stop, idx) => (
+            <View key={idx} style={[styles.stopRow, rtl && styles.reverse]}>
+              <View style={styles.stopDotWrap}>
+                <View style={[styles.stopDot, idx === 0 && styles.stopDotFirst, idx === openStops.length - 1 && styles.stopDotLast]} />
+                {idx < openStops.length - 1 && <View style={styles.stopConnector} />}
+              </View>
+              <Pressable
+                style={[styles.stopButton, rtl && styles.rowRev]}
+                onPress={() => setActiveOpenStopIdx(idx)}
+              >
+                <View style={styles.pickerContent}>
+                  <Text style={[styles.stopLabel, rtl && styles.rtl]}>
+                    {idx === 0
+                      ? (lang === 'ar' ? 'نقطة الانطلاق' : 'Pickup')
+                      : idx === openStops.length - 1
+                      ? (lang === 'ar' ? 'الوجهة الأخيرة' : 'Final stop')
+                      : (lang === 'ar' ? `توقف ${idx + 1}` : `Stop ${idx + 1}`)}
+                  </Text>
+                  <Text style={[styles.stopValue, rtl && styles.rtl]}>
+                    {stop || (lang === 'ar' ? 'اضغط للاختيار' : 'Tap to select')}
+                  </Text>
+                </View>
+                {idx >= 2 && (
+                  <Pressable
+                    hitSlop={12}
+                    onPress={() => {
+                      const next = openStops.filter((_, i) => i !== idx);
+                      setOpenStops(next);
+                    }}
+                    style={styles.removeStop}
+                  >
+                    <Text style={styles.removeStopText}>✕</Text>
+                  </Pressable>
+                )}
+              </Pressable>
+            </View>
+          ))}
 
-      {/* Destination picker button */}
-      <Text style={[styles.label, rtl && styles.rtl]}>{t.destination}</Text>
-      <Pressable style={[styles.pickerButton, styles.pickerButtonGold, rtl && styles.rowRev]} onPress={() => setShowDestinationPicker(true)}>
-        <Text style={styles.pickerIcon}>🎯</Text>
-        <View style={styles.pickerContent}>
-          <Text style={[styles.pickerValue, rtl && styles.rtl]}>{destination}</Text>
-          <Text style={[styles.pickerHint, rtl && styles.rtl]}>{lang === 'ar' ? 'اضغط للتغيير' : 'Tap to change'}</Text>
+          {openStops.length < maxStops && (
+            <Pressable
+              style={[styles.addStopBtn, rtl && styles.rowRev]}
+              onPress={() => setOpenStops([...openStops, ''])}
+            >
+              <Text style={styles.addStopIcon}>＋</Text>
+              <Text style={styles.addStopText}>
+                {lang === 'ar' ? 'أضف توقفًا' : 'Add stop'}
+              </Text>
+            </Pressable>
+          )}
         </View>
-        <Text style={styles.pickerArrow}>{rtl ? '←' : '→'}</Text>
-      </Pressable>
+      ) : (
+        /* ── Standard: single pickup + destination ─────────────────────── */
+        <>
+          <View style={styles.mapCard}>
+            <View style={[styles.mapHeader, rtl && styles.reverse]}>
+              <View>
+                <Text style={[styles.mapTitle, rtl && styles.rtl]}>{cityName}</Text>
+                <Text style={[styles.mapSub, rtl && styles.rtl]}>{modeName} - {vehicleName}</Text>
+              </View>
+              <View style={styles.etaBadge}><Text style={styles.etaText}>{distanceKm + 3} min</Text></View>
+            </View>
+            <View style={styles.routeLine}><View style={styles.pin} /><View style={styles.line} /><View style={[styles.pin, styles.pinGold]} /></View>
+            <View style={styles.routeCards}>
+              <View style={styles.routeCard}><Text style={styles.routeLabel}>{t.pickup}</Text><Text style={[styles.routeValue, rtl && styles.rtl]}>{pickup}</Text></View>
+              <View style={styles.routeCard}><Text style={styles.routeLabel}>{t.destination}</Text><Text style={[styles.routeValue, rtl && styles.rtl]}>{destination}</Text></View>
+            </View>
+          </View>
 
-      {/* Pickup modal */}
+          <Text style={[styles.label, rtl && styles.rtl]}>{t.pickup}</Text>
+          <Pressable style={[styles.pickerButton, rtl && styles.rowRev]} onPress={() => setShowPickupPicker(true)}>
+            <Text style={styles.pickerIcon}>📍</Text>
+            <View style={styles.pickerContent}>
+              <Text style={[styles.pickerValue, rtl && styles.rtl]}>{pickup}</Text>
+              <Text style={[styles.pickerHint, rtl && styles.rtl]}>{lang === 'ar' ? 'اضغط للتغيير' : 'Tap to change'}</Text>
+            </View>
+            <Text style={styles.pickerArrow}>{rtl ? '←' : '→'}</Text>
+          </Pressable>
+
+          <Text style={[styles.label, rtl && styles.rtl]}>{t.destination}</Text>
+          <Pressable style={[styles.pickerButton, styles.pickerButtonGold, rtl && styles.rowRev]} onPress={() => setShowDestinationPicker(true)}>
+            <Text style={styles.pickerIcon}>🎯</Text>
+            <View style={styles.pickerContent}>
+              <Text style={[styles.pickerValue, rtl && styles.rtl]}>{destination}</Text>
+              <Text style={[styles.pickerHint, rtl && styles.rtl]}>{lang === 'ar' ? 'اضغط للتغيير' : 'Tap to change'}</Text>
+            </View>
+            <Text style={styles.pickerArrow}>{rtl ? '←' : '→'}</Text>
+          </Pressable>
+        </>
+      )}
+
+      {/* Pickup modal (standard mode) */}
       <LocationPicker
         visible={showPickupPicker}
         title={lang === 'ar' ? 'اختر نقطة الانطلاق' : 'Select Pickup'}
@@ -260,7 +348,7 @@ export default function Home() {
         onClose={() => setShowPickupPicker(false)}
       />
 
-      {/* Destination modal */}
+      {/* Destination modal (standard mode) */}
       <LocationPicker
         visible={showDestinationPicker}
         title={lang === 'ar' ? 'اختر الوجهة' : 'Select Destination'}
@@ -274,10 +362,41 @@ export default function Home() {
         onClose={() => setShowDestinationPicker(false)}
       />
 
+      {/* Open ride stop picker modal */}
+      <LocationPicker
+        visible={activeOpenStopIdx !== null}
+        title={
+          activeOpenStopIdx === 0
+            ? (lang === 'ar' ? 'اختر نقطة الانطلاق' : 'Select Pickup')
+            : activeOpenStopIdx === openStops.length - 1
+            ? (lang === 'ar' ? 'اختر الوجهة الأخيرة' : 'Select Final Stop')
+            : (lang === 'ar' ? `اختر التوقف ${(activeOpenStopIdx ?? 0) + 1}` : `Select Stop ${(activeOpenStopIdx ?? 0) + 1}`)
+        }
+        items={locationItems}
+        selected={activeOpenStopIdx !== null ? openStops[activeOpenStopIdx] : ''}
+        lang={lang}
+        onSelect={(name) => {
+          if (activeOpenStopIdx === null) return;
+          const next = [...openStops];
+          next[activeOpenStopIdx] = name;
+          setOpenStops(next);
+          setActiveOpenStopIdx(null);
+        }}
+        onClose={() => setActiveOpenStopIdx(null)}
+      />
+
       <View style={styles.fareCard}>
         <Text style={[styles.fareLabel, rtl && styles.rtl]}>{t.estimatedFare}</Text>
         <Text style={[styles.fare, rtl && styles.rtl]}>{fare} {city.countryId === 'sa' ? 'SAR' : 'SDG'}</Text>
-        <Text style={[styles.note, rtl && styles.rtl]}>{lang === 'ar' ? 'يشمل نوع الطلب والمسافة المحلية. الأسعار قابلة للضبط من الإدارة حسب الوقود.' : 'Includes service mode and local distance. Admin can adjust pricing based on fuel.'}</Text>
+        {isOpenRide ? (
+          <Text style={[styles.note, rtl && styles.rtl]}>
+            {lang === 'ar'
+              ? `${filledStops.length} ${filledStops.length === 1 ? 'توقف' : 'توقفات'} · دفعة واحدة للمشوار كاملاً`
+              : `${filledStops.length} stop${filledStops.length !== 1 ? 's' : ''} · Single payment for the full trip`}
+          </Text>
+        ) : (
+          <Text style={[styles.note, rtl && styles.rtl]}>{lang === 'ar' ? 'يشمل نوع الطلب والمسافة المحلية. الأسعار قابلة للضبط من الإدارة حسب الوقود.' : 'Includes service mode and local distance. Admin can adjust pricing based on fuel.'}</Text>
+        )}
       </View>
       <Button title={loading ? (lang === 'ar' ? 'جاري الطلب...' : 'Requesting...') : t.requestRickshaw} onPress={requestRide} />
       <Button title={t.tripHistory} variant='ghost' onPress={() => router.push({ pathname: '/trips', params: { lang } })} />
@@ -353,4 +472,31 @@ const styles = StyleSheet.create({
   pickerValue: { color: colors.navy, fontWeight: '900', fontSize: sw(15) },
   pickerHint: { color: colors.muted, fontWeight: '700', fontSize: sw(12), marginTop: 2 },
   pickerArrow: { color: colors.muted, fontSize: sw(16), fontWeight: '900' },
+  // Open ride styles
+  openRideCard: { borderRadius: 32, padding: sw(16), gap: sw(10), backgroundColor: '#EEF5FF', borderWidth: 1.5, borderColor: colors.navy },
+  openRideHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 4 },
+  stopBadge: { backgroundColor: colors.navy, borderRadius: 999, paddingVertical: 5, paddingHorizontal: 12 },
+  stopBadgeText: { color: colors.gold, fontWeight: '900', fontSize: sw(13) },
+  stopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  stopDotWrap: { alignItems: 'center', width: sw(20), paddingTop: 14 },
+  stopDot: { width: sw(12), height: sw(12), borderRadius: 99, backgroundColor: colors.teal, borderWidth: 2, borderColor: colors.white },
+  stopDotFirst: { backgroundColor: colors.teal },
+  stopDotLast: { backgroundColor: colors.gold },
+  stopConnector: { width: 2, flex: 1, backgroundColor: '#C5D8F0', minHeight: sw(18) },
+  stopButton: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: colors.white, borderRadius: 18, padding: sw(12),
+    borderWidth: 1, borderColor: colors.border,
+  },
+  stopLabel: { color: colors.muted, fontWeight: '800', fontSize: sw(11) },
+  stopValue: { color: colors.navy, fontWeight: '900', fontSize: sw(14), marginTop: 2 },
+  removeStop: { padding: 6, borderRadius: 99, backgroundColor: '#FDECEA' },
+  removeStopText: { color: '#C0392B', fontWeight: '900', fontSize: sw(12) },
+  addStopBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: colors.navy, borderRadius: 18, paddingVertical: sw(11), paddingHorizontal: sw(14),
+    alignSelf: 'flex-start', marginTop: 4,
+  },
+  addStopIcon: { color: colors.gold, fontWeight: '900', fontSize: sw(16) },
+  addStopText: { color: colors.white, fontWeight: '900', fontSize: sw(14) },
 });

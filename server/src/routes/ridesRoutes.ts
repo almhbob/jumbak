@@ -47,6 +47,9 @@ router.post('/', async (req, res) => {
   const cityId = String(req.body.cityId || 'rufaa');
   const vehicleTypeId = String(req.body.vehicleTypeId || 'rickshaw');
 
+  const rawStops = Array.isArray(req.body.stops) ? (req.body.stops as string[]).filter(Boolean) : null;
+  const stopsJson = rawStops && rawStops.length > 2 ? JSON.stringify(rawStops) : null;
+
   if (prisma) {
     const vehicle = await prisma.vehicleType.findUnique({ where: { id: vehicleTypeId } });
     const selectedVehicle = vehicle || findVehicleType(vehicleTypeId);
@@ -60,6 +63,7 @@ router.post('/', async (req, res) => {
         driverId: matchedDriver?.id,
         pickupLabel: String(req.body.pickupLabel || 'Pickup'),
         destinationLabel: String(req.body.destinationLabel || 'Destination'),
+        stops: stopsJson,
         distanceKm,
         estimatedFare: Math.max(
           Math.round(selectedVehicle.baseFare + distanceKm * selectedVehicle.perKmFare),
@@ -102,6 +106,7 @@ router.post('/', async (req, res) => {
     driverName: matchedDriver?.name || null,
     pickupLabel: String(req.body.pickupLabel || zones[0] || 'Pickup'),
     destinationLabel: String(req.body.destinationLabel || zones[1] || 'Destination'),
+    stops: stopsJson,
     distanceKm,
     estimatedFare: estimateFare(distanceKm, vehicleTypeId),
     status: 'REQUESTED',

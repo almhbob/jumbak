@@ -88,6 +88,7 @@ export async function createRide(input: {
   pickupLabel: string;
   destinationLabel: string;
   distanceKm: number;
+  stops?: string[];
 }) {
   return apiFetch('/api/rides', {
     method: 'POST',
