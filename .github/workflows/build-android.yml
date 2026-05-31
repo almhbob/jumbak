@@ -36,7 +36,10 @@ jobs:
             "platforms;android-35" \
             "build-tools;35.0.0" \
             "platform-tools" \
+            "ndk;26.1.10909125" \
           2>/dev/null || true
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile=false
@@ -64,7 +67,9 @@ jobs:
         working-directory: apps/mobile/android
         env:
           GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m"
-        run: ./gradlew assembleDebug --stacktrace
+          ANDROID_HOME: /usr/local/lib/android/sdk
+          ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/26.1.10909125
+        run: ./gradlew assembleDebug --stacktrace 2>&1 | tail -100
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
