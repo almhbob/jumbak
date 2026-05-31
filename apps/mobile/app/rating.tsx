@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Alert, TextInput, Pressable } from 'react-native';
+import { ScrollView, KeyboardAvoidingView, Platform, View, Text, StyleSheet, Alert, TextInput, Pressable } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { colors } from '../src/constants/theme';
 import { dict, Lang } from '../src/i18n';
 import { submitRideRating } from '../src/api';
+import { sw } from '../src/constants/responsive';
 
 export default function Rating() {
   const params = useLocalSearchParams<{ lang?: Lang; rideId?: string }>();
@@ -43,8 +44,9 @@ export default function Rating() {
   }
 
   return (
-    <View style={styles.screen}>
-      <View style={[styles.header, rtl && styles.reverse]}>
+    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <Pressable style={[styles.header, rtl && styles.reverse]} onPress={() => {}}>
         <View>
           <Text style={[styles.kicker, rtl && styles.rtl]}>Jnbk جنبك</Text>
           <Text style={[styles.title, rtl && styles.rtl]}>{t.tripCompleted}</Text>
@@ -52,7 +54,7 @@ export default function Rating() {
         <Pressable style={styles.langButton} onPress={() => setLang(lang === 'ar' ? 'en' : 'ar')}>
           <Text style={styles.langText}>{t.language}</Text>
         </Pressable>
-      </View>
+      </Pressable>
 
       <View style={styles.card}>
         <Text style={[styles.question, rtl && styles.rtl]}>{t.rateRide}</Text>
@@ -78,7 +80,8 @@ export default function Rating() {
       </View>
       <Button title={saving ? (lang === 'ar' ? 'جاري الحفظ...' : 'Saving...') : (lang === 'ar' ? 'حفظ التقييم والعودة للرئيسية' : 'Save rating and go home')} onPress={finishRating} />
       <Button title={lang === 'ar' ? 'تخطي التقييم' : 'Skip rating'} variant='ghost' onPress={() => router.replace({ pathname: '/home', params: { lang } })} />
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -103,23 +106,24 @@ const localStorageShim = {
 };
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, padding: 22, paddingTop: 70, gap: 18, backgroundColor: colors.bg },
+  screen: { flex: 1, backgroundColor: colors.bg },
+  content: { padding: sw(20), paddingTop: sw(54), gap: sw(16) },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   reverse: { flexDirection: 'row-reverse' },
   kicker: { color: colors.gold, fontWeight: '900', letterSpacing: 2 },
-  langButton: { borderRadius: 18, backgroundColor: colors.navy, paddingVertical: 11, paddingHorizontal: 14 },
-  langText: { color: colors.white, fontWeight: '900' },
-  card: { backgroundColor: colors.white, borderRadius: 30, padding: 22, gap: 18 },
-  title: { color: colors.navy, fontSize: 30, fontWeight: '900' },
-  question: { textAlign: 'center', color: colors.text, fontSize: 20, fontWeight: '900' },
-  score: { textAlign: 'center', color: colors.gold, fontSize: 52, fontWeight: '900' },
+  langButton: { borderRadius: 18, backgroundColor: colors.navy, paddingVertical: 10, paddingHorizontal: 13 },
+  langText: { color: colors.white, fontWeight: '900', fontSize: sw(14) },
+  card: { backgroundColor: colors.white, borderRadius: 30, padding: sw(18), gap: sw(14) },
+  title: { color: colors.navy, fontSize: sw(26), fontWeight: '900' },
+  question: { textAlign: 'center', color: colors.text, fontSize: sw(18), fontWeight: '900' },
+  score: { textAlign: 'center', color: colors.gold, fontSize: sw(44), fontWeight: '900' },
   rideId: { textAlign: 'center', color: colors.muted, fontWeight: '800' },
-  row: { flexDirection: 'row', gap: 8, justifyContent: 'center' },
-  star: { width: 48, height: 48, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: '#E7EEF5' },
+  row: { flexDirection: 'row', gap: sw(6), justifyContent: 'center' },
+  star: { flex: 1, maxWidth: sw(54), aspectRatio: 1, borderRadius: sw(14), alignItems: 'center', justifyContent: 'center', backgroundColor: '#E7EEF5' },
   starActive: { backgroundColor: colors.gold },
-  starText: { color: colors.navy, fontSize: 25, fontWeight: '900' },
+  starText: { color: colors.navy, fontSize: sw(22), fontWeight: '900' },
   starTextActive: { color: colors.navy },
-  input: { minHeight: 105, textAlignVertical: 'top', backgroundColor: '#F1F5F9', borderRadius: 20, padding: 14, color: colors.text, fontWeight: '800' },
+  input: { minHeight: sw(80), textAlignVertical: 'top', backgroundColor: '#F1F5F9', borderRadius: 20, padding: 14, color: colors.text, fontWeight: '800' },
   statusPill: { alignSelf: 'center', backgroundColor: '#E7F7EF', borderRadius: 999, paddingVertical: 8, paddingHorizontal: 13 },
   statusText: { color: colors.teal, fontWeight: '900' },
   rtl: { textAlign: 'right', writingDirection: 'rtl' }

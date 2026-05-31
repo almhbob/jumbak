@@ -32,6 +32,8 @@ export type ServiceMode = {
   descriptionEn: string;
   fareMultiplier: number;
   icon: string;
+  isMultiStop?: boolean;
+  maxStops?: number;
 };
 
 export const countries: Country[] = [
@@ -129,6 +131,17 @@ export const serviceModes: ServiceMode[] = [
     descriptionEn: 'Fallback request option for weak internet areas.',
     fareMultiplier: 1,
     icon: 'SMS'
+  },
+  {
+    id: 'open_ride',
+    nameAr: 'مشوار مفتوح',
+    nameEn: 'Open Ride',
+    descriptionAr: 'رحلة تصل إلى خمس حركات — أضف توقفاتك وادفع بحركة واحدة.',
+    descriptionEn: 'Up to 5 stops in one trip — add your waypoints, pay once.',
+    fareMultiplier: 1.3,
+    icon: '⑤',
+    isMultiStop: true,
+    maxStops: 5,
   }
 ];
 

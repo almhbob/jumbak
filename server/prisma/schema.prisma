@@ -29,6 +29,14 @@ enum SupportStatus {
   CLOSED
 }
 
+enum TransactionType {
+  TOPUP
+  RIDE_PAYMENT
+  REFUND
+  DRIVER_EARNING
+  WITHDRAWAL
+}
+
 enum StaffRole {
   OPERATIONS
   SUPERVISOR
@@ -71,6 +79,7 @@ model Zone {
   city      City     @relation(fields: [cityId], references: [id])
   nameAr    String
   nameEn    String
+  category  String   @default("مرافق ومعالم")
   multiplier Float   @default(1)
   createdAt DateTime @default(now())
 }
@@ -88,13 +97,47 @@ model VehicleType {
 }
 
 model User {
+  id           String        @id @default(cuid())
+  phone        String        @unique
+  name         String?
+  role         UserRole      @default(PASSENGER)
+  createdAt    DateTime      @default(now())
+  rides        Ride[]        @relation("PassengerRides")
+  driver       Driver?
+  deviceTokens DeviceToken[]
+  wallet       Wallet?
+}
+
+model Wallet {
+  id           String               @id @default(cuid())
+  userId       String               @unique
+  user         User                 @relation(fields: [userId], references: [id])
+  balance      Int                  @default(0)
+  currency     String               @default("SDG")
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  transactions WalletTransaction[]
+}
+
+model WalletTransaction {
+  id          String          @id @default(cuid())
+  walletId    String
+  wallet      Wallet          @relation(fields: [walletId], references: [id])
+  amount      Int
+  type        TransactionType
+  description String?
+  rideId      String?
+  createdAt   DateTime        @default(now())
+}
+
+model DeviceToken {
   id        String   @id @default(cuid())
-  phone     String   @unique
-  name      String?
-  role      UserRole @default(PASSENGER)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  platform  String   @default("expo")
   createdAt DateTime @default(now())
-  rides     Ride[]   @relation("PassengerRides")
-  driver    Driver?
+  updatedAt DateTime @updatedAt
 }
 
 model StaffMember {
@@ -126,16 +169,17 @@ model LegalDocument {
 }
 
 model Driver {
-  id         String   @id @default(cuid())
-  userId     String   @unique
-  user       User     @relation(fields: [userId], references: [id])
-  cityId     String
-  city       City     @relation(fields: [cityId], references: [id])
-  isOnline   Boolean  @default(false)
-  isVerified Boolean  @default(false)
-  vehicle    Vehicle?
-  rides      Ride[]   @relation("DriverRides")
-  createdAt  DateTime @default(now())
+  id          String             @id @default(cuid())
+  userId      String             @unique
+  user        User               @relation(fields: [userId], references: [id])
+  cityId      String
+  city        City               @relation(fields: [cityId], references: [id])
+  isOnline    Boolean            @default(false)
+  isVerified  Boolean            @default(false)
+  vehicle     Vehicle?
+  rides       Ride[]             @relation("DriverRides")
+  application DriverApplication?
+  createdAt   DateTime           @default(now())
 }
 
 model Vehicle {
@@ -161,6 +205,7 @@ model Ride {
   vehicleType      VehicleType @relation(fields: [vehicleTypeId], references: [id])
   pickupLabel      String
   destinationLabel String
+  stops            String?
   distanceKm       Float       @default(2)
   estimatedFare    Int
   finalFare        Int?
@@ -180,4 +225,32 @@ model SupportRequest {
   status    SupportStatus @default(OPEN)
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
+}
+
+model DriverApplication {
+  id               String    @id @default(cuid())
+  driverId         String?   @unique
+  driver           Driver?   @relation(fields: [driverId], references: [id])
+  phone            String
+  name             String
+  cityId           String?
+  vehicleTypeId    String?
+  plateNo          String?
+  color            String?
+  model            String?
+  nationalId       String?
+  chassisNo        String?
+  trafficId        String?
+  bankAccount      String?
+  guarantorName    String?
+  guarantorPhone   String?
+  guarantorAddress String?
+  status           String    @default("pending_review")
+  complianceStatus String    @default("needs_admin_review")
+  freeMonth        Boolean   @default(true)
+  approvedAt       DateTime?
+  rejectedAt       DateTime?
+  reviewedBy       String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }

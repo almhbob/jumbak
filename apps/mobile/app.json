@@ -1,1 +1,58 @@
-{"expo":{"name":"ركشة.. جنبك","slug":"riksha-jnbk","scheme":"jnbk","version":"0.1.1","orientation":"portrait","userInterfaceStyle":"light","android":{"package":"com.almhbob.jnbk","versionCode":2,"adaptiveIcon":{"backgroundColor":"#063B63"}},"plugins":["expo-router"],"extra":{"brandName":"ركشة.. جنبك","tagline":"أقرب إليك دائمًا"}}}
+{
+  "expo": {
+    "name": "جنبك",
+    "slug": "riksha-jnbk",
+    "scheme": "jnbk",
+    "version": "0.1.1",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#063B63"
+    },
+    "android": {
+      "package": "com.almhbob.jnbk",
+      "versionCode": 2,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#063B63"
+      },
+      "permissions": [
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.POST_NOTIFICATIONS"
+      ]
+    },
+    "ios": {
+      "bundleIdentifier": "com.almhbob.jnbk",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
+      }
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#063B63",
+          "defaultChannel": "default",
+          "sounds": []
+        }
+      ]
+    ],
+    "extra": {
+      "brandName": "جنبك",
+      "tagline": "أقرب إليك دائمًا",
+      "eas": {
+        "projectId": "60e32314-35d0-441b-a380-979598635781"
+      },
+      "router": {}
+    },
+    "owner": "almhbob609"
+  }
+}

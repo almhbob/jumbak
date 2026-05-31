@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import {
+  View, Text, StyleSheet, TextInput, Pressable,
+  Alert, KeyboardAvoidingView, Platform, ScrollView,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Button } from '../src/components/Button';
 import { BrandLogo } from '../src/components/BrandLogo';
 import { brand, colors } from '../src/constants/theme';
 import { dict, Lang } from '../src/i18n';
-import { requestOtp, verifyOtp } from '../src/api';
+import { verifyOtp, requestOtp } from '../src/api';
+import { saveTokenToServer } from '../src/notifications';
 
 type Role = 'PASSENGER' | 'DRIVER';
 
@@ -19,6 +24,7 @@ export default function Login() {
   const [role, setRole] = useState<Role>('PASSENGER');
   const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
+
   const t = dict[lang];
   const rtl = lang === 'ar';
 
@@ -30,79 +36,144 @@ export default function Login() {
     }
   }
 
-  async function sendOtp() {
-    if (!phone.trim()) {
+  async function persistSession(userId: string, token: string) {
+    await AsyncStorage.multiSet([
+      ['jnbk_user_id', userId],
+      ['jnbk_auth_token', token],
+    ]);
+    const pushToken = await AsyncStorage.getItem('jnbk_push_token');
+    if (pushToken) await saveTokenToServer(pushToken, userId);
+  }
+
+  // ─── OTP via server ──────────────────────────────────────────────────────────
+
+  async function handleSend() {
+    const trimmed = phone.trim();
+    if (!trimmed) {
       Alert.alert('Jnbk', lang === 'ar' ? 'أدخل رقم الهاتف أولًا' : 'Enter your phone number first');
       return;
     }
     setLoading(true);
     try {
-      await requestOtp(phone.trim());
+      await requestOtp(trimmed);
       setOtpSent(true);
-      setCode('123456');
-      Alert.alert('Jnbk', lang === 'ar' ? 'تم إرسال رمز تجريبي: 123456' : 'Development OTP: 123456');
+      Alert.alert('Jnbk', lang === 'ar' ? 'تم إرسال رمز التحقق' : 'OTP sent');
     } catch {
-      setOtpSent(true);
-      setCode('123456');
-      Alert.alert('Jnbk', lang === 'ar' ? 'الخادم غير متصل. استخدم الرمز التجريبي 123456' : 'Backend offline. Use development OTP 123456');
+      Alert.alert('Jnbk', lang === 'ar' ? 'تعذّر الإرسال، تحقق من الاتصال' : 'Could not send OTP. Check your connection.');
     } finally {
       setLoading(false);
     }
   }
 
-  async function login() {
-    if (!phone.trim() || !code.trim()) {
-      Alert.alert('Jnbk', lang === 'ar' ? 'أدخل الهاتف والرمز' : 'Enter phone and OTP');
-      return;
-    }
+  async function handleVerify() {
+    if (!phone.trim() || !code.trim()) return;
     setLoading(true);
     try {
-      await verifyOtp({ phone: phone.trim(), code: code.trim(), name: name.trim() || undefined, role });
+      const result = await verifyOtp({ phone: phone.trim(), code: code.trim(), name: name.trim() || undefined, role });
+      await persistSession(result.user.id, result.token);
       nextRoute();
-    } catch {
-      if (code.trim() === '123456') {
-        nextRoute();
-      } else {
-        Alert.alert('Jnbk', lang === 'ar' ? 'رمز غير صحيح' : 'Invalid OTP');
-      }
+    } catch (err: any) {
+      const msg = err?.message?.includes('401') || err?.message?.includes('Invalid')
+        ? (lang === 'ar' ? 'رمز التحقق غير صحيح' : 'Invalid OTP code')
+        : (lang === 'ar' ? 'تعذر الاتصال بالخادم' : 'Could not reach server. Check your connection.');
+      Alert.alert('Jnbk', msg);
     } finally {
       setLoading(false);
     }
   }
+
+  const sendLabel = loading
+    ? (lang === 'ar' ? 'جاري الإرسال...' : 'Sending...')
+    : (lang === 'ar' ? 'إرسال رمز التحقق' : 'Send OTP');
+
+  const verifyLabel = loading
+    ? (lang === 'ar' ? 'جاري التحقق...' : 'Verifying...')
+    : role === 'DRIVER'
+    ? (lang === 'ar' ? 'متابعة بيانات المركبة' : 'Continue vehicle details')
+    : (lang === 'ar' ? 'تسجيل الدخول' : 'Sign in');
 
   return (
     <LinearGradient colors={brand.gradient} style={styles.screen}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps='handled'>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <Pressable style={styles.langButton} onPress={() => setLang(lang === 'ar' ? 'en' : 'ar')}>
             <Text style={styles.langText}>{t.language}</Text>
           </Pressable>
 
           <View style={styles.brandBox}>
-            <BrandLogo size='sm' onDark showTagline={false} />
-            <Text style={styles.logoFallback}>J</Text>
+            <BrandLogo size="sm" onDark showTagline={false} />
           </View>
-          <Text style={[styles.title, rtl && styles.rtl]}>{lang === 'ar' ? 'الدخول إلى Jnbk' : 'Login to Jnbk'}</Text>
-          <Text style={[styles.subtitle, rtl && styles.rtl]}>{lang === 'ar' ? 'سجّل برقم الهاتف كراكب أو سائق' : 'Use your phone number as passenger or driver'}</Text>
+          <Text style={[styles.title, rtl && styles.rtl]}>
+            {lang === 'ar' ? 'الدخول إلى Jnbk' : 'Login to Jnbk'}
+          </Text>
+          <Text style={[styles.subtitle, rtl && styles.rtl]}>
+            {lang === 'ar'
+              ? 'سجّل برقم الهاتف — سيصلك رمز تحقق قصير'
+              : "Enter your phone number — you'll receive an OTP"}
+          </Text>
 
           <View style={styles.card}>
-            <TextInput placeholderTextColor={colors.muted} style={[styles.input, rtl && styles.rtl]} placeholder={lang === 'ar' ? 'الاسم' : 'Name'} value={name} onChangeText={setName} />
-            <TextInput placeholderTextColor={colors.muted} style={[styles.input, rtl && styles.rtl]} placeholder={lang === 'ar' ? 'رقم الهاتف' : 'Phone number'} value={phone} onChangeText={setPhone} keyboardType='phone-pad' />
-            {otpSent && <TextInput placeholderTextColor={colors.muted} style={[styles.input, rtl && styles.rtl]} placeholder={lang === 'ar' ? 'رمز التحقق' : 'OTP code'} value={code} onChangeText={setCode} keyboardType='number-pad' />}
+            <TextInput
+              placeholderTextColor={colors.muted}
+              style={[styles.input, rtl && styles.rtl]}
+              placeholder={lang === 'ar' ? 'الاسم (اختياري)' : 'Name (optional)'}
+              value={name}
+              onChangeText={setName}
+            />
+            <TextInput
+              placeholderTextColor={colors.muted}
+              style={[styles.input, rtl && styles.rtl]}
+              placeholder={lang === 'ar' ? 'رقم الهاتف مع كود الدولة (+249...)' : 'Phone with country code (+249...)'}
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+              editable={!otpSent}
+            />
+            {otpSent && (
+              <TextInput
+                placeholderTextColor={colors.muted}
+                style={[styles.input, rtl && styles.rtl]}
+                placeholder={lang === 'ar' ? 'رمز التحقق' : 'OTP code'}
+                value={code}
+                onChangeText={setCode}
+                keyboardType="number-pad"
+                autoFocus
+              />
+            )}
             <View style={[styles.roleRow, rtl && styles.reverse]}>
-              <Pressable onPress={() => setRole('PASSENGER')} style={[styles.roleChip, role === 'PASSENGER' && styles.active]}>
-                <Text style={[styles.roleText, role === 'PASSENGER' && styles.activeText]}>{lang === 'ar' ? 'راكب' : 'Passenger'}</Text>
+              <Pressable
+                onPress={() => setRole('PASSENGER')}
+                style={[styles.roleChip, role === 'PASSENGER' && styles.active]}
+              >
+                <Text style={[styles.roleText, role === 'PASSENGER' && styles.activeText]}>
+                  {lang === 'ar' ? 'راكب' : 'Passenger'}
+                </Text>
               </Pressable>
-              <Pressable onPress={() => setRole('DRIVER')} style={[styles.roleChip, role === 'DRIVER' && styles.active]}>
-                <Text style={[styles.roleText, role === 'DRIVER' && styles.activeText]}>{lang === 'ar' ? 'سائق' : 'Driver'}</Text>
+              <Pressable
+                onPress={() => setRole('DRIVER')}
+                style={[styles.roleChip, role === 'DRIVER' && styles.active]}
+              >
+                <Text style={[styles.roleText, role === 'DRIVER' && styles.activeText]}>
+                  {lang === 'ar' ? 'سائق' : 'Driver'}
+                </Text>
               </Pressable>
             </View>
           </View>
 
           {!otpSent ? (
-            <Button title={loading ? (lang === 'ar' ? 'جاري الإرسال...' : 'Sending...') : (lang === 'ar' ? 'إرسال الرمز' : 'Send OTP')} variant='gold' onPress={sendOtp} />
+            <Button title={sendLabel} variant="gold" onPress={handleSend} disabled={loading} />
           ) : (
-            <Button title={loading ? (lang === 'ar' ? 'جاري الدخول...' : 'Signing in...') : (role === 'DRIVER' ? (lang === 'ar' ? 'متابعة بيانات المركبة' : 'Continue vehicle details') : (lang === 'ar' ? 'تسجيل الدخول' : 'Sign in'))} variant='gold' onPress={login} />
+            <>
+              <Button title={verifyLabel} variant="gold" onPress={handleVerify} disabled={loading} />
+              <Pressable
+                style={styles.resend}
+                onPress={() => { setOtpSent(false); setCode(''); }}
+              >
+                <Text style={styles.resendText}>
+                  {lang === 'ar' ? 'تغيير الرقم أو إعادة الإرسال' : 'Change number or resend'}
+                </Text>
+              </Pressable>
+            </>
           )}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -116,8 +187,7 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1, padding: 24, paddingTop: 58, gap: 16, justifyContent: 'center' },
   langButton: { alignSelf: 'flex-end', backgroundColor: 'rgba(255,255,255,.18)', borderRadius: 999, paddingVertical: 10, paddingHorizontal: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,.24)' },
   langText: { color: colors.white, fontWeight: '900' },
-  brandBox: { alignItems: 'center', gap: 6, marginTop: 20 },
-  logoFallback: { color: colors.gold, fontSize: 58, fontWeight: '900', textAlign: 'center', lineHeight: 62 },
+  brandBox: { alignItems: 'center', marginTop: 20 },
   title: { color: colors.white, fontSize: 32, fontWeight: '900', textAlign: 'center' },
   subtitle: { color: 'rgba(255,255,255,.88)', fontSize: 16, lineHeight: 25, textAlign: 'center' },
   card: { backgroundColor: colors.white, borderRadius: 34, padding: 18, gap: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,.35)' },
@@ -128,5 +198,7 @@ const styles = StyleSheet.create({
   roleText: { color: colors.navy, fontWeight: '900', fontSize: 16 },
   active: { backgroundColor: colors.navy, borderColor: colors.navy },
   activeText: { color: colors.white },
-  rtl: { textAlign: 'right', writingDirection: 'rtl' }
+  rtl: { textAlign: 'right', writingDirection: 'rtl' },
+  resend: { alignSelf: 'center', paddingVertical: 10 },
+  resendText: { color: 'rgba(255,255,255,.8)', fontSize: 14, textDecorationLine: 'underline' },
 });

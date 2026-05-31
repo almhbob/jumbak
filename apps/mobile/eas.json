@@ -8,6 +8,18 @@
       "android": {
         "buildType": "apk"
       },
+      "ios": {
+        "simulator": false,
+        "distribution": "internal"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://workspaceapi-server-production-3e22.up.railway.app"
+      }
+    },
+    "preview-simulator": {
+      "ios": {
+        "simulator": true
+      },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://workspaceapi-server-production-3e22.up.railway.app"
       }
@@ -15,6 +27,9 @@
     "production": {
       "android": {
         "buildType": "app-bundle"
+      },
+      "ios": {
+        "distribution": "store"
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://workspaceapi-server-production-3e22.up.railway.app"
