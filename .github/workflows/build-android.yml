@@ -30,18 +30,14 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Install Android SDK + NDK
+      - name: Install Android SDK + NDK 27
         run: |
-          yes | sdkmanager --licenses 2>/dev/null || true
-          sdkmanager \
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | $SDKMANAGER --licenses 2>/dev/null || true
+          $SDKMANAGER \
             "platforms;android-35" \
             "build-tools;35.0.0" \
-            "platform-tools" \
-            "ndk;26.1.10909125" \
-            "ndk;27.1.12297006" \
-          2>/dev/null || true
-        env:
-          ANDROID_HOME: /usr/local/lib/android/sdk
+            "ndk;27.1.12297006"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile=false
@@ -56,15 +52,6 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x apps/mobile/android/gradlew
 
-      - name: Show generated NDK + SDK versions
-        run: |
-          echo "=== app/build.gradle ndkVersion ==="
-          grep -E "ndkVersion|compileSdk|buildTools|minSdk" apps/mobile/android/app/build.gradle || true
-          echo "=== Installed NDKs ==="
-          ls /usr/local/lib/android/sdk/ndk/ 2>/dev/null || echo "No NDK dir"
-          echo "=== ANDROID_HOME ==="
-          echo $ANDROID_HOME
-
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
@@ -78,8 +65,8 @@ jobs:
         working-directory: apps/mobile/android
         env:
           GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m"
-          ANDROID_HOME: /usr/local/lib/android/sdk
-          ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/26.1.10909125
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.1.12297006
         run: ./gradlew assembleDebug --stacktrace
 
       - name: Find APK
