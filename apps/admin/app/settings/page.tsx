@@ -218,6 +218,12 @@ export default function Settings() {
             <button className="languageSwitch buttonReset" onClick={() => go(`/zones?lang=${lang}`)}>
               {lang === 'ar' ? 'المناطق' : 'Zones'}
             </button>
+            <button className="languageSwitch buttonReset" onClick={() => go(`/workflow?lang=${lang}`)}>
+              {lang === 'ar' ? 'تنسيق العمل' : 'Workflow'}
+            </button>
+            <button className="languageSwitch buttonReset" onClick={() => go(`/launch?lang=${lang}`)}>
+              {lang === 'ar' ? 'الإطلاق' : 'Launch'}
+            </button>
             <button className="languageSwitch buttonReset" onClick={() => go(`/settings?lang=${lang === 'ar' ? 'en' : 'ar'}`)}>
               {t.toggle}
             </button>
