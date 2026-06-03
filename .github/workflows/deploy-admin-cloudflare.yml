@@ -33,6 +33,12 @@ jobs:
           NEXT_PUBLIC_API_URL: https://workspaceapi-server-production-3e22.up.railway.app
         run: pnpm build
 
+      - name: Create Pages project if missing
+        run: npx wrangler pages project create jnbk-admin --production-branch=main 2>/dev/null || true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/pages-action@v1
         with:
