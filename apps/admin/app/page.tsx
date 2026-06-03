@@ -1,6 +1,8 @@
 import Image from 'next/image';
 import { getFirebaseCollection, isFirebaseConfigured } from './lib/firebase';
 
+export const dynamic = 'force-static';
+
 type Lang = 'ar' | 'en';
 type AppConfig = { countries: { id: string; nameEn: string; currency: string }[]; cities: { id: string; countryId: string; nameEn: string; zones?: unknown[]; zonesEn?: string[] }[]; vehicleTypes: { id: string; nameEn: string; baseFare: number; perKmFare: number; minimumFare: number }[] };
 type Driver = { id: string; name?: string; online?: boolean; verified?: boolean; cityId?: string; status?: string };
