@@ -7,4 +7,4 @@ RUN pnpm install --frozen-lockfile=false
 COPY server ./server
 RUN pnpm --filter @jumbak/server build
 EXPOSE 4000
-CMD ["pnpm", "--filter", "@jumbak/server", "start"]
+CMD ["pnpm", "--filter", "@jumbak/server", "start:prod"]

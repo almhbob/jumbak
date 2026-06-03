@@ -6,12 +6,17 @@ on:
     paths:
       - 'server/**'
       - 'pnpm-lock.yaml'
+      - 'railway.toml'
+      - 'Dockerfile'
   workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    permissions:
+      contents: read
+
     steps:
       - uses: actions/checkout@v4
 
@@ -23,11 +28,16 @@ jobs:
         with:
           version: 9.12.0
 
+      - name: Verify server builds
+        run: |
+          pnpm install --frozen-lockfile=false
+          pnpm --filter @jumbak/server prisma:generate
+          pnpm --filter @jumbak/server build
+
       - name: Install Railway CLI
-        run: npm install -g @railway/cli
+        run: npm install -g @railway/cli@latest
 
       - name: Deploy to Railway
         run: railway up --service api-server --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        working-directory: .

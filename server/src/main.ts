@@ -30,7 +30,7 @@ app.use(helmet());
 // CORS — restrict to known origins in production
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
-  : ['http://localhost:3001', 'http://localhost:3000'];
+  : ['http://localhost:3001', 'http://localhost:3000', 'https://jnbk-admin.pages.dev'];
 
 app.use(
   cors({
