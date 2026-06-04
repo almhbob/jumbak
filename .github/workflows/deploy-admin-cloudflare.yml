@@ -6,6 +6,7 @@ on:
     paths:
       - 'apps/admin/**'
       - 'pnpm-lock.yaml'
+      - '.github/workflows/deploy-admin-cloudflare.yml'
   workflow_dispatch:
 
 jobs:
@@ -21,7 +22,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - uses: pnpm/action-setup@v4
         with:
@@ -33,7 +34,7 @@ jobs:
       - name: Build admin panel
         working-directory: apps/admin
         env:
-          NEXT_PUBLIC_API_URL: https://workspaceapi-server-production-3e22.up.railway.app
+          NEXT_PUBLIC_API_URL: https://jumbakserver-production.up.railway.app
         run: pnpm build
 
       - name: Create Pages project if missing
