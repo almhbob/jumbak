@@ -45,7 +45,7 @@ jobs:
       - name: Expo prebuild (Android)
         working-directory: apps/mobile
         env:
-          EXPO_PUBLIC_API_URL: https://workspaceapi-server-production-3e22.up.railway.app
+          EXPO_PUBLIC_API_URL: https://jumbakserver-production.up.railway.app
           EXPO_NO_TELEMETRY: 1
         run: npx expo prebuild --platform android --clean
 
