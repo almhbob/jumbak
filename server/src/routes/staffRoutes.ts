@@ -92,36 +92,8 @@ router.post('/', requireAuth, requireRole('business', 'developer'), async (req, 
   res.status(201).json({ ok: true, staff: publicStaff(member), temporaryPassword });
 });
 
-// Update staff status or role — business/developer only
-router.patch('/:id', requireAuth, requireRole('business', 'developer'), async (req, res) => {
-  const id = String(req.params.id);
-  const rawStatus = req.body.status ? String(req.body.status).toUpperCase() : undefined;
-  const newRole = req.body.role ? normalizeStaffRole(String(req.body.role)) : undefined;
-
-  if (rawStatus && !['ACTIVE', 'PAUSED'].includes(rawStatus)) {
-    return res.status(400).json({ error: 'Invalid status value' });
-  }
-
-  if (prisma) {
-    const member = await prisma.staffMember.update({
-      where: { id },
-      data: {
-        ...(rawStatus ? { status: rawStatus as StaffStatus } : {}),
-        ...(newRole ? { role: toDbStaffRole(newRole) } : {}),
-      },
-    }).catch(() => null);
-    if (!member) return res.status(404).json({ error: 'Staff member not found' });
-    return res.json({ ok: true, staff: publicStaff(member) });
-  }
-
-  const member = memoryStaff.find((m) => m.id === id);
-  if (!member) return res.status(404).json({ error: 'Staff member not found' });
-  if (rawStatus) member.status = rawStatus.toLowerCase();
-  if (newRole) member.role = newRole;
-  res.json({ ok: true, staff: publicStaff(member) });
-});
-
 // Change own password — any authenticated staff
+// MUST be registered before /:id to avoid Express matching 'change-password' as an ID
 router.patch('/change-password', requireAuth, async (req, res) => {
   const { currentPassword, newPassword } = req.body as { currentPassword?: string; newPassword?: string };
 
@@ -157,6 +129,35 @@ router.patch('/change-password', requireAuth, async (req, res) => {
 
   member.passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
   res.json({ ok: true });
+});
+
+// Update staff status or role — business/developer only
+router.patch('/:id', requireAuth, requireRole('business', 'developer'), async (req, res) => {
+  const id = String(req.params.id);
+  const rawStatus = req.body.status ? String(req.body.status).toUpperCase() : undefined;
+  const newRole = req.body.role ? normalizeStaffRole(String(req.body.role)) : undefined;
+
+  if (rawStatus && !['ACTIVE', 'PAUSED'].includes(rawStatus)) {
+    return res.status(400).json({ error: 'Invalid status value' });
+  }
+
+  if (prisma) {
+    const member = await prisma.staffMember.update({
+      where: { id },
+      data: {
+        ...(rawStatus ? { status: rawStatus as StaffStatus } : {}),
+        ...(newRole ? { role: toDbStaffRole(newRole) } : {}),
+      },
+    }).catch(() => null);
+    if (!member) return res.status(404).json({ error: 'Staff member not found' });
+    return res.json({ ok: true, staff: publicStaff(member) });
+  }
+
+  const member = memoryStaff.find((m) => m.id === id);
+  if (!member) return res.status(404).json({ error: 'Staff member not found' });
+  if (rawStatus) member.status = rawStatus.toLowerCase();
+  if (newRole) member.role = newRole;
+  res.json({ ok: true, staff: publicStaff(member) });
 });
 
 export default router;

@@ -50,10 +50,13 @@ function normalizeUserRole(role?: string): UserRole {
 router.post('/auth/request-otp', (req, res) => {
   const phone = String(req.body.phone || '').trim();
   if (!phone) return res.status(400).json({ error: 'Phone is required' });
+  if (process.env.NODE_ENV === 'production' && !process.env.OTP_OVERRIDE) {
+    return res.status(503).json({ error: 'SMS provider not configured. Set OTP_OVERRIDE or integrate a real SMS provider.' });
+  }
   res.json({ ok: true, phone, message: 'OTP sent' });
 });
 
-// OTP verify — hardcoded 123456 for development only
+// OTP verify — uses OTP_OVERRIDE env var (dev/test) or rejects in production without it
 router.post('/auth/verify-otp', async (req, res) => {
   const phone = String(req.body.phone || '').trim();
   const code = String(req.body.code || '').trim();
@@ -61,7 +64,10 @@ router.post('/auth/verify-otp', async (req, res) => {
   const role = normalizeUserRole(String(req.body.role || 'PASSENGER'));
 
   if (!phone) return res.status(400).json({ error: 'Phone is required' });
-  if (code !== '123456') return res.status(401).json({ error: 'Invalid OTP' });
+
+  const validOtp = process.env.OTP_OVERRIDE || (process.env.NODE_ENV !== 'production' ? '123456' : null);
+  if (!validOtp) return res.status(503).json({ error: 'SMS provider not configured' });
+  if (code !== validOtp) return res.status(401).json({ error: 'Invalid OTP' });
 
   if (prisma) {
     const user = await prisma.user.upsert({
