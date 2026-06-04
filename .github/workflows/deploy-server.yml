@@ -7,7 +7,7 @@ on:
       - 'server/**'
       - 'pnpm-lock.yaml'
       - 'railway.toml'
-      - 'Dockerfile'
+      - 'server/Dockerfile'
   workflow_dispatch:
 
 jobs:
@@ -34,11 +34,21 @@ jobs:
           pnpm --filter @jumbak/server prisma:generate
           pnpm --filter @jumbak/server build
 
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli@latest
-
-      - name: Deploy to Railway
-        run: railway up --service api-server --detach
+      - name: Trigger Railway deploy
+        run: |
+          if [ -z "$RAILWAY_DEPLOY_HOOK" ]; then
+            echo "RAILWAY_DEPLOY_HOOK secret not set — skipping deploy trigger."
+            echo "Set it in GitHub Secrets: Railway Project → Settings → Deploy Hooks → Generate Hook URL"
+            exit 0
+          fi
+          HTTP_STATUS=$(curl -s -o /tmp/railway_response.json -w "%{http_code}" \
+            -X POST "$RAILWAY_DEPLOY_HOOK")
+          cat /tmp/railway_response.json
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+            echo "Deploy triggered successfully (HTTP $HTTP_STATUS)"
+          else
+            echo "Deploy hook returned HTTP $HTTP_STATUS"
+            exit 1
+          fi
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+          RAILWAY_DEPLOY_HOOK: ${{ secrets.RAILWAY_DEPLOY_HOOK }}
