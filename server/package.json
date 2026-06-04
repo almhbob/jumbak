@@ -12,7 +12,7 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "seed": "tsx prisma/seed.ts",
-    "start:prod": "prisma migrate deploy && tsx prisma/seed.ts && node dist/main.js",
+    "start:prod": "sh scripts/start-prod.sh",
     "gen-secret": "node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
   },
   "dependencies": {
