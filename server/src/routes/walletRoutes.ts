@@ -1,9 +1,11 @@
 import { Router } from 'express';
 import { prisma } from '../db.js';
+import { validateBody, walletTopupSchema, walletPaySchema, walletWithdrawSchema } from '../middleware/validate.js';
+import { logger } from '../services/logger.js';
 
 const router = Router();
 
-const memoryWallets: Record<string, { balance: number; currency: string; transactions: any[] }> = {};
+const memoryWallets: Record<string, { balance: number; currency: string; transactions: unknown[] }> = {};
 
 function getOrCreateMemoryWallet(userId: string) {
   if (!memoryWallets[userId]) {
@@ -12,7 +14,7 @@ function getOrCreateMemoryWallet(userId: string) {
   return memoryWallets[userId];
 }
 
-// GET /api/wallet/:userId — fetch balance + recent transactions
+// GET /api/wallet/:userId
 router.get('/:userId', async (req, res) => {
   const { userId } = req.params;
 
@@ -31,16 +33,18 @@ router.get('/:userId', async (req, res) => {
   }
 
   const wallet = getOrCreateMemoryWallet(userId);
-  res.json({ userId, balance: wallet.balance, currency: wallet.currency, transactions: wallet.transactions.slice().reverse().slice(0, 30) });
+  res.json({
+    userId,
+    balance: wallet.balance,
+    currency: wallet.currency,
+    transactions: (wallet.transactions as unknown[]).slice().reverse().slice(0, 30),
+  });
 });
 
-// POST /api/wallet/:userId/topup — add funds (admin or future payment gateway)
-router.post('/:userId/topup', async (req, res) => {
-  const { userId } = req.params;
-  const amount = Math.round(Number(req.body.amount || 0));
-  const description = String(req.body.description || 'شحن رصيد');
-
-  if (!amount || amount <= 0) return res.status(400).json({ error: 'amount must be positive' });
+// POST /api/wallet/:userId/topup
+router.post('/:userId/topup', validateBody(walletTopupSchema), async (req, res) => {
+  const userId = String(req.params.userId);
+  const { amount, description = 'شحن رصيد' } = req.body as { amount: number; description?: string };
 
   if (prisma) {
     const wallet = await prisma.wallet.upsert({
@@ -55,23 +59,20 @@ router.post('/:userId/topup', async (req, res) => {
       where: { userId },
       include: { transactions: { orderBy: { createdAt: 'desc' }, take: 30 } },
     });
+    logger.info('Wallet topup', { userId, amount });
     return res.json(updated);
   }
 
   const wallet = getOrCreateMemoryWallet(userId);
   wallet.balance += amount;
-  wallet.transactions.push({ id: `tx_${Date.now()}`, amount, type: 'TOPUP', description, createdAt: new Date().toISOString() });
-  res.json({ userId, balance: wallet.balance, currency: wallet.currency, transactions: wallet.transactions.slice().reverse().slice(0, 30) });
+  (wallet.transactions as unknown[]).push({ id: `tx_${Date.now()}`, amount, type: 'TOPUP', description, createdAt: new Date().toISOString() });
+  res.json({ userId, balance: wallet.balance, currency: wallet.currency, transactions: (wallet.transactions as unknown[]).slice().reverse().slice(0, 30) });
 });
 
-// POST /api/wallet/:userId/pay — deduct fare for a ride
-router.post('/:userId/pay', async (req, res) => {
-  const { userId } = req.params;
-  const amount = Math.round(Number(req.body.amount || 0));
-  const rideId = String(req.body.rideId || '');
-  const description = String(req.body.description || 'دفع رحلة');
-
-  if (!amount || amount <= 0) return res.status(400).json({ error: 'amount must be positive' });
+// POST /api/wallet/:userId/pay
+router.post('/:userId/pay', validateBody(walletPaySchema), async (req, res) => {
+  const userId = String(req.params.userId);
+  const { amount, rideId = '', description = 'دفع رحلة' } = req.body as { amount: number; rideId?: string; description?: string };
 
   if (prisma) {
     const wallet = await prisma.wallet.findUnique({ where: { userId } });
@@ -91,11 +92,11 @@ router.post('/:userId/pay', async (req, res) => {
   const wallet = getOrCreateMemoryWallet(userId);
   if (wallet.balance < amount) return res.status(402).json({ error: 'Insufficient balance', balance: wallet.balance });
   wallet.balance -= amount;
-  wallet.transactions.push({ id: `tx_${Date.now()}`, amount: -amount, type: 'RIDE_PAYMENT', description, rideId, createdAt: new Date().toISOString() });
+  (wallet.transactions as unknown[]).push({ id: `tx_${Date.now()}`, amount: -amount, type: 'RIDE_PAYMENT', description, rideId, createdAt: new Date().toISOString() });
   res.json({ ok: true, balance: wallet.balance, deducted: amount });
 });
 
-// POST /api/wallet/:userId/earn — credit driver earnings after ride
+// POST /api/wallet/:userId/earn
 router.post('/:userId/earn', async (req, res) => {
   const { userId } = req.params;
   const amount = Math.round(Number(req.body.amount || 0));
@@ -119,8 +120,67 @@ router.post('/:userId/earn', async (req, res) => {
 
   const wallet = getOrCreateMemoryWallet(userId);
   wallet.balance += amount;
-  wallet.transactions.push({ id: `tx_${Date.now()}`, amount, type: 'DRIVER_EARNING', description, rideId, createdAt: new Date().toISOString() });
+  (wallet.transactions as unknown[]).push({ id: `tx_${Date.now()}`, amount, type: 'DRIVER_EARNING', description, rideId, createdAt: new Date().toISOString() });
   res.json({ ok: true, balance: wallet.balance, credited: amount });
+});
+
+// POST /api/wallet/:userId/withdraw — request a withdrawal (pending admin approval)
+router.post('/:userId/withdraw', validateBody(walletWithdrawSchema), async (req, res) => {
+  const userId = String(req.params.userId);
+  const { amount, bankAccount, description = 'طلب سحب' } = req.body as {
+    amount: number; bankAccount: string; description?: string;
+  };
+
+  if (prisma) {
+    const wallet = await prisma.wallet.findUnique({ where: { userId } });
+    if (!wallet) return res.status(404).json({ error: 'Wallet not found' });
+    if (wallet.balance < amount) return res.status(402).json({ error: 'Insufficient balance', balance: wallet.balance });
+
+    // Deduct balance immediately and record as WITHDRAWAL pending review
+    const updated = await prisma.wallet.update({
+      where: { userId },
+      data: { balance: { decrement: amount } },
+    });
+    const tx = await prisma.walletTransaction.create({
+      data: {
+        walletId: wallet.id,
+        amount: -amount,
+        type: 'WITHDRAWAL',
+        description: `${description} — حساب: ${bankAccount} — بانتظار المراجعة`,
+      },
+    });
+    logger.info('Withdrawal requested', { userId, amount, bankAccount });
+    return res.json({
+      ok: true,
+      balance: updated.balance,
+      withdrawn: amount,
+      transactionId: tx.id,
+      status: 'pending_review',
+      message: 'سيتم مراجعة طلب السحب خلال 1-3 أيام عمل',
+    });
+  }
+
+  // In-memory fallback
+  const wallet = getOrCreateMemoryWallet(userId);
+  if (wallet.balance < amount) return res.status(402).json({ error: 'Insufficient balance', balance: wallet.balance });
+  wallet.balance -= amount;
+  const txId = `tx_${Date.now()}`;
+  (wallet.transactions as unknown[]).push({
+    id: txId,
+    amount: -amount,
+    type: 'WITHDRAWAL',
+    description: `${description} — حساب: ${bankAccount}`,
+    status: 'pending_review',
+    createdAt: new Date().toISOString(),
+  });
+  res.json({
+    ok: true,
+    balance: wallet.balance,
+    withdrawn: amount,
+    transactionId: txId,
+    status: 'pending_review',
+    message: 'سيتم مراجعة طلب السحب خلال 1-3 أيام عمل',
+  });
 });
 
 export default router;

@@ -5,6 +5,9 @@ import { memoryCities, memoryVehicleTypes } from './configStore.js';
 import { findCity, findVehicleType, estimateFare } from '../config.js';
 import { RideStatus } from '@prisma/client';
 import { sendPushNotifications, rideStatusMessage } from '../services/notificationService.js';
+import { emitRideUpdate } from '../services/socketService.js';
+import { validateBody, createRideSchema, updateRideStatusSchema, rateRideSchema } from '../middleware/validate.js';
+import { logger } from '../services/logger.js';
 
 const router = Router();
 
@@ -29,26 +32,27 @@ router.get('/', async (_req, res) => {
 });
 
 router.get('/:id', async (req, res) => {
+  const rideId = String(req.params['id']);
   if (prisma) {
     const ride = await prisma.ride.findUnique({
-      where: { id: req.params.id },
+      where: { id: rideId },
       include: { city: true, vehicleType: true, driver: { include: { user: true } } },
     });
     if (!ride) return res.status(404).json({ error: 'Ride not found' });
     return res.json(ride);
   }
-  const ride = memoryRides.find((r) => r.id === req.params.id);
+  const ride = memoryRides.find((r) => r.id === rideId);
   if (!ride) return res.status(404).json({ error: 'Ride not found' });
   res.json(ride);
 });
 
-router.post('/', async (req, res) => {
-  const distanceKm = Number(req.body.distanceKm || 2);
-  const cityId = String(req.body.cityId || 'rufaa');
-  const vehicleTypeId = String(req.body.vehicleTypeId || 'rickshaw');
+router.post('/', validateBody(createRideSchema), async (req, res) => {
+  const { cityId, vehicleTypeId, pickupLabel, destinationLabel, distanceKm = 2, stops } = req.body as {
+    cityId: string; vehicleTypeId: string; pickupLabel: string; destinationLabel: string;
+    distanceKm?: number; stops?: string[];
+  };
 
-  const rawStops = Array.isArray(req.body.stops) ? (req.body.stops as string[]).filter(Boolean) : null;
-  const stopsJson = rawStops && rawStops.length > 2 ? JSON.stringify(rawStops) : null;
+  const stopsJson = stops && stops.length > 2 ? JSON.stringify(stops) : null;
 
   if (prisma) {
     const vehicle = await prisma.vehicleType.findUnique({ where: { id: vehicleTypeId } });
@@ -61,8 +65,8 @@ router.post('/', async (req, res) => {
         cityId,
         vehicleTypeId,
         driverId: matchedDriver?.id,
-        pickupLabel: String(req.body.pickupLabel || 'Pickup'),
-        destinationLabel: String(req.body.destinationLabel || 'Destination'),
+        pickupLabel,
+        destinationLabel,
         stops: stopsJson,
         distanceKm,
         estimatedFare: Math.max(
@@ -73,21 +77,23 @@ router.post('/', async (req, res) => {
       },
     });
 
-    // Notify online drivers in the city about the new ride request
+    // Broadcast new ride via WebSocket
+    emitRideUpdate(ride.id, { rideId: ride.id, status: 'REQUESTED', type: 'new_ride' });
+
+    // Notify online drivers via push
     const onlineDrivers = await prisma.driver.findMany({
       where: { cityId, isOnline: true, isVerified: true },
       include: { user: { include: { deviceTokens: true } } },
     });
     const driverTokens = onlineDrivers.flatMap((d) => d.user.deviceTokens.map((t) => t.token));
     if (driverTokens.length) {
-      sendPushNotifications(
-        driverTokens,
-        'طلب رحلة جديد',
-        `من ${ride.pickupLabel} إلى ${ride.destinationLabel}`,
-        { rideId: ride.id, type: 'new_ride' }
-      ).catch(() => null);
+      sendPushNotifications(driverTokens, 'طلب رحلة جديد', `من ${ride.pickupLabel} إلى ${ride.destinationLabel}`, {
+        rideId: ride.id,
+        type: 'new_ride',
+      }).catch(() => null);
     }
 
+    logger.info('Ride created', { rideId: ride.id, cityId, vehicleTypeId });
     return res.status(201).json(ride);
   }
 
@@ -104,8 +110,8 @@ router.post('/', async (req, res) => {
     vehicleName: vehicle.nameEn,
     driverId: matchedDriver?.id || null,
     driverName: matchedDriver?.name || null,
-    pickupLabel: String(req.body.pickupLabel || zones[0] || 'Pickup'),
-    destinationLabel: String(req.body.destinationLabel || zones[1] || 'Destination'),
+    pickupLabel: pickupLabel || zones[0] || 'Pickup',
+    destinationLabel: destinationLabel || zones[1] || 'Destination',
     stops: stopsJson,
     distanceKm,
     estimatedFare: estimateFare(distanceKm, vehicleTypeId),
@@ -114,30 +120,39 @@ router.post('/', async (req, res) => {
     createdAt: new Date().toISOString(),
   };
   memoryRides.push(ride);
+  emitRideUpdate(ride.id, { rideId: ride.id, status: 'REQUESTED', type: 'new_ride' });
   res.status(201).json(ride);
 });
 
-router.patch('/:id/status', async (req, res) => {
-  const status = toRideStatus(String(req.body.status || 'REQUESTED'));
+router.patch('/:id/status', validateBody(updateRideStatusSchema), async (req, res) => {
+  const rideId = String(req.params['id']);
+  const { status: statusInput } = req.body as { status: string };
+  const status = toRideStatus(statusInput);
 
   if (prisma) {
     const ride = await prisma.ride
       .update({
-        where: { id: req.params.id },
+        where: { id: rideId },
         data: { status },
-        include: { passenger: { include: { deviceTokens: true } }, driver: { include: { user: { include: { deviceTokens: true } } } } },
+        include: {
+          passenger: { include: { deviceTokens: true } },
+          driver: { include: { user: { include: { deviceTokens: true } } } },
+        },
       })
       .catch(() => null);
     if (!ride) return res.status(404).json({ error: 'Ride not found' });
 
-    // Notify passenger about their ride status
-    const passengerTokens = ride.passenger?.deviceTokens.map((d) => d.token) || [];
+    // Broadcast status change via WebSocket
+    emitRideUpdate(ride.id, { rideId: ride.id, status, driverId: ride.driverId });
+
+    // Push to passenger
+    const passengerTokens = ride.passenger?.deviceTokens.map((d: { token: string }) => d.token) || [];
     if (passengerTokens.length) {
       const msg = rideStatusMessage(status, 'ar');
       if (msg) sendPushNotifications(passengerTokens, msg.title, msg.body, { rideId: ride.id, status }).catch(() => null);
     }
 
-    // Notify driver when a new ride is requested in their city
+    // Push to online drivers when no driver assigned yet
     if (status === RideStatus.REQUESTED && !ride.driverId) {
       const onlineDrivers = await prisma.driver.findMany({
         where: { cityId: ride.cityId, isOnline: true, isVerified: true },
@@ -145,19 +160,26 @@ router.patch('/:id/status', async (req, res) => {
       });
       const driverTokens = onlineDrivers.flatMap((d) => d.user.deviceTokens.map((t) => t.token));
       if (driverTokens.length) {
-        sendPushNotifications(driverTokens, 'طلب رحلة جديد', `وصل طلب من ${ride.pickupLabel} إلى ${ride.destinationLabel}`, { rideId: ride.id, type: 'new_ride' }).catch(() => null);
+        sendPushNotifications(
+          driverTokens,
+          'طلب رحلة جديد',
+          `وصل طلب من ${ride.pickupLabel} إلى ${ride.destinationLabel}`,
+          { rideId: ride.id, type: 'new_ride' }
+        ).catch(() => null);
       }
     }
 
+    logger.info('Ride status updated', { rideId: ride.id, status });
     return res.json(ride);
   }
 
-  const ride = memoryRides.find((r) => r.id === req.params.id);
+  const ride = memoryRides.find((r) => r.id === rideId);
   if (!ride) return res.status(404).json({ error: 'Ride not found' });
   ride.status = status;
   ride.updatedAt = new Date().toISOString();
 
-  // In-memory: best-effort push using stored tokens
+  emitRideUpdate(ride.id, { rideId: ride.id, status });
+
   const passengerTokens = memoryTokens.filter((t) => ride.passengerId && t.userId === ride.passengerId).map((t) => t.token);
   if (passengerTokens.length) {
     const msg = rideStatusMessage(status, 'ar');
@@ -167,23 +189,25 @@ router.patch('/:id/status', async (req, res) => {
   res.json(ride);
 });
 
-router.patch('/:id/rating', async (req, res) => {
-  const rating = Number(req.body.rating || 0);
-  if (rating < 1 || rating > 5) return res.status(400).json({ error: 'Rating must be between 1 and 5' });
+router.patch('/:id/rating', validateBody(rateRideSchema), async (req, res) => {
+  const rideId = String(req.params['id']);
+  const { rating } = req.body as { rating: number };
 
   if (prisma) {
     const ride = await prisma.ride
-      .update({ where: { id: req.params.id }, data: { rating, status: RideStatus.COMPLETED } })
+      .update({ where: { id: rideId }, data: { rating, status: RideStatus.COMPLETED } })
       .catch(() => null);
     if (!ride) return res.status(404).json({ error: 'Ride not found' });
+    emitRideUpdate(ride.id, { rideId: ride.id, status: 'COMPLETED', rating });
     return res.json(ride);
   }
 
-  const ride = memoryRides.find((r) => r.id === req.params.id);
+  const ride = memoryRides.find((r) => r.id === rideId);
   if (!ride) return res.status(404).json({ error: 'Ride not found' });
   ride.rating = rating;
   ride.status = 'COMPLETED';
   ride.updatedAt = new Date().toISOString();
+  emitRideUpdate(ride.id, { rideId: ride.id, status: 'COMPLETED', rating });
   res.json(ride);
 });
 

@@ -1,13 +1,19 @@
+import 'dotenv/config';
 import express from 'express';
+import { createServer } from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { fileURLToPath } from 'url';
 import path from 'path';
+import { argv } from 'process';
 import { prisma, isDatabaseEnabled } from './db.js';
 import { countries } from './config.js';
 import { memoryCities, memoryVehicleTypes } from './routes/configStore.js';
 import { rufaaZones } from './data/rufaaZones.js';
 import { findCity, findVehicleType, estimateFare } from './config.js';
+import { initSocket } from './services/socketService.js';
+import { logger } from './services/logger.js';
 
 import authRoutes from './routes/authRoutes.js';
 import staffRoutes from './routes/staffRoutes.js';
@@ -23,11 +29,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, '..', 'public');
 
 const app = express();
+const httpServer = createServer(app);
 
-// Security headers
-app.use(helmet());
-
-// CORS — restrict to known origins in production
+// ─── CORS ──────────────────────────────────────────────────────────────────
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
   : ['http://localhost:3001', 'http://localhost:3000', 'https://jnbk-admin.pages.dev'];
@@ -35,7 +39,6 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (mobile apps, curl, server-to-server)
       if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) return callback(null, true);
       callback(new Error(`CORS: origin ${origin} not allowed`));
@@ -44,9 +47,29 @@ app.use(
   })
 );
 
+// ─── Security ─────────────────────────────────────────────────────────────
+app.use(helmet());
 app.use(express.json({ limit: '1mb' }));
 
-// Routes
+// Global rate limit — 200 req/min per IP (generous for mobile clients)
+app.use(
+  rateLimit({
+    windowMs: 60 * 1000,
+    max: 200,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: (req) => req.path === '/health',
+    message: { error: 'Too many requests, please slow down' },
+  })
+);
+
+// ─── HTTP request logging ──────────────────────────────────────────────────
+app.use((req, _res, next) => {
+  logger.info(`${req.method} ${req.path}`, { ip: req.ip });
+  next();
+});
+
+// ─── Routes ───────────────────────────────────────────────────────────────
 app.use('/api', authRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/admin', adminRoutes);
@@ -57,7 +80,7 @@ app.use('/api/legal', legalRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/wallet', walletRoutes);
 
-// Public config endpoint
+// ─── Config ────────────────────────────────────────────────────────────────
 app.get('/api/config', async (_req, res) => {
   if (prisma) {
     const [dbCountries, dbCities, dbVehicleTypes] = await Promise.all([
@@ -74,7 +97,7 @@ app.get('/api/config', async (_req, res) => {
   res.json({ countries, cities: citiesWithZones, vehicleTypes: memoryVehicleTypes });
 });
 
-// Fare estimation
+// ─── Fare estimation ───────────────────────────────────────────────────────
 app.post('/api/pricing/estimate', async (req, res) => {
   const distanceKm = Number(req.body.distanceKm || 2);
   const vehicleTypeId = String(req.body.vehicleTypeId || 'rickshaw');
@@ -112,18 +135,39 @@ app.post('/api/pricing/estimate', async (req, res) => {
   });
 });
 
-// Health check
+// ─── Health ────────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {
   res.json({ ok: true, app: 'Jnbk', appAr: 'جنبك', region: 'global-ready', database: isDatabaseEnabled() });
 });
 
-// Serve web app at /app
+// ─── Static / web app ──────────────────────────────────────────────────────
 app.use('/app', express.static(publicDir));
 app.get('/app/*', (_req, res) => res.sendFile(path.join(publicDir, 'index.html')));
 
 app.get('/', (_req, res) => {
-  res.json({ ok: true, app: 'Jnbk', appAr: 'جنبك', message: 'Multi-city transport platform', database: isDatabaseEnabled(), webApp: '/app' });
+  res.json({
+    ok: true,
+    app: 'Jnbk',
+    appAr: 'جنبك',
+    message: 'Multi-city transport platform',
+    database: isDatabaseEnabled(),
+    webApp: '/app',
+    realtime: '/socket.io',
+  });
 });
 
-const port = Number(process.env.PORT || 4000);
-app.listen(port, '0.0.0.0', () => console.log(`Jnbk API running on port ${port}`));
+// ─── Socket.io ─────────────────────────────────────────────────────────────
+initSocket(httpServer, allowedOrigins);
+
+// ─── Start (only when run directly, not imported by tests) ─────────────────
+const currentFile = fileURLToPath(import.meta.url);
+const isMain = argv[1] === currentFile || argv[1]?.endsWith('/main.js');
+
+if (isMain) {
+  const port = Number(process.env.PORT || 4000);
+  httpServer.listen(port, '0.0.0.0', () => {
+    logger.info(`Jnbk API running on port ${port}`, { database: isDatabaseEnabled(), realtime: true });
+  });
+}
+
+export { app, httpServer };

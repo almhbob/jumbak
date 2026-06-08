@@ -165,6 +165,14 @@ export async function walletEarn(userId: string, amount: number, rideId: string,
   });
 }
 
+export async function walletWithdraw(userId: string, amount: number, bankAccount: string, description?: string) {
+  return apiFetch(`/api/wallet/${encodeURIComponent(userId)}/withdraw`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ amount, bankAccount, description }),
+  });
+}
+
 export async function unregisterPushToken(token: string) {
   return apiFetch('/api/notifications/register-token', {
     method: 'DELETE',

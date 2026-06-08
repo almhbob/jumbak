@@ -4,10 +4,23 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '../db.js';
 import { memoryStaff, memoryUsers } from '../store.js';
 import { signToken } from '../middleware/auth.js';
+import { validateBody, requestOtpSchema, verifyOtpSchema, staffLoginSchema } from '../middleware/validate.js';
 import { UserRole } from '@prisma/client';
 import { verifyFirebaseIdToken } from '../services/firebaseAdmin.js';
+import { generateOtp, storeOtp, verifyOtp } from '../services/otpStore.js';
+import { sendSms, isSmsConfigured } from '../services/smsService.js';
+import { logger } from '../services/logger.js';
 
 const router = Router();
+
+const otpLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 5,
+  message: { error: 'Too many OTP requests, please wait 10 minutes' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => String(req.body?.phone || req.ip),
+});
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -27,7 +40,10 @@ function normalizeStaffRole(role: string): StaffRoleInput {
   return 'operations';
 }
 
-function publicStaff(member: { id: string; name: string; phone: string | null; email: string | null; username: string; role: string; status: string; lastLoginAt: Date | null | string }) {
+function publicStaff(member: {
+  id: string; name: string; phone: string | null; email: string | null;
+  username: string; role: string; status: string; lastLoginAt: Date | null | string;
+}) {
   return {
     id: member.id,
     name: member.name,
@@ -46,51 +62,99 @@ function normalizeUserRole(role?: string): UserRole {
   return UserRole.PASSENGER;
 }
 
-// OTP request — replace with real SMS provider before production
-router.post('/auth/request-otp', (req, res) => {
-  const phone = String(req.body.phone || '').trim();
-  if (!phone) return res.status(400).json({ error: 'Phone is required' });
-  if (process.env.NODE_ENV === 'production' && !process.env.OTP_OVERRIDE) {
-    return res.status(503).json({ error: 'SMS provider not configured. Set OTP_OVERRIDE or integrate a real SMS provider.' });
+// POST /api/auth/request-otp
+router.post('/auth/request-otp', otpLimiter, validateBody(requestOtpSchema), async (req, res) => {
+  const { phone } = req.body as { phone: string };
+
+  // Dev/test override: accept any request without sending real SMS
+  if (process.env.OTP_OVERRIDE) {
+    logger.info('OTP request (override mode)', { phone });
+    return res.json({ ok: true, phone, message: 'OTP sent', dev: true });
   }
+
+  if (!isSmsConfigured()) {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(503).json({ error: 'SMS provider not configured. Contact support.' });
+    }
+    // Development: auto-accept without real SMS
+    const code = generateOtp();
+    storeOtp(phone, code);
+    logger.info('OTP generated (dev mode, no SMS)', { phone, code });
+    return res.json({ ok: true, phone, message: 'OTP generated (dev mode)', dev_code: code });
+  }
+
+  const code = generateOtp();
+  storeOtp(phone, code);
+
+  const sent = await sendSms(phone, `رمز التحقق الخاص بك في جنبك: ${code}\nYour Jnbk OTP: ${code}`);
+  if (!sent) {
+    return res.status(500).json({ error: 'Failed to send SMS. Please try again.' });
+  }
+
+  logger.info('OTP sent via SMS', { phone });
   res.json({ ok: true, phone, message: 'OTP sent' });
 });
 
-// OTP verify — uses OTP_OVERRIDE env var (dev/test) or rejects in production without it
-router.post('/auth/verify-otp', async (req, res) => {
-  const phone = String(req.body.phone || '').trim();
-  const code = String(req.body.code || '').trim();
-  const name = String(req.body.name || '').trim() || null;
-  const role = normalizeUserRole(String(req.body.role || 'PASSENGER'));
+// POST /api/auth/verify-otp
+router.post('/auth/verify-otp', otpLimiter, validateBody(verifyOtpSchema), async (req, res) => {
+  const { phone, code, name, role: roleInput } = req.body as {
+    phone: string; code: string; name?: string; role?: string;
+  };
+  const role = normalizeUserRole(roleInput);
 
-  if (!phone) return res.status(400).json({ error: 'Phone is required' });
-
-  const validOtp = process.env.OTP_OVERRIDE || (process.env.NODE_ENV !== 'production' ? '123456' : null);
-  if (!validOtp) return res.status(503).json({ error: 'SMS provider not configured' });
-  if (code !== validOtp) return res.status(401).json({ error: 'Invalid OTP' });
+  // Override mode: accept the static OTP_OVERRIDE value
+  if (process.env.OTP_OVERRIDE) {
+    if (code !== process.env.OTP_OVERRIDE) {
+      return res.status(401).json({ error: 'Invalid OTP' });
+    }
+  } else if (!isSmsConfigured() && process.env.NODE_ENV !== 'production') {
+    // Dev mode: verify against the generated code in the store
+    const result = verifyOtp(phone, code);
+    if (result !== 'ok') {
+      const messages: Record<string, string> = {
+        invalid: 'Invalid OTP',
+        expired: 'OTP expired, please request a new one',
+        too_many_attempts: 'Too many failed attempts, please request a new OTP',
+      };
+      return res.status(401).json({ error: messages[result] || 'Invalid OTP' });
+    }
+  } else {
+    // Production: verify real OTP
+    const result = verifyOtp(phone, code);
+    if (result !== 'ok') {
+      const messages: Record<string, string> = {
+        invalid: 'Invalid OTP',
+        expired: 'OTP expired, please request a new one',
+        too_many_attempts: 'Too many failed attempts, please request a new OTP',
+      };
+      return res.status(401).json({ error: messages[result] || 'Invalid OTP' });
+    }
+  }
 
   if (prisma) {
     const user = await prisma.user.upsert({
       where: { phone },
       update: { name: name || undefined, role },
-      create: { phone, name, role },
+      create: { phone, name: name || null, role },
     });
-    return res.json({ ok: true, user: { id: user.id, phone: user.phone, name: user.name, role: user.role }, token: `user_${user.id}` });
+    const token = signToken({ staffId: user.id, username: user.phone, role: user.role.toLowerCase() });
+    logger.info('User authenticated', { userId: user.id, phone, role: user.role });
+    return res.json({ ok: true, user: { id: user.id, phone: user.phone, name: user.name, role: user.role }, token });
   }
 
   let user = memoryUsers.find((u) => u.phone === phone);
   if (!user) {
-    user = { id: `user_${Date.now()}`, phone, name, role, createdAt: new Date().toISOString() };
+    user = { id: `user_${Date.now()}`, phone, name: name || null, role, createdAt: new Date().toISOString() };
     memoryUsers.push(user);
   } else {
     user.name = name || user.name;
     user.role = role;
   }
-  res.json({ ok: true, user: { id: user.id, phone: user.phone, name: user.name, role: user.role }, token: `user_${user.id}` });
+  const token = signToken({ staffId: user.id, username: user.phone, role: user.role.toLowerCase() });
+  res.json({ ok: true, user: { id: user.id, phone: user.phone, name: user.name, role: user.role }, token });
 });
 
-// Firebase Phone Auth verification
-// Mobile sends Firebase ID token → server verifies → returns app JWT
+// POST /api/auth/firebase-verify
 router.post('/auth/firebase-verify', loginLimiter, async (req, res) => {
   const idToken = String(req.body.idToken || '').trim();
   const name = String(req.body.name || '').trim() || null;
@@ -125,15 +189,13 @@ router.post('/auth/firebase-verify', loginLimiter, async (req, res) => {
   res.json({ ok: true, user: { id: user.id, phone: user.phone, name: user.name, role: user.role }, token });
 });
 
-// Staff login
-router.post('/staff/login', loginLimiter, async (req, res) => {
-  const username = String(req.body.username || '').trim().toLowerCase();
-  const password = String(req.body.password || '');
-  const role = normalizeStaffRole(String(req.body.role || 'operations'));
-
-  if (!username || !password) {
-    return res.status(400).json({ error: 'username and password are required' });
-  }
+// POST /api/staff/login
+router.post('/staff/login', loginLimiter, validateBody(staffLoginSchema), async (req, res) => {
+  const { username: rawUsername, password, role: roleInput } = req.body as {
+    username: string; password: string; role?: string;
+  };
+  const username = rawUsername.toLowerCase();
+  const role = normalizeStaffRole(String(roleInput || 'operations'));
 
   if (prisma) {
     const member = await prisma.staffMember.findUnique({ where: { username } }).catch(() => null);
@@ -148,10 +210,10 @@ router.post('/staff/login', loginLimiter, async (req, res) => {
     await prisma.staffMember.update({ where: { id: member.id }, data: { lastLoginAt: new Date() } }).catch(() => null);
 
     const token = signToken({ staffId: member.id, username, role });
+    logger.info('Staff login', { username, role });
     return res.json({ ok: true, staff: publicStaff(member), token });
   }
 
-  // In-memory fallback (development/preview only)
   const member = memoryStaff.find((m) => m.username === username && m.role === role && m.status === 'active');
   if (!member) return res.status(401).json({ error: 'Invalid credentials' });
 

@@ -32,5 +32,8 @@ jobs:
       - name: Build server
         run: pnpm --filter @jumbak/server build
 
+      - name: Run server tests
+        run: pnpm --filter @jumbak/server test
+
       - name: Build admin dashboard
         run: pnpm --filter @jumbak/admin build

@@ -13,10 +13,14 @@
     "prisma:studio": "prisma studio",
     "seed": "tsx prisma/seed.ts",
     "start:prod": "sh scripts/start-prod.sh",
-    "gen-secret": "node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
+    "gen-secret": "node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "africastalking": "^0.7.9",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -25,17 +29,27 @@
     "express-rate-limit": "^8.5.2",
     "firebase-admin": "^13.10.0",
     "helmet": "^8.0.0",
-    "jsonwebtoken": "^9.0.3"
+    "jsonwebtoken": "^9.0.3",
+    "socket.io": "^4.8.3",
+    "winston": "^3.19.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
+    "@types/jest": "^30.0.0",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.9.0",
+    "@types/supertest": "^7.2.0",
+    "@vitest/coverage-v8": "^4.1.8",
+    "jest": "^30.4.2",
     "prisma": "^5.22.0",
+    "supertest": "^7.2.2",
+    "ts-jest": "^29.4.11",
     "tsx": "^4.19.2",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^4.1.8"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

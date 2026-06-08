@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Pressable, Alert, ActivityIndicator,
+  View, Text, StyleSheet, ScrollView, Pressable, Alert, ActivityIndicator, TextInput, Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -8,7 +8,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { brand, colors } from '../src/constants/theme';
 import { dict, Lang } from '../src/i18n';
-import { getWallet, walletTopup } from '../src/api';
+import { getWallet, walletTopup, walletWithdraw } from '../src/api';
 import { createSupportRequest } from '../src/supportApi';
 import { sw } from '../src/constants/responsive';
 
@@ -51,6 +51,10 @@ export default function Wallet() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [topupLoading, setTopupLoading] = useState(false);
+  const [withdrawVisible, setWithdrawVisible] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [withdrawAccount, setWithdrawAccount] = useState('');
+  const [withdrawLoading, setWithdrawLoading] = useState(false);
 
   const t = dict[lang];
   const rtl = lang === 'ar';
@@ -108,6 +112,37 @@ export default function Wallet() {
       }
     } finally {
       setTopupLoading(false);
+    }
+  }
+
+  async function submitWithdrawal() {
+    const amount = parseInt(withdrawAmount, 10);
+    if (!userId || !amount || amount <= 0) return;
+    if (!withdrawAccount.trim()) {
+      Alert.alert('Jnbk', lang === 'ar' ? 'أدخل رقم الحساب البنكي' : 'Enter your bank account number');
+      return;
+    }
+    if (wallet && wallet.balance < amount) {
+      Alert.alert('Jnbk', lang === 'ar' ? `الرصيد غير كافٍ (${fmt(wallet.balance)} ${currency})` : `Insufficient balance (${fmt(wallet.balance)} ${currency})`);
+      return;
+    }
+    setWithdrawLoading(true);
+    try {
+      const result = await walletWithdraw(userId, amount, withdrawAccount.trim());
+      setWallet((prev) => prev ? { ...prev, balance: result.balance } : prev);
+      setWithdrawVisible(false);
+      setWithdrawAmount('');
+      setWithdrawAccount('');
+      Alert.alert(
+        'Jnbk',
+        lang === 'ar'
+          ? `تم إرسال طلب السحب (${fmt(amount)} ${currency}). سيتم المراجعة خلال 1-3 أيام عمل.`
+          : `Withdrawal request submitted (${fmt(amount)} ${currency}). Review within 1-3 business days.`
+      );
+    } catch {
+      Alert.alert('Jnbk', lang === 'ar' ? 'تعذر إرسال الطلب، حاول مجدداً' : 'Request failed, please try again');
+    } finally {
+      setWithdrawLoading(false);
     }
   }
 
@@ -194,19 +229,61 @@ export default function Wallet() {
 
       {/* Withdrawal request (driver) */}
       {isDriver && (
-        <Button
-          title={t.walletWithdraw}
-          variant="ghost"
-          onPress={() =>
-            Alert.alert(
-              'Jnbk',
-              lang === 'ar'
-                ? 'سيتم إضافة خيار السحب قريباً. تواصل مع الدعم للمساعدة.'
-                : 'Withdrawal option coming soon. Contact support for assistance.',
-            )
-          }
-        />
+        <View style={styles.section}>
+          <Button
+            title={t.walletWithdraw}
+            variant="ghost"
+            onPress={() => setWithdrawVisible(true)}
+          />
+        </View>
       )}
+
+      {/* Withdrawal modal */}
+      <Modal visible={withdrawVisible} transparent animationType="slide" onRequestClose={() => setWithdrawVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={[styles.sectionTitle, rtl && styles.rtl]}>
+              {lang === 'ar' ? 'طلب سحب رصيد' : 'Request Withdrawal'}
+            </Text>
+            <Text style={[styles.topupNote, rtl && styles.rtl]}>
+              {lang === 'ar'
+                ? `الرصيد المتاح: ${fmt(wallet?.balance ?? 0)} ${currency}`
+                : `Available: ${fmt(wallet?.balance ?? 0)} ${currency}`}
+            </Text>
+            <TextInput
+              style={[styles.input, rtl && styles.rtlInput]}
+              placeholder={lang === 'ar' ? 'المبلغ (SDG)' : 'Amount (SDG)'}
+              keyboardType="numeric"
+              value={withdrawAmount}
+              onChangeText={setWithdrawAmount}
+              textAlign={rtl ? 'right' : 'left'}
+            />
+            <TextInput
+              style={[styles.input, rtl && styles.rtlInput]}
+              placeholder={lang === 'ar' ? 'رقم الحساب البنكي' : 'Bank account number'}
+              value={withdrawAccount}
+              onChangeText={setWithdrawAccount}
+              textAlign={rtl ? 'right' : 'left'}
+            />
+            <Text style={[styles.topupNote, rtl && styles.rtl]}>
+              {lang === 'ar'
+                ? 'سيتم مراجعة طلب السحب من قبل الإدارة خلال 1-3 أيام عمل.'
+                : 'Withdrawal will be reviewed by admin within 1-3 business days.'}
+            </Text>
+            <View style={[styles.modalActions, rtl && styles.reverseRow]}>
+              <Button
+                title={lang === 'ar' ? 'إلغاء' : 'Cancel'}
+                variant="ghost"
+                onPress={() => { setWithdrawVisible(false); setWithdrawAmount(''); setWithdrawAccount(''); }}
+              />
+              <Button
+                title={withdrawLoading ? '...' : (lang === 'ar' ? 'إرسال' : 'Submit')}
+                onPress={submitWithdrawal}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -252,4 +329,20 @@ const styles = StyleSheet.create({
   txDate: { color: colors.muted, fontWeight: '700', fontSize: sw(12), marginTop: 2 },
   txAmount: { fontWeight: '900', fontSize: sw(15), textAlign: 'right' },
   rtl: { textAlign: 'right', writingDirection: 'rtl' },
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalCard: {
+    backgroundColor: colors.white, borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    padding: sw(24), gap: sw(14),
+  },
+  input: {
+    borderWidth: 1.5, borderColor: colors.border, borderRadius: 14,
+    paddingHorizontal: sw(14), paddingVertical: sw(12),
+    fontSize: sw(15), fontWeight: '700', color: colors.navy,
+    backgroundColor: colors.bg,
+  },
+  rtlInput: { textAlign: 'right' },
+  modalActions: { flexDirection: 'row', gap: 12, justifyContent: 'flex-end' },
 });
