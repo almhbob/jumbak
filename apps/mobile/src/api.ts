@@ -165,6 +165,22 @@ export async function walletEarn(userId: string, amount: number, rideId: string,
   });
 }
 
+export async function toggleDriverOnline(driverId: string, isOnline: boolean) {
+  return apiFetch(`/api/drivers/${encodeURIComponent(driverId)}/online`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ isOnline }),
+  });
+}
+
+export async function refreshToken(refreshToken: string) {
+  return apiFetch('/api/auth/refresh', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken }),
+  });
+}
+
 export async function walletWithdraw(userId: string, amount: number, bankAccount: string, description?: string) {
   return apiFetch(`/api/wallet/${encodeURIComponent(userId)}/withdraw`, {
     method: 'POST',

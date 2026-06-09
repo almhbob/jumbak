@@ -5,7 +5,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { colors } from '../src/constants/theme';
 import { dict, Lang } from '../src/i18n';
-import { getRides, updateRideStatus, getWallet, walletEarn } from '../src/api';
+import { getRides, updateRideStatus, getWallet, walletEarn, toggleDriverOnline } from '../src/api';
+import { getSocket, onRideUpdate, disconnectSocket } from '../src/socketClient';
 
 type Ride = { id: string; pickupLabel?: string; destinationLabel?: string; estimatedFare?: number; distanceKm?: number; status?: string };
 
@@ -18,13 +19,33 @@ export default function Driver() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [driverId, setDriverId] = useState<string | null>(null);
+  const [toggleLoading, setToggleLoading] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem('jnbk_user_id').then((uid) => {
+    AsyncStorage.multiGet(['jnbk_user_id', 'jnbk_driver_id']).then((pairs) => {
+      const uid = pairs[0][1];
+      const did = pairs[1][1];
       if (!uid) return;
       setUserId(uid);
+      if (did) setDriverId(did);
       getWallet(uid).then((w) => setWalletBalance(w.balance)).catch(() => null);
     });
+
+    // Listen for real-time ride updates via Socket.io
+    const unsub = onRideUpdate((data) => {
+      if (data.type === 'new_ride') {
+        getRides().then((res) => {
+          const pending = (Array.isArray(res) ? res : res.rides ?? []) as Ride[];
+          setRides(pending.filter((r) => ['REQUESTED', 'ACCEPTED', 'ARRIVING', 'ACTIVE'].includes(r.status ?? '')));
+        }).catch(() => null);
+      }
+    });
+
+    return () => {
+      unsub();
+      disconnectSocket();
+    };
   }, []);
 
   const t = dict[lang];
@@ -48,12 +69,16 @@ export default function Driver() {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [online]);
 
-  function toggle(val: boolean) {
+  async function toggle(val: boolean) {
     setOnline(val);
     if (!val) {
       setRides([]);
       setActiveRide(null);
       if (pollRef.current) clearInterval(pollRef.current);
+    }
+    if (driverId && !toggleLoading) {
+      setToggleLoading(true);
+      toggleDriverOnline(driverId, val).catch(() => null).finally(() => setToggleLoading(false));
     }
   }
 

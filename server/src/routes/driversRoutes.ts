@@ -116,6 +116,27 @@ router.post('/register', validateBody(registerDriverSchema), async (req, res) =>
   res.status(201).json({ ok: true, driver });
 });
 
+// PATCH /api/drivers/:driverId/online — toggle driver online/offline status
+router.patch('/:driverId/online', async (req, res) => {
+  const driverId = String(req.params['driverId']);
+  const isOnline = req.body.isOnline === true || req.body.isOnline === 'true';
+
+  if (prisma) {
+    const driver = await prisma.driver.update({
+      where: { id: driverId },
+      data: { isOnline },
+    }).catch(() => null);
+    if (!driver) return res.status(404).json({ error: 'Driver not found' });
+    logger.info('Driver status toggled', { driverId, isOnline });
+    return res.json({ ok: true, driverId, isOnline });
+  }
+
+  const driver = memoryDrivers.find((d) => d.id === driverId);
+  if (!driver) return res.status(404).json({ error: 'Driver not found' });
+  driver.online = isOnline;
+  res.json({ ok: true, driverId, isOnline });
+});
+
 router.get('/applications', async (_req, res) => {
   if (prisma) {
     const applications = await prisma.driverApplication.findMany({

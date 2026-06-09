@@ -3,7 +3,7 @@ import rateLimit from 'express-rate-limit';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../db.js';
 import { memoryStaff, memoryUsers } from '../store.js';
-import { signToken } from '../middleware/auth.js';
+import { signToken, signRefreshToken, verifyRefreshToken } from '../middleware/auth.js';
 import { validateBody, requestOtpSchema, verifyOtpSchema, staffLoginSchema } from '../middleware/validate.js';
 import { UserRole } from '@prisma/client';
 import { verifyFirebaseIdToken } from '../services/firebaseAdmin.js';
@@ -138,8 +138,9 @@ router.post('/auth/verify-otp', otpLimiter, validateBody(verifyOtpSchema), async
       create: { phone, name: name || null, role },
     });
     const token = signToken({ staffId: user.id, username: user.phone, role: user.role.toLowerCase() });
+    const refreshToken = signRefreshToken({ staffId: user.id, username: user.phone, role: user.role.toLowerCase() });
     logger.info('User authenticated', { userId: user.id, phone, role: user.role });
-    return res.json({ ok: true, user: { id: user.id, phone: user.phone, name: user.name, role: user.role }, token });
+    return res.json({ ok: true, user: { id: user.id, phone: user.phone, name: user.name, role: user.role }, token, refreshToken });
   }
 
   let user = memoryUsers.find((u) => u.phone === phone);
@@ -222,7 +223,20 @@ router.post('/staff/login', loginLimiter, validateBody(staffLoginSchema), async 
 
   member.lastLoginAt = new Date().toISOString();
   const token = signToken({ staffId: member.id, username, role });
-  res.json({ ok: true, staff: publicStaff(member), token });
+  const refreshToken = signRefreshToken({ staffId: member.id, username, role });
+  res.json({ ok: true, staff: publicStaff(member), token, refreshToken });
+});
+
+// POST /api/auth/refresh — get a new access token using a refresh token
+router.post('/auth/refresh', (req, res) => {
+  const refreshToken = String(req.body.refreshToken || '').trim();
+  if (!refreshToken) return res.status(400).json({ error: 'refreshToken is required' });
+
+  const payload = verifyRefreshToken(refreshToken);
+  if (!payload) return res.status(401).json({ error: 'Invalid or expired refresh token' });
+
+  const token = signToken({ staffId: payload.staffId, username: payload.username, role: payload.role });
+  res.json({ ok: true, token });
 });
 
 export default router;

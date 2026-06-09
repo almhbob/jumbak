@@ -11,10 +11,19 @@
     "build": "pnpm --filter @jumbak/server build",
     "start": "pnpm --filter @jumbak/server start:prod",
     "railway:build": "pnpm install --frozen-lockfile=false && pnpm --filter @jumbak/server build",
-    "railway:start": "pnpm --filter @jumbak/server start:prod"
+    "railway:start": "pnpm --filter @jumbak/server start:prod",
+    "lint": "eslint \"server/src/**/*.ts\" \"apps/mobile/src/**/*.ts\" \"apps/mobile/app/**/*.tsx\"",
+    "lint:fix": "eslint --fix \"server/src/**/*.ts\" \"apps/mobile/src/**/*.ts\" \"apps/mobile/app/**/*.tsx\"",
+    "format": "prettier --write \"server/src/**/*.ts\" \"apps/mobile/src/**/*.ts\" \"apps/mobile/app/**/*.tsx\" \"apps/admin/app/**/*.tsx\"",
+    "test": "pnpm --filter @jumbak/server test"
   },
-  "workspaces": ["apps/*", "server"],
-  "engines": { "node": ">=20" },
+  "workspaces": [
+    "apps/*",
+    "server"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "packageManager": "pnpm@9.12.0",
   "overrides": {
     "react": "19.1.0",
@@ -25,5 +34,12 @@
       "react": "19.1.0",
       "react-dom": "19.1.0"
     }
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.61.0",
+    "@typescript-eslint/parser": "^8.61.0",
+    "eslint": "^10.4.1",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.8.3"
   }
 }

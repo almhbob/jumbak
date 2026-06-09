@@ -183,4 +183,72 @@ router.post('/:userId/withdraw', validateBody(walletWithdrawSchema), async (req,
   });
 });
 
+// GET /api/wallet/admin/withdrawals — list pending withdrawals (admin only)
+router.get('/admin/withdrawals', async (_req, res) => {
+  if (prisma) {
+    const txs = await prisma.walletTransaction.findMany({
+      where: { type: 'WITHDRAWAL' },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      include: { wallet: { select: { userId: true, balance: true } } },
+    });
+    return res.json(txs);
+  }
+  // In-memory: collect all WITHDRAWAL transactions
+  const all: unknown[] = [];
+  for (const [userId, wallet] of Object.entries(
+    {} as Record<string, { balance: number; currency: string; transactions: unknown[] }>
+  )) {
+    const txs = (wallet.transactions as Array<{ type: string; [k: string]: unknown }>)
+      .filter((t) => t.type === 'WITHDRAWAL')
+      .map((t) => ({ ...t, userId }));
+    all.push(...txs);
+  }
+  res.json(all);
+});
+
+// PATCH /api/wallet/admin/withdrawals/:txId — approve or reject a withdrawal
+router.patch('/admin/withdrawals/:txId', async (req, res) => {
+  const txId = String(req.params['txId']);
+  const action = String(req.body.action || '');
+  const reviewedBy = String(req.body.reviewedBy || '');
+
+  if (!['approve', 'reject'].includes(action)) {
+    return res.status(400).json({ error: 'action must be approve or reject' });
+  }
+
+  if (prisma) {
+    const tx = await prisma.walletTransaction.findUnique({ where: { id: txId } }).catch(() => null);
+    if (!tx) return res.status(404).json({ error: 'Transaction not found' });
+
+    if (action === 'reject') {
+      // Refund the deducted amount
+      await prisma.wallet.update({
+        where: { id: tx.walletId },
+        data: { balance: { increment: Math.abs(tx.amount) } },
+      }).catch(() => null);
+      await prisma.walletTransaction.create({
+        data: {
+          walletId: tx.walletId,
+          amount: Math.abs(tx.amount),
+          type: 'REFUND',
+          description: `رد مبلغ سحب مرفوض — مراجع: ${reviewedBy}`,
+        },
+      }).catch(() => null);
+    }
+
+    const updated = await prisma.walletTransaction.update({
+      where: { id: txId },
+      data: {
+        description: `${tx.description} — ${action === 'approve' ? 'تمت الموافقة' : 'مرفوض'} بواسطة: ${reviewedBy}`,
+      },
+    }).catch(() => null);
+
+    logger.info('Withdrawal reviewed', { txId, action, reviewedBy });
+    return res.json({ ok: true, action, tx: updated });
+  }
+
+  res.json({ ok: true, action, txId, message: 'In-memory: no persistent state' });
+});
+
 export default router;

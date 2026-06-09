@@ -6,6 +6,7 @@ import { colors } from '../src/constants/theme';
 import { dict, Lang } from '../src/i18n';
 import { sw } from '../src/constants/responsive';
 import { getDrivers, getRide } from '../src/api';
+import { joinRide, leaveRide, onRideUpdate } from '../src/socketClient';
 
 type Driver = { id: string; name: string; vehicle: string; rating: number; online?: boolean };
 type RideDetails = { id: string; pickupLabel?: string; destinationLabel?: string; estimatedFare?: number; finalFare?: number; status?: string; driver?: { user?: { name?: string; phone?: string }; vehicle?: { vehicleType?: { nameAr?: string; nameEn?: string } } }; vehicleType?: { nameAr?: string; nameEn?: string }; city?: { nameAr?: string; nameEn?: string } };
@@ -35,7 +36,27 @@ export default function Ride() {
   const completed = currentStatus === 'COMPLETED';
   async function loadRide(silent = false) { if (!params.rideId) return; if (!silent) setLoading(true); try { const data = await getRide(String(params.rideId)); setRide(data); setSource('api'); } catch { setSource('local'); } finally { if (!silent) setLoading(false); } }
   useEffect(() => { async function loadDrivers() { try { const result = await getDrivers(params.cityId, params.vehicleTypeId); if (Array.isArray(result) && result.length > 0) setDrivers(result); } catch { setDrivers([]); } } loadDrivers(); loadRide(true); }, [params.cityId, params.vehicleTypeId, params.rideId]);
-  useEffect(() => { if (!params.rideId || !autoRefresh || completed) return; const timer = setInterval(() => loadRide(true), 5000); return () => clearInterval(timer); }, [params.rideId, autoRefresh, completed]);
+
+  // Real-time ride updates via Socket.io (fallback to polling if socket unavailable)
+  useEffect(() => {
+    if (!params.rideId) return;
+    const rideId = String(params.rideId);
+
+    // Join ride room for real-time updates
+    joinRide(rideId);
+    const unsub = onRideUpdate((data) => {
+      if (data.rideId === rideId) loadRide(true);
+    });
+
+    // Fallback polling (every 8s) in case socket is not connected
+    const fallbackTimer = autoRefresh && !completed ? setInterval(() => loadRide(true), 8000) : null;
+
+    return () => {
+      leaveRide(rideId);
+      unsub();
+      if (fallbackTimer) clearInterval(fallbackTimer);
+    };
+  }, [params.rideId, autoRefresh, completed]);
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View style={styles.header}>
