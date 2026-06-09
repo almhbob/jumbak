@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Sentry from '@sentry/react-native';
 import {
   registerForPushNotifications,
   saveTokenToServer,
@@ -10,7 +11,17 @@ import {
   NotificationListener,
 } from '../src/notifications';
 
-export default function Layout() {
+// Initialize Sentry before the component tree mounts
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+  environment: __DEV__ ? 'development' : 'production',
+  tracesSampleRate: __DEV__ ? 1.0 : 0.1,
+  enabled: !!process.env.EXPO_PUBLIC_SENTRY_DSN,
+  // Enable automatic breadcrumbs and session tracking
+  enableAutoSessionTracking: true,
+});
+
+function Layout() {
   const router = useRouter();
   const receivedRef = useRef<NotificationListener | null>(null);
   const responseRef = useRef<NotificationListener | null>(null);
@@ -47,3 +58,6 @@ export default function Layout() {
 
   return <Stack screenOptions={{ headerShown: false }} />;
 }
+
+// Wrap with Sentry to capture unhandled errors and navigation breadcrumbs
+export default Sentry.wrap(Layout);

@@ -1,4 +1,15 @@
 import 'dotenv/config';
+import * as Sentry from '@sentry/node';
+
+// Sentry must be initialized before any other imports that may throw
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV || 'development',
+    tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+  });
+}
+
 import express from 'express';
 import { createServer } from 'http';
 import cors from 'cors';
@@ -155,6 +166,11 @@ app.get('/', (_req, res) => {
     realtime: '/socket.io',
   });
 });
+
+// ─── Sentry error handler (must come after routes) ────────────────────────
+if (process.env.SENTRY_DSN) {
+  Sentry.setupExpressErrorHandler(app);
+}
 
 // ─── Socket.io ─────────────────────────────────────────────────────────────
 initSocket(httpServer, allowedOrigins);

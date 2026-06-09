@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "@sentry/node": "^10.56.0",
     "africastalking": "^0.7.9",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
