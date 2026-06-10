@@ -119,15 +119,20 @@ router.post('/auth/verify-otp', otpLimiter, validateBody(verifyOtpSchema), async
   }
 
   if (prisma) {
-    const user = await prisma.user.upsert({
-      where: { phone },
-      update: { name: name || undefined, role },
-      create: { phone, name: name || null, role },
-    });
-    const token = signToken({ staffId: user.id, username: user.phone, role: user.role.toLowerCase() });
-    const refreshToken = signRefreshToken({ staffId: user.id, username: user.phone, role: user.role.toLowerCase() });
-    logger.info('User authenticated', { userId: user.id, phone, role: user.role });
-    return res.json({ ok: true, user: { id: user.id, phone: user.phone, name: user.name, role: user.role }, token, refreshToken });
+    try {
+      const user = await prisma.user.upsert({
+        where: { phone },
+        update: { name: name || undefined, role },
+        create: { phone, name: name || null, role },
+      });
+      const token = signToken({ staffId: user.id, username: user.phone, role: user.role.toLowerCase() });
+      const refreshToken = signRefreshToken({ staffId: user.id, username: user.phone, role: user.role.toLowerCase() });
+      logger.info('User authenticated', { userId: user.id, phone, role: user.role });
+      return res.json({ ok: true, user: { id: user.id, phone: user.phone, name: user.name, role: user.role }, token, refreshToken });
+    } catch (err) {
+      logger.error('verify-otp DB error', { err });
+      return res.status(500).json({ error: 'Authentication failed. Please try again.' });
+    }
   }
 
   let user = memoryUsers.find((u) => u.phone === phone);
