@@ -55,14 +55,20 @@ export default function Login() {
     }
     setLoading(true);
     try {
-      await requestOtp(trimmed);
+      const res = await requestOtp(trimmed);
+      // Dev/staging: server returns dev_code when SMS provider is not configured
+      if (res?.dev_code) {
+        setCode(String(res.dev_code));
+        Alert.alert('Jnbk [DEV]', `OTP: ${res.dev_code}`);
+      } else {
+        Alert.alert('Jnbk', lang === 'ar' ? 'تم إرسال رمز التحقق عبر SMS' : 'OTP sent via SMS');
+      }
     } catch {
-      // Server unreachable or OTP endpoint not yet deployed — proceed anyway.
-      // The verify step will confirm the code (123456 in dev mode).
+      // Server unreachable — proceed anyway so the user can try entering the code
+      Alert.alert('Jnbk', lang === 'ar' ? 'أدخل رمز التحقق' : 'Enter your OTP code');
     } finally {
       setLoading(false);
       setOtpSent(true);
-      Alert.alert('Jnbk', lang === 'ar' ? 'أدخل رمز التحقق' : 'Enter your OTP code');
     }
   }
 
