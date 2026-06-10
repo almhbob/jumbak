@@ -2,6 +2,11 @@
 
 if [ -n "$DATABASE_URL" ]; then
   echo "[start] DATABASE_URL found — running migrations..."
+
+  # Resolve any previously failed migrations so deploy can proceed
+  npx prisma migrate resolve --rolled-back 20260526000001_add_zone_category 2>/dev/null && \
+    echo "[start] Resolved failed migration" || true
+
   attempt=0
   while [ $attempt -lt 5 ]; do
     if npx prisma migrate deploy; then
