@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../db.js';
 import { memoryStaff, memoryUsers } from '../store.js';
@@ -19,7 +19,10 @@ const otpLimiter = rateLimit({
   message: { error: 'Too many OTP requests, please wait 10 minutes' },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => String(req.body?.phone || req.ip),
+  keyGenerator: (req) => {
+    const phone = String(req.body?.phone || '').trim();
+    return phone || ipKeyGenerator(req.ip ?? '');
+  },
 });
 
 const loginLimiter = rateLimit({

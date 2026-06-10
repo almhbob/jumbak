@@ -42,6 +42,9 @@ const publicDir = path.join(__dirname, '..', 'public');
 const app = express();
 const httpServer = createServer(app);
 
+// Trust Railway / Cloudflare reverse proxy so rate-limiter and req.ip work correctly
+app.set('trust proxy', 1);
+
 // ─── CORS ──────────────────────────────────────────────────────────────────
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
