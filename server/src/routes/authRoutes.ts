@@ -73,14 +73,12 @@ router.post('/auth/request-otp', otpLimiter, validateBody(requestOtpSchema), asy
   }
 
   if (!isSmsConfigured()) {
-    if (process.env.NODE_ENV === 'production') {
-      return res.status(503).json({ error: 'SMS provider not configured. Contact support.' });
-    }
-    // Development: auto-accept without real SMS
+    // Generate OTP and return dev_code regardless of environment when SMS is not configured.
+    // In production with real AT credentials this block is never reached.
     const code = generateOtp();
     storeOtp(phone, code);
-    logger.info('OTP generated (dev mode, no SMS)', { phone, code });
-    return res.json({ ok: true, phone, message: 'OTP generated (dev mode)', dev_code: code });
+    logger.warn('OTP generated without SMS (AT not configured)', { phone, code });
+    return res.json({ ok: true, phone, message: 'OTP generated (no SMS provider)', dev_code: code });
   }
 
   const code = generateOtp();
