@@ -13,7 +13,7 @@
         "distribution": "internal"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://workspaceapi-server-production-3e22.up.railway.app"
+        "EXPO_PUBLIC_API_URL": "https://jumbakserver-production.up.railway.app"
       }
     },
     "preview-simulator": {
@@ -21,7 +21,7 @@
         "simulator": true
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://workspaceapi-server-production-3e22.up.railway.app"
+        "EXPO_PUBLIC_API_URL": "https://jumbakserver-production.up.railway.app"
       }
     },
     "production": {
@@ -32,7 +32,7 @@
         "distribution": "store"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://workspaceapi-server-production-3e22.up.railway.app"
+        "EXPO_PUBLIC_API_URL": "https://jumbakserver-production.up.railway.app"
       }
     }
   },
