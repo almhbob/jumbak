@@ -105,19 +105,8 @@ router.post('/auth/verify-otp', otpLimiter, validateBody(verifyOtpSchema), async
     if (code !== process.env.OTP_OVERRIDE) {
       return res.status(401).json({ error: 'Invalid OTP' });
     }
-  } else if (!isSmsConfigured() && process.env.NODE_ENV !== 'production') {
-    // Dev mode: verify against the generated code in the store
-    const result = verifyOtp(phone, code);
-    if (result !== 'ok') {
-      const messages: Record<string, string> = {
-        invalid: 'Invalid OTP',
-        expired: 'OTP expired, please request a new one',
-        too_many_attempts: 'Too many failed attempts, please request a new OTP',
-      };
-      return res.status(401).json({ error: messages[result] || 'Invalid OTP' });
-    }
   } else {
-    // Production: verify real OTP
+    // Verify against the generated code in the store (works for both dev and prod without AT)
     const result = verifyOtp(phone, code);
     if (result !== 'ok') {
       const messages: Record<string, string> = {
