@@ -3,9 +3,17 @@
 if [ -n "$DATABASE_URL" ]; then
   echo "[start] DATABASE_URL found — running migrations..."
 
-  # Resolve any previously failed migrations so deploy can proceed
-  npx prisma migrate resolve --rolled-back 20260526000001_add_zone_category 2>/dev/null && \
-    echo "[start] Resolved failed migration" || true
+  # The init migration (00000000000000_init) contains all schema including columns
+  # added by subsequent ALTER TABLE migrations. Mark those as applied so Prisma
+  # doesn't try to run them again after the init creates the full schema.
+  for migration in \
+    20260526000001_add_zone_category \
+    20260529000001_add_driver_application \
+    20260529000002_add_ride_stops \
+    20260529000003_add_wallet; do
+    npx prisma migrate resolve --applied "$migration" 2>/dev/null && \
+      echo "[start] Marked $migration as applied" || true
+  done
 
   attempt=0
   while [ $attempt -lt 5 ]; do
