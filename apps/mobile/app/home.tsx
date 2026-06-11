@@ -65,10 +65,12 @@ export default function Home() {
   const zones = lang === 'ar' ? city.zonesAr : city.zonesEn;
   const safeZones = zones.length ? zones : (lang === 'ar' ? ['السوق', 'المستشفى'] : ['Market', 'Hospital']);
 
-  // Use rich zone items with categories when available, fall back to plain list
+  // Use rich zone items with categories when available, fall back to city.locationItems, then plain list
   const locationItems: LocationItem[] = cityZoneItems.length > 0
     ? cityZoneItems
-    : safeZones.map((name, i) => ({ id: String(i), name }));
+    : city.locationItems && city.locationItems.length > 0
+      ? city.locationItems
+      : safeZones.map((name, i) => ({ id: String(i), name }));
 
   const distanceKm = pickupIndex === destinationIndex ? 1 : Math.max(2, Math.abs(destinationIndex - pickupIndex) + 1);
   const filledStops = openStops.filter(Boolean);
