@@ -21,14 +21,17 @@ export default function Driver() {
   const [userId, setUserId] = useState<string | null>(null);
   const [driverId, setDriverId] = useState<string | null>(null);
   const [toggleLoading, setToggleLoading] = useState(false);
+  const [isVerified, setIsVerified] = useState<boolean | null>(null);
 
   useEffect(() => {
-    AsyncStorage.multiGet(['jnbk_user_id', 'jnbk_driver_id']).then((pairs) => {
+    AsyncStorage.multiGet(['jnbk_user_id', 'jnbk_driver_id', 'jnbk_driver_verified']).then((pairs) => {
       const uid = pairs[0][1];
       const did = pairs[1][1];
+      const verified = pairs[2][1];
       if (!uid) return;
       setUserId(uid);
       if (did) setDriverId(did);
+      setIsVerified(verified === 'true');
       getWallet(uid).then((w) => setWalletBalance(w.balance)).catch(() => null);
     });
 
@@ -112,9 +115,19 @@ export default function Driver() {
         </Pressable>
       </View>
 
+      {isVerified === false && (
+        <View style={styles.pendingBadge}>
+          <Text style={[styles.pendingText, rtl && styles.rtl]}>
+            {lang === 'ar'
+              ? 'طلبك قيد المراجعة — ستتمكن من العمل بعد موافقة الإدارة'
+              : 'Application under review — you can drive once admin approves'}
+          </Text>
+        </View>
+      )}
+
       <View style={styles.card}>
         <Text style={styles.status}>{online ? t.online : t.offline}</Text>
-        <Switch value={online} onValueChange={toggle} />
+        <Switch value={online} onValueChange={toggle} disabled={isVerified === false} />
       </View>
 
       <Pressable style={[styles.earningsCard, rtl && styles.reverse]} onPress={() => router.push({ pathname: '/wallet', params: { lang, role: 'DRIVER' } })}>
@@ -165,6 +178,8 @@ const styles = StyleSheet.create({
   fare: { color: colors.gold, fontWeight: '900', fontSize: 22 },
   active: { backgroundColor: colors.white, padding: 20, borderRadius: 20, gap: 10 },
   rtl: { textAlign: 'right', writingDirection: 'rtl' },
+  pendingBadge: { backgroundColor: '#FFF8E7', borderRadius: 20, padding: 14, borderWidth: 1.5, borderColor: colors.gold },
+  pendingText: { color: '#7A5C00', fontWeight: '800', fontSize: 14, lineHeight: 21 },
   earningsCard: {
     backgroundColor: colors.navy, borderRadius: 20, padding: 16,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',

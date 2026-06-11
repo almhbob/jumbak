@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, View, Text, StyleSheet, Pressable } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, Pressable, Image } from 'react-native';
+
+const logoSource = require('../assets/icon.png');
 import { useLocalSearchParams, router } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { colors } from '../src/constants/theme';
@@ -67,7 +69,7 @@ export default function Ride() {
         {!!params.rideId && <Text style={[styles.rideId, rtl && styles.rtl]}>#{params.rideId}</Text>}
       </View>
       <View style={styles.mapCard}>
-        <Text style={styles.logo}>J</Text>
+        <Image source={logoSource} style={styles.logo} resizeMode="contain" />
         <View style={styles.progressRow}>{states.map((item, index) => <View key={item} style={[styles.dot, index <= currentStep && styles.dotActive]} />)}</View>
         <Text style={[styles.route, rtl && styles.rtl]}>{pickup} {t.to} {destination}</Text>
         <Text style={[styles.muted, rtl && styles.rtl]}>{source === 'api' ? (lang === 'ar' ? 'الحالة من الخادم' : 'Live backend status') : (lang === 'ar' ? 'وضع معاينة' : 'Preview mode')}</Text>
@@ -87,7 +89,7 @@ const styles = StyleSheet.create({
   header: { gap: 2 }, topLine: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, reverse: { flexDirection: 'row-reverse' },
   kicker: { color: colors.gold, fontWeight: '900', letterSpacing: 2 }, title: { fontSize: sw(26), fontWeight: '900', color: colors.navy }, rideId: { color: colors.muted, fontWeight: '800' },
   refreshButton: { backgroundColor: colors.navy, borderRadius: 16, paddingVertical: 10, paddingHorizontal: 12 }, refreshText: { color: colors.white, fontWeight: '900', fontSize: sw(13) },
-  mapCard: { height: sw(220), borderRadius: 32, padding: sw(18), alignItems: 'center', justifyContent: 'center', backgroundColor: '#DDF3FA' }, logo: { color: colors.gold, fontSize: sw(56), fontWeight: '900' }, progressRow: { flexDirection: 'row', gap: 8, marginVertical: sw(14) }, dot: { width: sw(36), height: 7, borderRadius: 999, backgroundColor: colors.white }, dotActive: { backgroundColor: colors.navy }, route: { color: colors.navy, fontSize: sw(17), fontWeight: '900', textAlign: 'center' },
+  mapCard: { height: sw(220), borderRadius: 32, padding: sw(18), alignItems: 'center', justifyContent: 'center', backgroundColor: '#DDF3FA' }, logo: { width: sw(160), height: sw(88) }, progressRow: { flexDirection: 'row', gap: 8, marginVertical: sw(14) }, dot: { width: sw(36), height: 7, borderRadius: 999, backgroundColor: colors.white }, dotActive: { backgroundColor: colors.navy }, route: { color: colors.navy, fontSize: sw(17), fontWeight: '900', textAlign: 'center' },
   driverCard: { backgroundColor: colors.white, borderRadius: 28, padding: sw(16), flexDirection: 'row', gap: 12, alignItems: 'center' }, driverCardRtl: { flexDirection: 'row-reverse' }, driverAvatar: { width: sw(48), height: sw(48), borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.navy }, driverInitial: { color: colors.gold, fontSize: sw(22), fontWeight: '900' }, driverInfo: { flex: 1 },
   fareCard: { backgroundColor: colors.white, borderRadius: 28, padding: sw(16) }, section: { color: colors.muted, fontWeight: '800' }, name: { color: colors.text, fontSize: sw(20), fontWeight: '900' }, muted: { color: colors.muted, marginTop: 4 }, fare: { color: colors.gold, fontSize: sw(32), fontWeight: '900' }, autoToggle: { alignItems: 'center', padding: 10 }, autoText: { color: colors.teal, fontWeight: '900' }, rtl: { textAlign: 'right', writingDirection: 'rtl' }
 });

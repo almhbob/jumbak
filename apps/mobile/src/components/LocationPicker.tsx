@@ -1,11 +1,12 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Modal, View, Text, TextInput, FlatList, Pressable,
   StyleSheet, SafeAreaView, Platform,
 } from 'react-native';
 import { colors } from '../constants/theme';
+import type { LocationItem } from '../serviceConfig';
 
-export type LocationItem = { id: string; name: string; category?: string };
+export type { LocationItem };
 
 type Props = {
   visible: boolean;
