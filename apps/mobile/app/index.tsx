@@ -25,13 +25,12 @@ export default function Welcome() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem('jnbk_auth_token').then((token) => {
+    AsyncStorage.multiGet(['jnbk_auth_token', 'jnbk_lang']).then(([[, token], [, savedLang]]) => {
+      if (savedLang === 'en' || savedLang === 'ar') setLang(savedLang as Lang);
       if (token && isTokenValid(token)) {
         router.replace('/home');
       } else {
-        if (token) {
-          AsyncStorage.multiRemove(['jnbk_auth_token', 'jnbk_user_id']);
-        }
+        if (token) AsyncStorage.multiRemove(['jnbk_auth_token', 'jnbk_refresh_token', 'jnbk_user_id']);
         setReady(true);
       }
     });

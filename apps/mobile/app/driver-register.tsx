@@ -5,6 +5,7 @@ import { Button } from '../src/components/Button';
 import { colors } from '../src/constants/theme';
 import { dict, Lang } from '../src/i18n';
 import { cities, vehicleTypes } from '../src/serviceConfig';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { registerDriver } from '../src/api';
 import { autosaveLabel, useAutosave } from '../src/hooks/useAutosave';
 import { sw } from '../src/constants/responsive';
@@ -57,7 +58,10 @@ export default function DriverRegister() {
     }
     setLoading(true);
     try {
-      await registerDriver({ phone, name, cityId: city.id, vehicleTypeId: vehicle.id, plateNo, color, model, nationalId, chassisNo, trafficId, bankAccount, guarantorName, guarantorPhone, guarantorAddress });
+      const res = await registerDriver({ phone, name, cityId: city.id, vehicleTypeId: vehicle.id, plateNo, color, model, nationalId, chassisNo, trafficId, bankAccount, guarantorName, guarantorPhone, guarantorAddress });
+      // Save driver ID and mark as pending (not yet verified)
+      if (res?.application?.id) await AsyncStorage.setItem('jnbk_driver_id', res.application.id);
+      await AsyncStorage.setItem('jnbk_driver_verified', 'false');
       await autosave.clearDraft();
       Alert.alert('Jnbk', lang === 'ar' ? 'تم إرسال ملف الجوكي للمراجعة' : 'Driver file submitted for review');
       router.replace({ pathname: '/driver', params: { lang } });

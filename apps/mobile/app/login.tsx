@@ -10,7 +10,7 @@ import { Button } from '../src/components/Button';
 import { BrandLogo } from '../src/components/BrandLogo';
 import { brand, colors } from '../src/constants/theme';
 import { dict, Lang } from '../src/i18n';
-import { verifyOtp, requestOtp } from '../src/api';
+import { verifyOtp, requestOtp, setTokenCache } from '../src/api';
 import { saveTokenToServer } from '../src/notifications';
 
 type Role = 'PASSENGER' | 'DRIVER';
@@ -36,11 +36,15 @@ export default function Login() {
     }
   }
 
-  async function persistSession(userId: string, token: string) {
-    await AsyncStorage.multiSet([
+  async function persistSession(userId: string, token: string, refreshToken?: string) {
+    const pairs: [string, string][] = [
       ['jnbk_user_id', userId],
       ['jnbk_auth_token', token],
-    ]);
+      ['jnbk_lang', lang],
+    ];
+    if (refreshToken) pairs.push(['jnbk_refresh_token', refreshToken]);
+    await AsyncStorage.multiSet(pairs);
+    setTokenCache(token);
     const pushToken = await AsyncStorage.getItem('jnbk_push_token');
     if (pushToken) await saveTokenToServer(pushToken, userId);
   }
@@ -77,7 +81,7 @@ export default function Login() {
     setLoading(true);
     try {
       const result = await verifyOtp({ phone: phone.trim(), code: code.trim(), name: name.trim() || undefined, role });
-      await persistSession(result.user.id, result.token);
+      await persistSession(result.user.id, result.token, result.refreshToken);
       nextRoute();
     } catch (err: any) {
       const msg = err?.message?.includes('401') || err?.message?.includes('Invalid')

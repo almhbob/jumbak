@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Sentry from '@sentry/react-native';
+import { setUnauthorizedHandler, setTokenCache } from '../src/api';
 import {
   registerForPushNotifications,
   saveTokenToServer,
@@ -11,13 +12,11 @@ import {
   NotificationListener,
 } from '../src/notifications';
 
-// Initialize Sentry before the component tree mounts
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
   environment: __DEV__ ? 'development' : 'production',
   tracesSampleRate: __DEV__ ? 1.0 : 0.1,
   enabled: !!process.env.EXPO_PUBLIC_SENTRY_DSN,
-  // Enable automatic breadcrumbs and session tracking
   enableAutoSessionTracking: true,
 });
 
@@ -27,7 +26,15 @@ function Layout() {
   const responseRef = useRef<NotificationListener | null>(null);
 
   useEffect(() => {
-    // Register and store device token
+    // Pre-load token into cache so first API call is instant
+    AsyncStorage.getItem('jnbk_auth_token').then((t) => setTokenCache(t ?? null));
+
+    // Redirect to login when any API call gets a 401 that can't be refreshed
+    setUnauthorizedHandler(() => {
+      router.replace('/');
+    });
+
+    // Register and store device push token
     (async () => {
       const token = await registerForPushNotifications();
       if (token) {
@@ -37,17 +44,11 @@ function Layout() {
       }
     })();
 
-    // Listen for notifications received while app is foregrounded
-    receivedRef.current = addNotificationReceivedListener((_notification) => {
-      // Notification shown automatically by setNotificationHandler
-    });
-
     // Handle notification tap — navigate to the relevant screen
+    receivedRef.current = addNotificationReceivedListener((_notification) => {});
     responseRef.current = addNotificationResponseListener((response) => {
       const data = response.notification.request.content.data as Record<string, unknown>;
-      if (data?.rideId) {
-        router.push(`/ride?rideId=${data.rideId}`);
-      }
+      if (data?.rideId) router.push(`/ride?rideId=${data.rideId}`);
     });
 
     return () => {
@@ -59,5 +60,4 @@ function Layout() {
   return <Stack screenOptions={{ headerShown: false }} />;
 }
 
-// Wrap with Sentry to capture unhandled errors and navigation breadcrumbs
 export default Sentry.wrap(Layout);
