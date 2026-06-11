@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { getOpsSource, loadOpsDrivers, loadOpsRides, loadOpsSupport, OpsDriver, OpsRide, OpsSupport } from './firebaseOps';
 
@@ -27,6 +27,15 @@ export default function Operations() {
   const [drivers, setDrivers] = useState<OpsDriver[]>(fallbackDrivers);
   const [rides, setRides] = useState<OpsRide[]>([]);
   const [support, setSupport] = useState<OpsSupport[]>(fallbackSupport);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function refresh() {
+    loadOpsDrivers(fallbackDrivers).then(setDrivers);
+    loadOpsRides([]).then(setRides);
+    loadOpsSupport(fallbackSupport).then(setSupport);
+    setLastRefresh(new Date());
+  }
 
   useEffect(() => {
     const role = sessionStorage.getItem('jnbk_active_role') || '';
@@ -34,10 +43,11 @@ export default function Operations() {
     setAllowed(ok);
     setSource(getOpsSource(lang));
     if (ok) {
-      loadOpsDrivers(fallbackDrivers).then(setDrivers);
-      loadOpsRides([]).then(setRides);
-      loadOpsSupport(fallbackSupport).then(setSupport);
+      refresh();
+      // Auto-refresh every 15 seconds
+      pollRef.current = setInterval(refresh, 15000);
     }
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
 
   if (!allowed) {
@@ -67,7 +77,13 @@ export default function Operations() {
     <main dir={rtl ? 'rtl' : 'ltr'} style={{ textAlign: rtl ? 'right' : 'left' }}>
       <header className="site-header">
         <Image src="/logo.png" alt="Jnbk جنبك" width={120} height={52} className="site-logo" />
-        <div style={{ marginInlineStart: 'auto', display: 'flex', gap: 8 }}>
+        <div style={{ marginInlineStart: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+          {lastRefresh && (
+            <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700 }}>
+              {lang === 'ar' ? 'آخر تحديث' : 'Updated'} {lastRefresh.toLocaleTimeString(lang === 'ar' ? 'ar' : 'en', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+          <button className="languageSwitch buttonReset" onClick={refresh} title={lang === 'ar' ? 'تحديث' : 'Refresh'}>↻</button>
           <a className="languageSwitch" href={`/drivers?lang=${lang}`}>{lang === 'ar' ? 'الجوكية' : 'Drivers'}</a>
           <a className="languageSwitch" href={`/pricing?lang=${lang}`}>{lang === 'ar' ? 'التسعير' : 'Pricing'}</a>
           <button className="languageSwitch buttonReset" onClick={() => logout(lang)}>{t.back}</button>

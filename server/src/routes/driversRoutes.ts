@@ -150,6 +150,56 @@ router.get('/applications', async (_req, res) => {
   res.json(memoryDrivers.filter((d) => (d as AnyDriver).status === 'pending_review' || (d as AnyDriver).guarantorName));
 });
 
+// PATCH /api/drivers/:driverId/verify — approve or reject a driver by driver ID
+router.patch('/:driverId/verify', async (req, res) => {
+  const driverId = String(req.params['driverId']);
+  const status = req.body.status === 'approved' ? 'approved' : 'rejected';
+  const reviewedBy = String(req.body.reviewedBy || '');
+  const notes = String(req.body.notes || '');
+
+  if (prisma) {
+    const driver = await prisma.driver.update({
+      where: { id: driverId },
+      data: { isVerified: status === 'approved' },
+      include: { user: { include: { deviceTokens: true } } },
+    }).catch(() => null);
+
+    if (!driver) return res.status(404).json({ error: 'Driver not found' });
+
+    // Update associated application
+    await prisma.driverApplication.updateMany({
+      where: { driverId },
+      data: {
+        status,
+        complianceStatus: status === 'approved' ? 'approved' : 'rejected',
+        reviewedBy,
+        approvedAt: status === 'approved' ? new Date() : undefined,
+        rejectedAt: status === 'rejected' ? new Date() : undefined,
+      },
+    }).catch(() => null);
+
+    // Push notification to driver
+    const tokens = driver.user.deviceTokens.map((t) => t.token);
+    if (tokens.length) {
+      const title = status === 'approved' ? 'تم قبول طلبك' : 'طلب التسجيل';
+      const body = status === 'approved'
+        ? 'مبروك! تم قبول طلبك كسائق في جنبك. يمكنك الآن بدء العمل.'
+        : `لم يتم قبول طلبك حالياً.${notes ? ` السبب: ${notes}` : ' يرجى التواصل مع الدعم.'}`;
+      sendPushNotifications(tokens, title, body, { type: 'application_review', status }).catch(() => null);
+    }
+
+    logger.info('Driver verified', { driverId, status, reviewedBy });
+    return res.json({ ok: true, driverId, status, isVerified: driver.isVerified });
+  }
+
+  type ExtDriver = MemDriver & { status?: string };
+  const driver = memoryDrivers.find((d) => d.id === driverId);
+  if (!driver) return res.status(404).json({ error: 'Driver not found' });
+  (driver as ExtDriver).status = status;
+  driver.verified = status === 'approved';
+  res.json({ ok: true, driverId, status, isVerified: driver.verified });
+});
+
 router.patch('/applications/:id/review', validateBody(reviewApplicationSchema), async (req, res) => {
   const { status, reviewedBy = '', notes } = req.body as {
     status: 'approved' | 'rejected'; reviewedBy?: string; notes?: string;
