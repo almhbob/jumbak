@@ -14,8 +14,8 @@ const fallbackDrivers: Driver[] = [{ id: 'driver_1', name: 'Preview Driver', onl
 const fallbackSupport: SupportRequest[] = [{ id: 'support_preview_1', category: 'Preview', message: 'Firebase/backend requests appear here.', lang: 'en', status: 'OPEN' }];
 
 const copy = {
-  ar: { cc: 'مركز التحكم', dash: 'بوابة التحكم الموحدة', hero: 'رابط موحد لكل لوحات العمل مع تسجيل دخول منفصل حسب الصلاحية.', portal: 'تسجيل الدخول', portalDesc: 'اختر حساب الموظف المناسب من البوابة الموحدة.', operations: 'التشغيل', settings: 'لوحة المطور', zones: 'إدارة المناطق', business: 'الإدارة', staff: 'الموظفون', workflow: 'تنسيق العمل', finance: 'المحاسبة', launch: 'جاهزية الإطلاق', trips: 'إجمالي الرحلات', active: 'السائقون النشطون', open: 'طلبات الدعم', cities: 'المدن', summary: 'ملخص سريع', done: 'الرحلات المكتملة', revenue: 'الإيراد التقديري', source: 'مصدر البيانات', firebase: 'Firebase Firestore', backend: 'Backend API', preview: 'وضع المعاينة', toggle: 'English' },
-  en: { cc: 'CONTROL CENTER', dash: 'Unified Control Portal', hero: 'One link for all workspaces with separate login per role.', portal: 'Login Portal', portalDesc: 'Choose the right staff account from the unified portal.', operations: 'Operations', settings: 'Developer Panel', zones: 'Zone Management', business: 'Business', staff: 'Staff', workflow: 'Workflow', finance: 'Finance', launch: 'Launch', trips: 'Total Trips', active: 'Active Drivers', open: 'Support Open', cities: 'Cities', summary: 'Quick Summary', done: 'Completed Rides', revenue: 'Est. Revenue', source: 'Data Source', firebase: 'Firebase Firestore', backend: 'Backend API', preview: 'Preview Mode', toggle: 'العربية' },
+  ar: { cc: 'مركز التحكم', dash: 'بوابة التحكم الموحدة', hero: 'رابط موحد لكل لوحات العمل مع تسجيل دخول منفصل حسب الصلاحية.', portal: 'تسجيل الدخول', portalDesc: 'اختر حساب الموظف المناسب من البوابة الموحدة.', operations: 'التشغيل', settings: 'لوحة المطور', zones: 'إدارة المناطق', pricing: 'إدارة التسعير', business: 'الإدارة', staff: 'الموظفون', workflow: 'تنسيق العمل', finance: 'المحاسبة', launch: 'جاهزية الإطلاق', trips: 'إجمالي الرحلات', active: 'السائقون النشطون', open: 'طلبات الدعم', cities: 'المدن', summary: 'ملخص سريع', done: 'الرحلات المكتملة', revenue: 'الإيراد التقديري', source: 'مصدر البيانات', firebase: 'Firebase Firestore', backend: 'Backend API', preview: 'وضع المعاينة', toggle: 'English' },
+  en: { cc: 'CONTROL CENTER', dash: 'Unified Control Portal', hero: 'One link for all workspaces with separate login per role.', portal: 'Login Portal', portalDesc: 'Choose the right staff account from the unified portal.', operations: 'Operations', settings: 'Developer Panel', zones: 'Zone Management', pricing: 'Pricing', business: 'Business', staff: 'Staff', workflow: 'Workflow', finance: 'Finance', launch: 'Launch', trips: 'Total Trips', active: 'Active Drivers', open: 'Support Open', cities: 'Cities', summary: 'Quick Summary', done: 'Completed Rides', revenue: 'Est. Revenue', source: 'Data Source', firebase: 'Firebase Firestore', backend: 'Backend API', preview: 'Preview Mode', toggle: 'العربية' },
 };
 
 async function apiGet<T>(path: string, fallback: T): Promise<T> {
@@ -37,6 +37,7 @@ const workspaces = [
   { key: 'operations', path: '/portal' },
   { key: 'settings',   path: '/portal' },
   { key: 'zones',      path: '/zones' },
+  { key: 'pricing',    path: '/pricing' },
   { key: 'business',   path: '/portal' },
   { key: 'staff',      path: '/staff' },
   { key: 'finance',    path: '/finance' },

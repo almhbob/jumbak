@@ -69,6 +69,7 @@ export default function Operations() {
         <Image src="/logo.png" alt="Jnbk جنبك" width={120} height={52} className="site-logo" />
         <div style={{ marginInlineStart: 'auto', display: 'flex', gap: 8 }}>
           <a className="languageSwitch" href={`/drivers?lang=${lang}`}>{lang === 'ar' ? 'الجوكية' : 'Drivers'}</a>
+          <a className="languageSwitch" href={`/pricing?lang=${lang}`}>{lang === 'ar' ? 'التسعير' : 'Pricing'}</a>
           <button className="languageSwitch buttonReset" onClick={() => logout(lang)}>{t.back}</button>
           <a className="languageSwitch" href={`?lang=${lang === 'ar' ? 'en' : 'ar'}`}>{t.toggle}</a>
         </div>
