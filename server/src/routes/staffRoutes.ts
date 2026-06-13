@@ -54,7 +54,7 @@ router.post('/', requireAuth, requireRole('business', 'developer'), async (req, 
   const email = String(req.body.email || '').trim() || null;
   const notes = String(req.body.notes || '').trim() || null;
   const username = String(req.body.username || `${name.toLowerCase().replace(/\s+/g, '.')}.${role}`).trim().toLowerCase();
-  const temporaryPassword = String(req.body.password || `Jnbk@${Math.floor(1000 + Math.random() * 9000)}#`);
+  const temporaryPassword = String(req.body.password || '123456');
 
   if (!name || !username) return res.status(400).json({ error: 'name and username are required' });
   if (name.length > 100 || username.length > 50) return res.status(400).json({ error: 'Input exceeds allowed length' });

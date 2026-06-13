@@ -57,9 +57,21 @@ router.post('/', validateBody(createRideSchema), async (req, res) => {
   if (prisma) {
     const vehicle = await prisma.vehicleType.findUnique({ where: { id: vehicleTypeId } });
     const selectedVehicle = vehicle || findVehicleType(vehicleTypeId);
-    const matchedDriver = await prisma.driver.findFirst({
-      where: { cityId, isOnline: true, isVerified: true, vehicle: { vehicleTypeId } },
-    });
+
+    // Find drivers already assigned to active rides to exclude them first
+    const busyDriverIds = (await prisma.ride.findMany({
+      where: { cityId, status: { in: ['REQUESTED', 'ACCEPTED', 'ARRIVING', 'ACTIVE'] }, driverId: { not: null } },
+      select: { driverId: true },
+    })).map((r) => r.driverId as string);
+
+    const baseWhere = { cityId, isOnline: true, isVerified: true, vehicle: { vehicleTypeId } };
+
+    // Prefer a free driver (not on active ride), least recently updated first (round-robin)
+    const matchedDriver =
+      (busyDriverIds.length > 0
+        ? await prisma.driver.findFirst({ where: { ...baseWhere, id: { notIn: busyDriverIds } }, orderBy: { updatedAt: 'asc' } })
+        : null) ??
+      await prisma.driver.findFirst({ where: baseWhere, orderBy: { updatedAt: 'asc' } });
     const ride = await prisma.ride.create({
       data: {
         cityId,

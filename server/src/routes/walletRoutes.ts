@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../db.js';
 import { validateBody, walletTopupSchema, walletPaySchema, walletWithdrawSchema } from '../middleware/validate.js';
+import { requireAuth, requireRole } from '../middleware/auth.js';
 import { logger } from '../services/logger.js';
 
 const router = Router();
@@ -184,7 +185,7 @@ router.post('/:userId/withdraw', validateBody(walletWithdrawSchema), async (req,
 });
 
 // GET /api/wallet/admin/withdrawals — list pending withdrawals (admin only)
-router.get('/admin/withdrawals', async (_req, res) => {
+router.get('/admin/withdrawals', requireAuth, requireRole('developer', 'business', 'accountant', 'finance', 'operations'), async (_req, res) => {
   if (prisma) {
     const txs = await prisma.walletTransaction.findMany({
       where: { type: 'WITHDRAWAL' },
@@ -208,7 +209,7 @@ router.get('/admin/withdrawals', async (_req, res) => {
 });
 
 // PATCH /api/wallet/admin/withdrawals/:txId — approve or reject a withdrawal
-router.patch('/admin/withdrawals/:txId', async (req, res) => {
+router.patch('/admin/withdrawals/:txId', requireAuth, requireRole('developer', 'business', 'accountant', 'finance', 'operations'), async (req, res) => {
   const txId = String(req.params['txId']);
   const action = String(req.body.action || '');
   const reviewedBy = String(req.body.reviewedBy || '');

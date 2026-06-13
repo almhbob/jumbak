@@ -14,9 +14,55 @@ const fallbackDrivers: Driver[] = [{ id: 'driver_1', name: 'Preview Driver', onl
 const fallbackSupport: SupportRequest[] = [{ id: 'support_preview_1', category: 'Preview', message: 'Firebase/backend requests appear here.', lang: 'en', status: 'OPEN' }];
 
 const copy = {
-  ar: { cc: 'مركز التحكم', dash: 'بوابة التحكم الموحدة', hero: 'رابط موحد لكل لوحات العمل مع تسجيل دخول منفصل حسب الصلاحية.', portal: 'تسجيل الدخول', portalDesc: 'اختر حساب الموظف المناسب من البوابة الموحدة.', operations: 'التشغيل', settings: 'لوحة المطور', zones: 'إدارة المناطق', pricing: 'إدارة التسعير', business: 'الإدارة', staff: 'الموظفون', workflow: 'تنسيق العمل', finance: 'المحاسبة', launch: 'جاهزية الإطلاق', trips: 'إجمالي الرحلات', active: 'السائقون النشطون', open: 'طلبات الدعم', cities: 'المدن', summary: 'ملخص سريع', done: 'الرحلات المكتملة', revenue: 'الإيراد التقديري', source: 'مصدر البيانات', firebase: 'Firebase Firestore', backend: 'Backend API', preview: 'وضع المعاينة', toggle: 'English' },
-  en: { cc: 'CONTROL CENTER', dash: 'Unified Control Portal', hero: 'One link for all workspaces with separate login per role.', portal: 'Login Portal', portalDesc: 'Choose the right staff account from the unified portal.', operations: 'Operations', settings: 'Developer Panel', zones: 'Zone Management', pricing: 'Pricing', business: 'Business', staff: 'Staff', workflow: 'Workflow', finance: 'Finance', launch: 'Launch', trips: 'Total Trips', active: 'Active Drivers', open: 'Support Open', cities: 'Cities', summary: 'Quick Summary', done: 'Completed Rides', revenue: 'Est. Revenue', source: 'Data Source', firebase: 'Firebase Firestore', backend: 'Backend API', preview: 'Preview Mode', toggle: 'العربية' },
+  ar: {
+    cc: 'مركز التحكم', dash: 'بوابة جنبك الموحدة',
+    hero: 'رابط موحد لكل لوحات العمل مع تسجيل دخول منفصل حسب الصلاحية.',
+    portal: 'تسجيل الدخول', portalDesc: 'اختر حساب الموظف المناسب من البوابة الموحدة.',
+    operations: 'التشغيل', operationsDesc: 'الرحلات، السائقين، ومؤشرات الأداء اليومية.',
+    settings: 'لوحة المطور', settingsDesc: 'الربط التقني وإعدادات الخادم.',
+    zones: 'إدارة المناطق', zonesDesc: 'مناطق الخدمة والأحياء والمرافق.',
+    pricing: 'إدارة التسعير', pricingDesc: 'أسعار الرحلات والأسعار الأساسية.',
+    business: 'الإدارة', businessDesc: 'العقود، الاتفاقات، والتوسعة.',
+    staff: 'الموظفون', staffDesc: 'حسابات الموظفين وإدارة الصلاحيات.',
+    finance: 'المحاسبة', financeDesc: 'المحفظة، التحصيل، والتقارير المالية.',
+    workflow: 'تنسيق العمل', workflowDesc: 'تنسيق المهام اليومية والأسبوعية.',
+    launch: 'جاهزية الإطلاق', launchDesc: 'متطلبات وجاهزية إطلاق الخدمة.',
+    trips: 'إجمالي الرحلات', active: 'السائقون النشطون', open: 'طلبات الدعم', cities: 'المدن',
+    summary: 'ملخص سريع', done: 'الرحلات المكتملة', revenue: 'الإيراد التقديري',
+    source: 'مصدر البيانات', firebase: 'Firebase Firestore', backend: 'Backend API', preview: 'وضع المعاينة',
+    toggle: 'English', enterPortal: 'الدخول للبوابة',
+  },
+  en: {
+    cc: 'CONTROL CENTER', dash: 'Jnbk Unified Portal',
+    hero: 'One link for all workspaces with separate login per role.',
+    portal: 'Login Portal', portalDesc: 'Choose the right staff account from the unified portal.',
+    operations: 'Operations', operationsDesc: 'Rides, drivers, and daily performance metrics.',
+    settings: 'Developer Panel', settingsDesc: 'Technical integrations and server settings.',
+    zones: 'Zone Management', zonesDesc: 'Service zones, districts, and landmarks.',
+    pricing: 'Pricing', pricingDesc: 'Ride fares and base pricing structure.',
+    business: 'Management', businessDesc: 'Contracts, agreements, and expansion.',
+    staff: 'Staff', staffDesc: 'Staff accounts and permission management.',
+    finance: 'Finance', financeDesc: 'Wallet, collections, and financial reports.',
+    workflow: 'Workflow', workflowDesc: 'Daily and weekly task coordination.',
+    launch: 'Launch', launchDesc: 'Launch readiness and requirements checklist.',
+    trips: 'Total Trips', active: 'Active Drivers', open: 'Support Open', cities: 'Cities',
+    summary: 'Quick Summary', done: 'Completed Rides', revenue: 'Est. Revenue',
+    source: 'Data Source', firebase: 'Firebase Firestore', backend: 'Backend API', preview: 'Preview Mode',
+    toggle: 'العربية', enterPortal: 'Enter Portal',
+  },
 };
+
+const workspaces: { key: keyof typeof copy.ar; descKey: keyof typeof copy.ar; path: string; accent: string }[] = [
+  { key: 'operations', descKey: 'operationsDesc', path: '/portal',   accent: '#0E8FB3' },
+  { key: 'business',   descKey: 'businessDesc',   path: '/portal',   accent: '#D6A936' },
+  { key: 'staff',      descKey: 'staffDesc',       path: '/staff',    accent: '#8B5CF6' },
+  { key: 'pricing',    descKey: 'pricingDesc',     path: '/pricing',  accent: '#10B981' },
+  { key: 'zones',      descKey: 'zonesDesc',       path: '/zones',    accent: '#3B82F6' },
+  { key: 'finance',    descKey: 'financeDesc',     path: '/finance',  accent: '#059669' },
+  { key: 'workflow',   descKey: 'workflowDesc',    path: '/workflow', accent: '#F59E0B' },
+  { key: 'settings',   descKey: 'settingsDesc',    path: '/portal',   accent: '#6366F1' },
+  { key: 'launch',     descKey: 'launchDesc',      path: '/launch',   accent: '#EF4444' },
+];
 
 async function apiGet<T>(path: string, fallback: T): Promise<T> {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -33,18 +79,6 @@ async function loadList<T>(collectionName: string, apiPath: string, fallback: T[
     : apiGet<T[]>(apiPath, fallback);
 }
 
-const workspaces = [
-  { key: 'operations', path: '/portal' },
-  { key: 'settings',   path: '/portal' },
-  { key: 'zones',      path: '/zones' },
-  { key: 'pricing',    path: '/pricing' },
-  { key: 'business',   path: '/portal' },
-  { key: 'staff',      path: '/staff' },
-  { key: 'finance',    path: '/finance' },
-  { key: 'workflow',   path: '/workflow' },
-  { key: 'launch',     path: '/launch' },
-] as const;
-
 export default async function Dashboard({ searchParams }: { searchParams?: { lang?: string } }) {
   const lang: Lang = searchParams?.lang === 'en' ? 'en' : 'ar';
   const t = copy[lang];
@@ -55,26 +89,35 @@ export default async function Dashboard({ searchParams }: { searchParams?: { lan
   const rides    = await loadList<Ride>('rides', '/api/rides', []);
   const support  = await loadList<SupportRequest>('supportRequests', '/api/support', fallbackSupport);
 
-  const source        = isFirebaseConfigured() ? t.firebase : (process.env.NEXT_PUBLIC_API_URL ? t.backend : t.preview);
-  const activeDrivers = drivers.filter((d) => d.online || d.status === 'approved').length;
-  const completedRides= rides.filter((r) => r.status === 'COMPLETED' || r.status === 'completed').length;
-  const openSupport   = support.filter((x) => !x.status || x.status === 'OPEN' || x.status === 'IN_REVIEW' || x.status === 'open').length;
-  const totalRevenue  = rides.reduce((s, r) => s + Number(r.estimatedFare || 0), 0);
+  const isFirebase   = isFirebaseConfigured();
+  const hasBackend   = !!process.env.NEXT_PUBLIC_API_URL;
+  const sourceLabel  = isFirebase ? t.firebase : (hasBackend ? t.backend : t.preview);
+  const sourceColor  = isFirebase ? '#0E8FB3' : (hasBackend ? '#10B981' : '#F59E0B');
 
-  const metrics: [string, string][] = [
-    [t.trips,  String(rides.length)],
-    [t.active, String(activeDrivers)],
-    [t.open,   String(openSupport)],
-    [t.cities, String(config.cities.length)],
+  const activeDrivers  = drivers.filter((d) => d.online || d.status === 'approved').length;
+  const completedRides = rides.filter((r) => r.status === 'COMPLETED' || r.status === 'completed').length;
+  const openSupport    = support.filter((x) => !x.status || x.status === 'OPEN' || x.status === 'IN_REVIEW' || x.status === 'open').length;
+  const totalRevenue   = rides.reduce((s, r) => s + Number(r.estimatedFare || 0), 0);
+
+  const metrics: { label: string; value: string; color?: string }[] = [
+    { label: t.trips,  value: String(rides.length) },
+    { label: t.active, value: String(activeDrivers),  color: '#10B981' },
+    { label: t.open,   value: String(openSupport),    color: openSupport > 0 ? '#F59E0B' : undefined },
+    { label: t.cities, value: String(config.cities.length) },
   ];
 
   return (
     <main dir={rtl ? 'rtl' : 'ltr'} style={{ textAlign: rtl ? 'right' : 'left' }}>
 
-      {/* Header Bar with Logo */}
+      {/* Header */}
       <header className="site-header">
         <Image src="/logo.png" alt="Jnbk جنبك" width={120} height={52} className="site-logo" priority />
-        <div style={{ marginInlineStart: 'auto', display: 'flex', gap: 8 }}>
+        <div style={{ marginInlineStart: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+          {/* Source indicator */}
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.7)' }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: sourceColor, display: 'inline-block', boxShadow: `0 0 6px ${sourceColor}` }} />
+            {sourceLabel}
+          </span>
           <a className="languageSwitch" href={`?lang=${lang === 'ar' ? 'en' : 'ar'}`}>{t.toggle}</a>
           <a className="languageSwitch" href={`/portal?lang=${lang}`}>{t.portal}</a>
         </div>
@@ -91,37 +134,30 @@ export default async function Dashboard({ searchParams }: { searchParams?: { lan
             <h1>{t.dash}</h1>
             <p>{t.hero}</p>
           </div>
-          <div className="topActions">
-            <a className="languageSwitch" href={`/system?lang=${lang}`}>System</a>
-          </div>
         </div>
       </section>
 
       {/* KPI Cards */}
       <section className="grid">
-        {metrics.map(([label, value]) => (
+        {metrics.map(({ label, value, color }) => (
           <div className="card" key={label}>
             <p>{label}</p>
-            <strong>{value}</strong>
+            <strong style={color ? { background: 'none', WebkitTextFillColor: color, color } : {}}>{value}</strong>
           </div>
         ))}
       </section>
 
-      {/* Data Source */}
-      <section className="panel">
-        <h2>{t.source}</h2>
-        <p className="muted">{source}</p>
-      </section>
-
-      {/* Quick Summary */}
+      {/* Quick summary */}
       <section className="panel">
         <h2>{t.summary}</h2>
-        <div className="table">
-          <div className="row">
-            <span>{t.done}</span>
-            <strong style={{ color: '#063B63', fontSize: 18 }}>{completedRides}</strong>
-            <span>{t.revenue}</span>
-            <strong style={{ color: '#0E8FB3', fontSize: 18 }}>{totalRevenue.toLocaleString()} SDG</strong>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ background: '#F0F6FC', borderRadius: 12, padding: '14px 18px' }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: '#7A92A8', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 6 }}>{t.done}</div>
+            <div style={{ fontSize: 26, fontWeight: 900, color: '#063B63' }}>{completedRides}</div>
+          </div>
+          <div style={{ background: '#F0F6FC', borderRadius: 12, padding: '14px 18px' }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: '#7A92A8', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 6 }}>{t.revenue}</div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: '#0E8FB3' }}>{totalRevenue.toLocaleString()} <span style={{ fontSize: 14 }}>SDG</span></div>
           </div>
         </div>
       </section>
@@ -130,26 +166,23 @@ export default async function Dashboard({ searchParams }: { searchParams?: { lan
       <section className="panel">
         <h2>{t.portal}</h2>
         <p className="muted">{t.portalDesc}</p>
-        <a
-          className="primaryAction"
-          style={{ display: 'inline-flex', marginTop: 16, textDecoration: 'none', maxWidth: 280 }}
-          href={`/portal?lang=${lang}`}
-        >
-          {t.portal}
+        <a className="primaryAction" style={{ display: 'inline-flex', marginTop: 16, textDecoration: 'none', maxWidth: 260 }} href={`/portal?lang=${lang}`}>
+          {t.enterPortal}
         </a>
       </section>
 
-      {/* Workspace Grid */}
-      <section className="grid devGrid" style={{ marginTop: 18 }}>
-        {workspaces.map(({ key, path }) => (
-          <div className="panel" key={key} style={{ margin: 0 }}>
-            <h2>{t[key as keyof typeof t]}</h2>
+      {/* Workspace grid */}
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginTop: 18 }}>
+        {workspaces.map(({ key, descKey, path, accent }) => (
+          <div key={key} className="panel" style={{ margin: 0, display: 'flex', flexDirection: 'column', borderTop: `3px solid ${accent}` }}>
+            <h2 style={{ marginBottom: 6, fontSize: 18, color: accent }}>{t[key]}</h2>
+            <p className="muted" style={{ margin: '0 0 16px', fontSize: 13, flexGrow: 1 }}>{t[descKey]}</p>
             <a
               className="primaryAction"
-              style={{ display: 'inline-flex', marginTop: 12, textDecoration: 'none' }}
+              style={{ display: 'flex', textDecoration: 'none', fontSize: 14, padding: '12px 18px', background: `linear-gradient(135deg, ${accent}dd, ${accent})` }}
               href={`${path}?lang=${lang}`}
             >
-              {t[key as keyof typeof t]}
+              {t[key]}
             </a>
           </div>
         ))}

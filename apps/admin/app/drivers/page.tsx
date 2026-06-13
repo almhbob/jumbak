@@ -1,14 +1,280 @@
 'use client';
-import {useEffect,useMemo,useState} from 'react';
-import {getClientFirebaseCollection, isClientFirebaseConfigured, updateClientFirebaseDocument} from '../lib/firebaseClient';
+import { useEffect, useMemo, useState } from 'react';
+import { getClientFirebaseCollection, isClientFirebaseConfigured, updateClientFirebaseDocument } from '../lib/firebaseClient';
+import { apiPatch } from '../lib/apiClient';
 
-type Lang='ar'|'en';
-type DriverApplication={id:string;name?:string;phone?:string;cityId?:string;vehicleTypeId?:string;plateNo?:string;color?:string;model?:string;nationalId?:string;chassisNo?:string;trafficId?:string;bankAccount?:string;guarantorName?:string;guarantorPhone?:string;guarantorAddress?:string;status?:string;complianceStatus?:string;freeMonth?:boolean;approvedAt?:string;rejectedAt?:string;reviewedBy?:string};
-const apiUrl=process.env.NEXT_PUBLIC_API_URL||'';
-const fallback:DriverApplication[]=[{id:'preview_1',name:'Preview Driver',phone:'+249900000000',cityId:'rufaa',vehicleTypeId:'rickshaw',plateNo:'RF-000',guarantorName:'Preview Guarantor',guarantorPhone:'+249900000001',status:'pending_review',complianceStatus:'needs_admin_review',freeMonth:true}];
-const copy={ar:{title:'مراجعة ملفات الجوكية',sub:'اعتماد ومتابعة طلبات السائقين، بيانات الضامن، المركبة، والشهر المجاني.',portal:'بوابة الدخول',home:'الرئيسية',toggle:'English',total:'إجمالي الطلبات',pending:'قيد المراجعة',approved:'معتمد',rejected:'مرفوض',free:'شهر مجاني',driver:'الجوكي',vehicle:'المركبة',guarantor:'الضامن',compliance:'الامتثال',approve:'اعتماد',reject:'رفض',missing:'غير مكتمل',source:'مصدر البيانات',firebase:'Firebase / Preview',denied:'هذه الصفحة مخصصة للإدارة والتشغيل فقط. سجّل الدخول من البوابة الموحدة.',openPortal:'فتح بوابة الدخول',saved:'تم حفظ القرار في Firebase',local:'تم حفظ القرار محليًا للمعاينة',failed:'تعذر حفظ القرار في Firebase، تم تحديث الواجهة مؤقتًا'},en:{title:'Driver Application Review',sub:'Approve and track driver files, guarantor details, vehicles, and free month status.',portal:'Portal',home:'Home',toggle:'العربية',total:'Total applications',pending:'Pending',approved:'Approved',rejected:'Rejected',free:'Free month',driver:'Driver',vehicle:'Vehicle',guarantor:'Guarantor',compliance:'Compliance',approve:'Approve',reject:'Reject',missing:'Missing',source:'Data source',firebase:'Firebase / Preview',denied:'This page is only for management and operations accounts. Log in from the unified portal.',openPortal:'Open portal',saved:'Decision saved to Firebase',local:'Decision saved locally for preview',failed:'Could not save to Firebase; UI updated temporarily'}};
-async function apiGet<T>(path:string,fb:T):Promise<T>{if(!apiUrl)return fb;try{const r=await fetch(`${apiUrl}${path}`);return r.ok?await r.json():fb}catch{return fb}}
-function goPortal(lang:Lang){window.location.assign(`/portal?lang=${lang}`)}
-function logout(lang:Lang){sessionStorage.clear();goPortal(lang)}
-function updateLocal(list:DriverApplication[],id:string,status:string){return list.map(x=>x.id===id?{...x,status,complianceStatus:status==='approved'?'approved':'rejected'}:x)}
-export default function DriversReview(){const params=new URLSearchParams(typeof window==='undefined'?'':window.location.search);const lang:Lang=params.get('lang')==='en'?'en':'ar';const ar=lang==='ar';const t=copy[lang];const[allowed,setAllowed]=useState(false);const[items,setItems]=useState<DriverApplication[]>(fallback);const[notice,setNotice]=useState('');useEffect(()=>{const role=sessionStorage.getItem('jnbk_active_role')||'';const ok=['operations','supervisor','business'].includes(role)||sessionStorage.getItem('jnbk_operations_auth')==='true';setAllowed(ok);if(ok){getClientFirebaseCollection<DriverApplication>('driverApplications',fallback).then(async data=>{if(data===fallback&&apiUrl){setItems(await apiGet<DriverApplication[]>('/api/drivers',fallback))}else setItems(data.length?data:fallback)})}},[]);const stats=useMemo(()=>({total:items.length,pending:items.filter(x=>!x.status||x.status==='pending_review').length,approved:items.filter(x=>x.status==='approved').length,rejected:items.filter(x=>x.status==='rejected').length}),[items]);async function review(item:DriverApplication,status:'approved'|'rejected'){setItems(updateLocal(items,item.id,status));const payload={status,complianceStatus:status==='approved'?'approved':'rejected',reviewedBy:sessionStorage.getItem('jnbk_active_role')||'operations',[status==='approved'?'approvedAt':'rejectedAt']:new Date().toISOString()};if(!isClientFirebaseConfigured()||item.id.startsWith('preview_')){setNotice(t.local);return}try{await updateClientFirebaseDocument('driverApplications',item.id,payload);setNotice(t.saved)}catch{setNotice(t.failed)}}if(!allowed)return <main dir={ar?'rtl':'ltr'} style={{textAlign:ar?'right':'left'}}><section className='hero'><div className='heroTop'><div><p className='kicker'>Jnbk جنبك</p><h1>{t.title}</h1><p>{t.denied}</p></div><div className='topActions'><button type='button' className='primaryAction buttonReset' onClick={()=>goPortal(lang)}>{t.openPortal}</button><a className='languageSwitch' href={`/portal?lang=${lang}`}>{t.portal}</a><a className='languageSwitch' href='/'>{t.home}</a></div></div></section></main>;return <main dir={ar?'rtl':'ltr'} style={{textAlign:ar?'right':'left'}}><section className='hero'><div className='heroTop'><div><p className='kicker'>Jnbk جنبك</p><h1>{t.title}</h1><p>{t.sub}</p></div><div className='topActions'><a className='languageSwitch' href='/'>{t.home}</a><a className='languageSwitch' href={`/portal?lang=${lang}`}>{t.portal}</a><a className='languageSwitch' href={`/drivers?lang=${ar?'en':'ar'}`}>{t.toggle}</a><button className='languageSwitch buttonReset' onClick={()=>logout(lang)}>Logout</button></div></div></section><section className='grid settingsGrid'><div className='card'><p>{t.total}</p><strong>{stats.total}</strong></div><div className='card'><p>{t.pending}</p><strong>{stats.pending}</strong></div><div className='card'><p>{t.approved}</p><strong>{stats.approved}</strong></div><div className='card'><p>{t.rejected}</p><strong>{stats.rejected}</strong></div></section>{notice?<div className='notice success'>{notice}</div>:null}<section className='panel'><h2>{t.source}</h2><p className='muted'>{t.firebase}</p></section><section className='panel'><h2>{t.title}</h2><div className='table'>{items.map(item=><div className='row' key={item.id}><span><b>{t.driver}</b><br/>{item.name||item.phone||item.id}<br/><small>{item.nationalId||t.missing}</small></span><span><b>{t.vehicle}</b><br/>{item.vehicleTypeId||'rickshaw'} / {item.plateNo||t.missing}<br/><small>{item.chassisNo||item.color||item.model||''}</small></span><span><b>{t.guarantor}</b><br/>{item.guarantorName||t.missing}<br/><small>{item.guarantorPhone||item.guarantorAddress||''}</small></span><span><b>{t.compliance}</b><br/>{item.status||t.pending}<br/><small>{item.freeMonth?t.free:''}</small></span><b><button className='primaryAction buttonReset' onClick={()=>review(item,'approved')}>{t.approve}</button><button className='languageSwitch buttonReset' style={{marginTop:8,color:'#063B63',background:'#F7FAFC',border:'1px solid #D9E2EC'}} onClick={()=>review(item,'rejected')}>{t.reject}</button></b></div>)}</div></section></main>}
+type Lang = 'ar' | 'en';
+type DriverApplication = {
+  id: string; name?: string; phone?: string; cityId?: string; vehicleTypeId?: string;
+  plateNo?: string; color?: string; model?: string; nationalId?: string;
+  chassisNo?: string; trafficId?: string; bankAccount?: string;
+  guarantorName?: string; guarantorPhone?: string; guarantorAddress?: string;
+  status?: string; complianceStatus?: string; freeMonth?: boolean;
+  approvedAt?: string; rejectedAt?: string; reviewedBy?: string;
+};
+
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+
+const fallback: DriverApplication[] = [{
+  id: 'preview_1', name: 'Preview Driver', phone: '+249900000000',
+  cityId: 'rufaa', vehicleTypeId: 'rickshaw', plateNo: 'RF-000',
+  guarantorName: 'Preview Guarantor', guarantorPhone: '+249900000001',
+  status: 'pending_review', complianceStatus: 'needs_admin_review', freeMonth: true,
+}];
+
+const copy = {
+  ar: {
+    title: 'مراجعة ملفات الجوكية',
+    sub: 'اعتماد ومتابعة طلبات السائقين، بيانات الضامن، المركبة، والشهر المجاني.',
+    portal: 'بوابة الدخول', home: 'الرئيسية', toggle: 'English',
+    total: 'إجمالي الطلبات', pending: 'قيد المراجعة', approved: 'معتمد', rejected: 'مرفوض', free: 'شهر مجاني',
+    driver: 'الجوكي', vehicle: 'المركبة', guarantor: 'الضامن', compliance: 'الامتثال',
+    approve: 'اعتماد', reject: 'رفض', missing: 'غير مكتمل', source: 'مصدر البيانات',
+    denied: 'هذه الصفحة مخصصة للإدارة والتشغيل فقط. سجّل الدخول من البوابة الموحدة.',
+    openPortal: 'فتح بوابة الدخول',
+    saved: 'تم حفظ القرار بنجاح ✓',
+    local: 'تم تحديث الواجهة محليًا للمعاينة',
+    failed: 'تعذر الحفظ — تحقق من الاتصال',
+    processing: 'جارٍ الحفظ...',
+    notes: 'سبب الرفض (اختياري)',
+    confirmApprove: 'هل تريد اعتماد هذا الجوكي؟',
+    confirmReject: 'هل تريد رفض هذا الطلب؟',
+  },
+  en: {
+    title: 'Driver Application Review',
+    sub: 'Approve and track driver files, guarantor details, vehicles, and free month status.',
+    portal: 'Portal', home: 'Home', toggle: 'العربية',
+    total: 'Total applications', pending: 'Pending', approved: 'Approved', rejected: 'Rejected', free: 'Free month',
+    driver: 'Driver', vehicle: 'Vehicle', guarantor: 'Guarantor', compliance: 'Compliance',
+    approve: 'Approve', reject: 'Reject', missing: 'Missing', source: 'Data source',
+    denied: 'This page is only for management and operations accounts. Log in from the unified portal.',
+    openPortal: 'Open portal',
+    saved: 'Decision saved successfully ✓',
+    local: 'UI updated locally for preview',
+    failed: 'Could not save — check connection',
+    processing: 'Saving...',
+    notes: 'Rejection reason (optional)',
+    confirmApprove: 'Approve this driver application?',
+    confirmReject: 'Reject this application?',
+  },
+};
+
+async function apiGet<T>(path: string, fb: T): Promise<T> {
+  if (!apiUrl) return fb;
+  try { const r = await fetch(`${apiUrl}${path}`); return r.ok ? r.json() : fb; } catch { return fb; }
+}
+
+function goPortal(lang: Lang) { window.location.assign(`/portal?lang=${lang}`); }
+function logout(lang: Lang) { sessionStorage.clear(); goPortal(lang); }
+
+function statusBadge(status?: string) {
+  if (!status || status === 'pending_review' || status === 'needs_admin_review') return { color: '#f59e0b', label: '⏳' };
+  if (status === 'approved') return { color: '#10b981', label: '✓' };
+  return { color: '#ef4444', label: '✗' };
+}
+
+export default function DriversReview() {
+  const params = new URLSearchParams(typeof window === 'undefined' ? '' : window.location.search);
+  const lang: Lang = params.get('lang') === 'en' ? 'en' : 'ar';
+  const ar = lang === 'ar';
+  const t = copy[lang];
+
+  const [allowed, setAllowed] = useState(false);
+  const [items, setItems] = useState<DriverApplication[]>(fallback);
+  const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const role = sessionStorage.getItem('jnbk_active_role') || '';
+    const ok = ['operations', 'supervisor', 'business', 'developer'].includes(role) ||
+      sessionStorage.getItem('jnbk_operations_auth') === 'true';
+    setAllowed(ok);
+    if (!ok) return;
+
+    getClientFirebaseCollection<DriverApplication>('driverApplications', fallback).then(async (data) => {
+      if (data === fallback && apiUrl) {
+        const apiData = await apiGet<DriverApplication[]>('/api/drivers/applications', fallback);
+        setItems(apiData.length ? apiData : fallback);
+      } else {
+        setItems(data.length ? data : fallback);
+      }
+    });
+  }, []);
+
+  const stats = useMemo(() => ({
+    total: items.length,
+    pending: items.filter((x) => !x.status || x.status === 'pending_review').length,
+    approved: items.filter((x) => x.status === 'approved').length,
+    rejected: items.filter((x) => x.status === 'rejected').length,
+  }), [items]);
+
+  async function review(item: DriverApplication, status: 'approved' | 'rejected') {
+    if (!window.confirm(status === 'approved' ? t.confirmApprove : t.confirmReject)) return;
+
+    setProcessingId(item.id);
+    setNotice(null);
+
+    // Optimistic UI update
+    setItems((prev) => prev.map((x) => x.id === item.id
+      ? { ...x, status, complianceStatus: status === 'approved' ? 'approved' : 'rejected' }
+      : x
+    ));
+
+    const reviewedBy = sessionStorage.getItem('jnbk_active_role') || 'operations';
+    const payload = {
+      status,
+      complianceStatus: status === 'approved' ? 'approved' : 'rejected',
+      reviewedBy,
+      [status === 'approved' ? 'approvedAt' : 'rejectedAt']: new Date().toISOString(),
+    };
+
+    let serverOk = false;
+
+    // Call server API to update DB + send push notification
+    if (apiUrl && !item.id.startsWith('preview_')) {
+      try {
+        // Try driver verify endpoint (works when item.id is a driver ID from API)
+        await apiPatch(`/api/drivers/${encodeURIComponent(item.id)}/verify`, { status, reviewedBy });
+        serverOk = true;
+      } catch {
+        // Try applications endpoint (works when item.id is a DriverApplication ID)
+        try {
+          await apiPatch(`/api/drivers/applications/${encodeURIComponent(item.id)}/review`, { status, reviewedBy });
+          serverOk = true;
+        } catch { /* not found in either — Firebase only */ }
+      }
+    }
+
+    // Update Firebase if configured
+    if (isClientFirebaseConfigured() && !item.id.startsWith('preview_')) {
+      try {
+        await updateClientFirebaseDocument('driverApplications', item.id, payload);
+        setNotice({ type: 'success', text: t.saved });
+      } catch {
+        setNotice({ type: serverOk ? 'success' : 'error', text: serverOk ? t.saved : t.failed });
+      }
+    } else {
+      setNotice({ type: serverOk ? 'success' : 'error', text: serverOk ? t.saved : t.local });
+    }
+
+    setProcessingId(null);
+  }
+
+  if (!allowed) {
+    return (
+      <main dir={ar ? 'rtl' : 'ltr'} style={{ textAlign: ar ? 'right' : 'left' }}>
+        <section className="hero">
+          <div className="heroTop">
+            <div><p className="kicker">Jnbk جنبك</p><h1>{t.title}</h1><p>{t.denied}</p></div>
+            <div className="topActions">
+              <button type="button" className="primaryAction buttonReset" onClick={() => goPortal(lang)}>{t.openPortal}</button>
+              <a className="languageSwitch" href={`/portal?lang=${lang}`}>{t.portal}</a>
+              <a className="languageSwitch" href="/">{t.home}</a>
+            </div>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <main dir={ar ? 'rtl' : 'ltr'} style={{ textAlign: ar ? 'right' : 'left' }}>
+      <section className="hero">
+        <div className="heroTop">
+          <div>
+            <p className="kicker">Jnbk جنبك</p>
+            <h1>{t.title}</h1>
+            <p>{t.sub}</p>
+          </div>
+          <div className="topActions">
+            <a className="languageSwitch" href="/">{t.home}</a>
+            <a className="languageSwitch" href={`/portal?lang=${lang}`}>{t.portal}</a>
+            <a className="languageSwitch" href={`/drivers?lang=${ar ? 'en' : 'ar'}`}>{t.toggle}</a>
+            <button className="languageSwitch buttonReset" onClick={() => logout(lang)}>Logout</button>
+          </div>
+        </div>
+      </section>
+
+      {/* Stats */}
+      <section className="grid settingsGrid">
+        <div className="card"><p>{t.total}</p><strong>{stats.total}</strong></div>
+        <div className="card"><p>{t.pending}</p><strong style={{ color: '#f59e0b' }}>{stats.pending}</strong></div>
+        <div className="card"><p>{t.approved}</p><strong style={{ color: '#10b981' }}>{stats.approved}</strong></div>
+        <div className="card"><p>{t.rejected}</p><strong style={{ color: '#ef4444' }}>{stats.rejected}</strong></div>
+      </section>
+
+      {notice && (
+        <div className={`notice ${notice.type}`} style={{ margin: '0 24px 8px' }}>{notice.text}</div>
+      )}
+
+      {/* Applications table */}
+      <section className="panel">
+        <h2>{t.title}</h2>
+        <div className="table">
+          {items.map((item) => {
+            const badge = statusBadge(item.status);
+            const isProcessing = processingId === item.id;
+            const isPending = !item.status || item.status === 'pending_review' || item.status === 'needs_admin_review';
+
+            return (
+              <div key={item.id} className="row" style={{ alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+                {/* Driver info */}
+                <span>
+                  <b>{t.driver}</b><br />
+                  {item.name || item.phone || item.id}<br />
+                  <small style={{ color: '#94a3b8' }}>{item.phone || ''}</small><br />
+                  <small style={{ color: '#94a3b8' }}>{item.nationalId || t.missing}</small>
+                </span>
+
+                {/* Vehicle info */}
+                <span>
+                  <b>{t.vehicle}</b><br />
+                  {item.vehicleTypeId || 'rickshaw'} / {item.plateNo || t.missing}<br />
+                  <small style={{ color: '#94a3b8' }}>{[item.color, item.model].filter(Boolean).join(' — ') || ''}</small><br />
+                  <small style={{ color: '#94a3b8' }}>{item.chassisNo ? `شاسي: ${item.chassisNo}` : ''}</small>
+                </span>
+
+                {/* Guarantor info */}
+                <span>
+                  <b>{t.guarantor}</b><br />
+                  {item.guarantorName || t.missing}<br />
+                  <small style={{ color: '#94a3b8' }}>{item.guarantorPhone || ''}</small><br />
+                  <small style={{ color: '#94a3b8' }}>{item.guarantorAddress || ''}</small>
+                </span>
+
+                {/* Status + actions */}
+                <span style={{ minWidth: 120 }}>
+                  <b style={{ color: badge.color }}>{badge.label} {item.status || t.pending}</b>
+                  {item.freeMonth && <><br /><small style={{ color: '#f59e0b' }}>{t.free}</small></>}
+                  {item.cityId && <><br /><small style={{ color: '#94a3b8' }}>{item.cityId}</small></>}
+                </span>
+
+                {/* Action buttons — only for pending */}
+                {isPending && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <button
+                      className="primaryAction buttonReset"
+                      disabled={isProcessing}
+                      onClick={() => review(item, 'approved')}
+                      style={{ opacity: isProcessing ? 0.5 : 1 }}
+                    >
+                      {isProcessing ? t.processing : t.approve}
+                    </button>
+                    <button
+                      className="languageSwitch buttonReset"
+                      disabled={isProcessing}
+                      onClick={() => review(item, 'rejected')}
+                      style={{ color: '#ef4444', border: '1px solid #fee2e2', opacity: isProcessing ? 0.5 : 1 }}
+                    >
+                      {t.reject}
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    </main>
+  );
+}

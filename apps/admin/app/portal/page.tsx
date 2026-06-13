@@ -14,8 +14,8 @@ const roles: Record<Role, { ar: string; en: string; descAr: string; descEn: stri
   support:     { ar: 'مسؤول العملاء',         en: 'Customer Support',     descAr: 'الشكاوى، المفقودات، طلبات الهاتف، ومتابعة كبار السن.',         descEn: 'Complaints, lost items, phone orders, and senior support.',        path: '/operations' },
   accountant:  { ar: 'المحاسب',               en: 'Accountant',           descAr: 'المحفظة، العمولات، الاشتراكات، التحصيل، والمصروفات.',           descEn: 'Wallet, commissions, subscriptions, collections, and expenses.',   path: '/finance'    },
   finance:     { ar: 'المالية',               en: 'Finance',              descAr: 'متابعة الماليات العامة والاشتراكات.',                          descEn: 'Track finance and subscriptions.',                                 path: '/finance'    },
-  developer:   { ar: 'حساب المطور',           en: 'Developer Account',    descAr: 'المدن، المناطق، المركبات، الأسعار، والربط التقني.',            descEn: 'Cities, zones, vehicles, pricing, and technical integrations.',    path: '/settings'   },
-  business:    { ar: 'الإدارة والاتفاقات',    en: 'Business & Agreements',descAr: 'الاشتراكات، نسب الأرباح، العقود، وروابط السداد.',              descEn: 'Subscriptions, profit share, agreements, and payment links.',      path: '/business'   },
+  developer:   { ar: 'حساب المطور',           en: 'Developer Account',    descAr: 'الربط التقني وإعدادات الخادم فقط.',                           descEn: 'Technical integrations and server settings only.',                 path: '/settings'   },
+  business:    { ar: 'الإدارة',              en: 'Management',           descAr: 'المدن، المناطق، المركبات، الأسعار، الاتفاقات، ونسب الأرباح.',  descEn: 'Cities, zones, vehicles, pricing, agreements, and profit share.', path: '/business'   },
 };
 
 const copy = {
