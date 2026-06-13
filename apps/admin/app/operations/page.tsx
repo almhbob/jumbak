@@ -10,8 +10,8 @@ const fallbackDrivers: OpsDriver[] = [{ id: 'driver_1', name: 'Preview Driver', 
 const fallbackSupport: OpsSupport[] = [{ id: 'support_preview_1', category: 'Preview', message: 'Firebase/backend requests appear here.', lang: 'en', status: 'OPEN' }];
 
 const copy = {
-  ar: { title: 'لوحة إدارة التطبيق', sub: 'مساحة التشغيل اليومية: الرحلات، السائقين، الدعم، ومؤشرات الأداء.', back: 'خروج', support: 'طلبات الدعم', drivers: 'السائقون', rides: 'الرحلات', tasks: 'تقسيم المهام اليومي', shift: 'مسؤول الوردية', supportRole: 'الدعم الفني', finance: 'المحاسبة', online: 'متصل', offline: 'غير متصل', verified: 'معتمد', pending: 'قيد المراجعة', toggle: 'English', source: 'مصدر البيانات', denied: 'هذه الصفحة مخصصة لحسابات التشغيل والمشرفين ومسؤولي العملاء فقط. سجّل الدخول من البوابة الموحدة.', closeTicket: 'إغلاق', inReview: 'قيد المراجعة', resolve: 'تم الحل', closedLabel: 'مغلق', resolvedLabel: 'محلول' },
-  en: { title: 'Operations Dashboard', sub: 'Daily workspace: rides, drivers, support, and performance indicators.', back: 'Logout', support: 'Support', drivers: 'Drivers', rides: 'Rides', tasks: 'Daily task split', shift: 'Shift lead', supportRole: 'Support team', finance: 'Finance', online: 'Online', offline: 'Offline', verified: 'Verified', pending: 'Pending', toggle: 'العربية', source: 'Data source', denied: 'This page is only for operations, supervisor, and customer support accounts. Log in from the unified portal.', closeTicket: 'Close', inReview: 'In review', resolve: 'Resolved', closedLabel: 'Closed', resolvedLabel: 'Resolved' },
+  ar: { title: 'لوحة إدارة التطبيق', sub: 'مساحة التشغيل اليومية: الرحلات، السائقين، الدعم، ومؤشرات الأداء.', back: 'خروج', support: 'طلبات الدعم', drivers: 'السائقون', rides: 'الرحلات', tasks: 'تقسيم المهام اليومي', shift: 'مسؤول الوردية', supportRole: 'الدعم الفني', finance: 'المحاسبة', online: 'متصل', offline: 'غير متصل', verified: 'معتمد', pending: 'قيد المراجعة', toggle: 'English', source: 'مصدر البيانات', denied: 'هذه الصفحة مخصصة لحسابات التشغيل والمشرفين ومسؤولي العملاء فقط. سجّل الدخول من البوابة الموحدة.', closeTicket: 'إغلاق', inReview: 'قيد المراجعة', resolve: 'تم الحل', closedLabel: 'مغلق', resolvedLabel: 'محلول', toggleOnline: 'تغيير الحالة', setOnline: 'تفعيل', setOffline: 'إيقاف' },
+  en: { title: 'Operations Dashboard', sub: 'Daily workspace: rides, drivers, support, and performance indicators.', back: 'Logout', support: 'Support', drivers: 'Drivers', rides: 'Rides', tasks: 'Daily task split', shift: 'Shift lead', supportRole: 'Support team', finance: 'Finance', online: 'Online', offline: 'Offline', verified: 'Verified', pending: 'Pending', toggle: 'العربية', source: 'Data source', denied: 'This page is only for operations, supervisor, and customer support accounts. Log in from the unified portal.', closeTicket: 'Close', inReview: 'In review', resolve: 'Resolved', closedLabel: 'Closed', resolvedLabel: 'Resolved', toggleOnline: 'Toggle status', setOnline: 'Set online', setOffline: 'Set offline' },
 };
 
 function truncate(m?: string) { const t = m || ''; return t.length > 70 ? t.slice(0, 70) + '...' : t; }
@@ -30,6 +30,7 @@ export default function Operations() {
   const [support, setSupport] = useState<OpsSupport[]>(fallbackSupport);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [updatingTicket, setUpdatingTicket] = useState<string | null>(null);
+  const [togglingDriver, setTogglingDriver] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   function refresh() {
@@ -37,6 +38,19 @@ export default function Operations() {
     loadOpsRides([]).then(setRides);
     loadOpsSupport(fallbackSupport).then(setSupport);
     setLastRefresh(new Date());
+  }
+
+  async function toggleDriverOnline(driver: OpsDriver) {
+    const newOnline = !driver.online;
+    setTogglingDriver(driver.id);
+    setDrivers((prev) => prev.map((d) => d.id === driver.id ? { ...d, online: newOnline } : d));
+    try {
+      await apiPatch(`/api/drivers/${encodeURIComponent(driver.id)}/online`, { isOnline: newOnline });
+    } catch { /* revert on failure */
+      setDrivers((prev) => prev.map((d) => d.id === driver.id ? { ...d, online: driver.online } : d));
+    } finally {
+      setTogglingDriver(null);
+    }
   }
 
   async function updateTicketStatus(id: string, status: 'IN_REVIEW' | 'RESOLVED' | 'CLOSED') {
@@ -197,16 +211,39 @@ export default function Operations() {
       </section>
 
       <section className="panel">
-        <h2>{t.drivers}</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <h2 style={{ margin: 0 }}>{t.drivers}</h2>
+          <a className="languageSwitch" href={`/drivers?lang=${lang}`} style={{ fontSize: 12 }}>
+            {lang === 'ar' ? 'مراجعة الطلبات ←' : 'Review applications →'}
+          </a>
+        </div>
         <div className="table">
-          {drivers.slice(0, 8).map((d) => (
-            <div className="row" key={d.id}>
-              <span>{d.name || d.phone || d.id}</span>
-              <span>{d.cityId || 'rufaa'}</span>
-              <span>{d.verified ? t.verified : t.pending}</span>
-              <b>{d.online ? t.online : (d.status || t.offline)}</b>
-            </div>
-          ))}
+          {drivers.slice(0, 10).map((d) => {
+            const isToggling = togglingDriver === d.id;
+            return (
+              <div key={d.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 12, alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                <span style={{ fontWeight: 700 }}>{d.name || d.phone || d.id}</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{d.cityId || 'rufaa'}</span>
+                <b style={{ fontSize: 11, color: d.verified ? '#10b981' : '#f59e0b' }}>
+                  {d.verified ? t.verified : t.pending}
+                </b>
+                <button
+                  disabled={isToggling || d.id.startsWith('driver_1')}
+                  onClick={() => toggleDriverOnline(d)}
+                  style={{
+                    padding: '4px 12px', borderRadius: 20, border: 'none',
+                    background: d.online ? '#10b981' : '#94a3b8',
+                    color: 'white', fontWeight: 700, fontSize: 11,
+                    cursor: (isToggling || d.id.startsWith('driver_1')) ? 'not-allowed' : 'pointer',
+                    opacity: isToggling ? 0.5 : 1, transition: 'all 0.18s',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {isToggling ? '...' : (d.online ? t.online : t.offline)}
+                </button>
+              </div>
+            );
+          })}
         </div>
       </section>
     </main>

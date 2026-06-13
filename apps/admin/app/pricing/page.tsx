@@ -6,7 +6,7 @@ type Lang = 'ar' | 'en';
 type VehicleType = { id: string; nameAr: string; nameEn: string; baseFare: number; perKmFare: number; minimumFare: number };
 type EditState = { baseFare: string; perKmFare: string; minimumFare: string; nameAr: string; nameEn: string };
 
-const ALLOWED_ROLES = ['developer', 'operations', 'finance', 'supervisor'];
+const ALLOWED_ROLES = ['developer', 'operations', 'finance', 'supervisor', 'business'];
 
 const ar = {
   title: 'إدارة التسعير',

@@ -112,7 +112,7 @@ router.patch('/vehicle-types/:id', requireAuth, requireRole('developer', 'busine
 // ─── Zone management ─────────────────────────────────────────────────────────
 
 // GET /api/admin/zones?cityId=rufaa
-router.get('/zones', async (req, res) => {
+router.get('/zones', requireAuth, requireRole('developer', 'business', 'operations', 'supervisor'), async (req, res) => {
   const cityId = String(req.query.cityId || 'rufaa');
   if (prisma) {
     const zones = await prisma.zone.findMany({ where: { cityId }, orderBy: { nameAr: 'asc' } });

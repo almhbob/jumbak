@@ -5,8 +5,11 @@ import { UserRole } from '@prisma/client';
 import { validateBody, registerDriverSchema, reviewApplicationSchema } from '../middleware/validate.js';
 import { sendPushNotifications } from '../services/notificationService.js';
 import { logger } from '../services/logger.js';
+import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = Router();
+
+const ADMIN_ROLES = ['operations', 'supervisor', 'business', 'developer'] as const;
 
 router.get('/', async (req, res) => {
   const cityId = String(req.query.cityId || '');
@@ -116,8 +119,8 @@ router.post('/register', validateBody(registerDriverSchema), async (req, res) =>
   res.status(201).json({ ok: true, driver });
 });
 
-// PATCH /api/drivers/:driverId/online — toggle driver online/offline status
-router.patch('/:driverId/online', async (req, res) => {
+// PATCH /api/drivers/:driverId/online — toggle driver online/offline (staff only)
+router.patch('/:driverId/online', requireAuth, requireRole(...ADMIN_ROLES), async (req, res) => {
   const driverId = String(req.params['driverId']);
   const isOnline = req.body.isOnline === true || req.body.isOnline === 'true';
 
@@ -137,7 +140,7 @@ router.patch('/:driverId/online', async (req, res) => {
   res.json({ ok: true, driverId, isOnline });
 });
 
-router.get('/applications', async (_req, res) => {
+router.get('/applications', requireAuth, requireRole(...ADMIN_ROLES), async (_req, res) => {
   if (prisma) {
     const applications = await prisma.driverApplication.findMany({
       orderBy: { createdAt: 'desc' },
@@ -150,8 +153,8 @@ router.get('/applications', async (_req, res) => {
   res.json(memoryDrivers.filter((d) => (d as AnyDriver).status === 'pending_review' || (d as AnyDriver).guarantorName));
 });
 
-// PATCH /api/drivers/:driverId/verify — approve or reject a driver by driver ID
-router.patch('/:driverId/verify', async (req, res) => {
+// PATCH /api/drivers/:driverId/verify — approve or reject a driver (staff only)
+router.patch('/:driverId/verify', requireAuth, requireRole(...ADMIN_ROLES), async (req, res) => {
   const driverId = String(req.params['driverId']);
   const status = req.body.status === 'approved' ? 'approved' : 'rejected';
   const reviewedBy = String(req.body.reviewedBy || '');
@@ -200,7 +203,7 @@ router.patch('/:driverId/verify', async (req, res) => {
   res.json({ ok: true, driverId, status, isVerified: driver.verified });
 });
 
-router.patch('/applications/:id/review', validateBody(reviewApplicationSchema), async (req, res) => {
+router.patch('/applications/:id/review', requireAuth, requireRole(...ADMIN_ROLES), validateBody(reviewApplicationSchema), async (req, res) => {
   const { status, reviewedBy = '', notes } = req.body as {
     status: 'approved' | 'rejected'; reviewedBy?: string; notes?: string;
   };
