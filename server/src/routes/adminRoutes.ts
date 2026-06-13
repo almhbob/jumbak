@@ -10,8 +10,8 @@ const memoryZones: MemZone[] = rufaaZones.map((z) => ({ ...z }));
 
 const router = Router();
 
-// Add or update a city — developer only
-router.post('/cities', requireAuth, requireRole('developer'), async (req, res) => {
+// Add or update a city — business / developer
+router.post('/cities', requireAuth, requireRole('developer', 'business'), async (req, res) => {
   const id = String(req.body.id || '').trim().toLowerCase();
   const countryId = String(req.body.countryId || 'sd');
   const nameAr = String(req.body.nameAr || '').trim();
@@ -44,8 +44,8 @@ router.post('/cities', requireAuth, requireRole('developer'), async (req, res) =
   res.status(201).json(city);
 });
 
-// Add or update a vehicle type — developer only
-router.post('/vehicle-types', requireAuth, requireRole('developer'), async (req, res) => {
+// Add or update a vehicle type — business / developer
+router.post('/vehicle-types', requireAuth, requireRole('developer', 'business'), async (req, res) => {
   const id = String(req.body.id || '').trim().toLowerCase();
   const nameAr = String(req.body.nameAr || '').trim();
   const nameEn = String(req.body.nameEn || '').trim();
@@ -70,8 +70,8 @@ router.post('/vehicle-types', requireAuth, requireRole('developer'), async (req,
   res.status(201).json(item);
 });
 
-// GET vehicle types — operations / finance / developer
-router.get('/vehicle-types', requireAuth, requireRole('developer', 'operations', 'finance', 'supervisor'), async (req, res) => {
+// GET vehicle types — business / operations / finance / developer
+router.get('/vehicle-types', requireAuth, requireRole('developer', 'business', 'operations', 'finance', 'supervisor'), async (req, res) => {
   if (prisma) {
     const types = await prisma.vehicleType.findMany({ orderBy: { id: 'asc' } });
     return res.json(types);
@@ -79,8 +79,8 @@ router.get('/vehicle-types', requireAuth, requireRole('developer', 'operations',
   res.json(memoryVehicleTypes);
 });
 
-// PATCH /vehicle-types/:id — update fares only (operations / finance / developer)
-router.patch('/vehicle-types/:id', requireAuth, requireRole('developer', 'operations', 'finance'), async (req, res) => {
+// PATCH /vehicle-types/:id — update fares only (business / operations / finance / developer)
+router.patch('/vehicle-types/:id', requireAuth, requireRole('developer', 'business', 'operations', 'finance'), async (req, res) => {
   const id = String(req.params.id).trim().toLowerCase();
   const baseFare = req.body.baseFare !== undefined ? Number(req.body.baseFare) : undefined;
   const perKmFare = req.body.perKmFare !== undefined ? Number(req.body.perKmFare) : undefined;
@@ -122,7 +122,7 @@ router.get('/zones', async (req, res) => {
 });
 
 // POST /api/admin/zones — add a new zone
-router.post('/zones', requireAuth, requireRole('developer', 'operations'), async (req, res) => {
+router.post('/zones', requireAuth, requireRole('developer', 'business', 'operations'), async (req, res) => {
   const cityId = String(req.body.cityId || 'rufaa').trim();
   const nameAr = String(req.body.nameAr || '').trim();
   const nameEn = String(req.body.nameEn || nameAr).trim();
@@ -142,7 +142,7 @@ router.post('/zones', requireAuth, requireRole('developer', 'operations'), async
 });
 
 // PATCH /api/admin/zones/:id — edit a zone name
-router.patch('/zones/:id', requireAuth, requireRole('developer', 'operations'), async (req, res) => {
+router.patch('/zones/:id', requireAuth, requireRole('developer', 'business', 'operations'), async (req, res) => {
   const id = String(req.params.id);
   const nameAr = String(req.body.nameAr || '').trim();
   const nameEn = String(req.body.nameEn || nameAr).trim();
@@ -167,7 +167,7 @@ router.patch('/zones/:id', requireAuth, requireRole('developer', 'operations'), 
 });
 
 // DELETE /api/admin/zones/:id — remove a zone
-router.delete('/zones/:id', requireAuth, requireRole('developer'), async (req, res) => {
+router.delete('/zones/:id', requireAuth, requireRole('developer', 'business'), async (req, res) => {
   const id = String(req.params.id);
 
   if (prisma) {
