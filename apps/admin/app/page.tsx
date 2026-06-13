@@ -53,15 +53,15 @@ const copy = {
 };
 
 const workspaces: { key: keyof typeof copy.ar; descKey: keyof typeof copy.ar; path: string; accent: string }[] = [
-  { key: 'operations', descKey: 'operationsDesc', path: '/portal',   accent: '#0E8FB3' },
-  { key: 'business',   descKey: 'businessDesc',   path: '/portal',   accent: '#D6A936' },
-  { key: 'staff',      descKey: 'staffDesc',       path: '/staff',    accent: '#8B5CF6' },
-  { key: 'pricing',    descKey: 'pricingDesc',     path: '/pricing',  accent: '#10B981' },
-  { key: 'zones',      descKey: 'zonesDesc',       path: '/zones',    accent: '#3B82F6' },
-  { key: 'finance',    descKey: 'financeDesc',     path: '/finance',  accent: '#059669' },
-  { key: 'workflow',   descKey: 'workflowDesc',    path: '/workflow', accent: '#F59E0B' },
-  { key: 'settings',   descKey: 'settingsDesc',    path: '/portal',   accent: '#6366F1' },
-  { key: 'launch',     descKey: 'launchDesc',      path: '/launch',   accent: '#EF4444' },
+  { key: 'operations', descKey: 'operationsDesc', path: '/operations', accent: '#0E8FB3' },
+  { key: 'business',   descKey: 'businessDesc',   path: '/business',   accent: '#D6A936' },
+  { key: 'staff',      descKey: 'staffDesc',       path: '/staff',      accent: '#8B5CF6' },
+  { key: 'pricing',    descKey: 'pricingDesc',     path: '/pricing',    accent: '#10B981' },
+  { key: 'zones',      descKey: 'zonesDesc',       path: '/zones',      accent: '#3B82F6' },
+  { key: 'finance',    descKey: 'financeDesc',     path: '/finance',    accent: '#059669' },
+  { key: 'workflow',   descKey: 'workflowDesc',    path: '/workflow',   accent: '#F59E0B' },
+  { key: 'settings',   descKey: 'settingsDesc',    path: '/settings',   accent: '#6366F1' },
+  { key: 'launch',     descKey: 'launchDesc',      path: '/launch',     accent: '#EF4444' },
 ];
 
 async function apiGet<T>(path: string, fallback: T): Promise<T> {

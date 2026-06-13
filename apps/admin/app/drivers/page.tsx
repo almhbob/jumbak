@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { getClientFirebaseCollection, isClientFirebaseConfigured, updateClientFirebaseDocument } from '../lib/firebaseClient';
 import { apiPatch } from '../lib/apiClient';
 
@@ -83,6 +83,8 @@ export default function DriversReview() {
   const [items, setItems] = useState<DriverApplication[]>(fallback);
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const rejectNoteRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const role = sessionStorage.getItem('jnbk_active_role') || '';
@@ -108,10 +110,11 @@ export default function DriversReview() {
     rejected: items.filter((x) => x.status === 'rejected').length,
   }), [items]);
 
-  async function review(item: DriverApplication, status: 'approved' | 'rejected') {
-    if (!window.confirm(status === 'approved' ? t.confirmApprove : t.confirmReject)) return;
+  async function review(item: DriverApplication, status: 'approved' | 'rejected', note?: string) {
+    if (status === 'approved' && !window.confirm(t.confirmApprove)) return;
 
     setProcessingId(item.id);
+    setRejectingId(null);
     setNotice(null);
 
     // Optimistic UI update
@@ -125,27 +128,24 @@ export default function DriversReview() {
       status,
       complianceStatus: status === 'approved' ? 'approved' : 'rejected',
       reviewedBy,
+      ...(note ? { notes: note } : {}),
       [status === 'approved' ? 'approvedAt' : 'rejectedAt']: new Date().toISOString(),
     };
 
     let serverOk = false;
 
-    // Call server API to update DB + send push notification
     if (apiUrl && !item.id.startsWith('preview_')) {
       try {
-        // Try driver verify endpoint (works when item.id is a driver ID from API)
-        await apiPatch(`/api/drivers/${encodeURIComponent(item.id)}/verify`, { status, reviewedBy });
+        await apiPatch(`/api/drivers/${encodeURIComponent(item.id)}/verify`, { status, reviewedBy, notes: note || '' });
         serverOk = true;
       } catch {
-        // Try applications endpoint (works when item.id is a DriverApplication ID)
         try {
-          await apiPatch(`/api/drivers/applications/${encodeURIComponent(item.id)}/review`, { status, reviewedBy });
+          await apiPatch(`/api/drivers/applications/${encodeURIComponent(item.id)}/review`, { status, reviewedBy, notes: note || '' });
           serverOk = true;
-        } catch { /* not found in either — Firebase only */ }
+        } catch { /* Firebase only */ }
       }
     }
 
-    // Update Firebase if configured
     if (isClientFirebaseConfigured() && !item.id.startsWith('preview_')) {
       try {
         await updateClientFirebaseDocument('driverApplications', item.id, payload);
@@ -252,22 +252,52 @@ export default function DriversReview() {
                 {/* Action buttons — only for pending */}
                 {isPending && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <button
-                      className="primaryAction buttonReset"
-                      disabled={isProcessing}
-                      onClick={() => review(item, 'approved')}
-                      style={{ opacity: isProcessing ? 0.5 : 1 }}
-                    >
-                      {isProcessing ? t.processing : t.approve}
-                    </button>
-                    <button
-                      className="languageSwitch buttonReset"
-                      disabled={isProcessing}
-                      onClick={() => review(item, 'rejected')}
-                      style={{ color: '#ef4444', border: '1px solid #fee2e2', opacity: isProcessing ? 0.5 : 1 }}
-                    >
-                      {t.reject}
-                    </button>
+                    {rejectingId !== item.id && (
+                      <>
+                        <button
+                          className="primaryAction buttonReset"
+                          disabled={isProcessing}
+                          onClick={() => review(item, 'approved')}
+                          style={{ opacity: isProcessing ? 0.5 : 1 }}
+                        >
+                          {isProcessing ? t.processing : t.approve}
+                        </button>
+                        <button
+                          className="languageSwitch buttonReset"
+                          disabled={isProcessing}
+                          onClick={() => setRejectingId(item.id)}
+                          style={{ color: '#ef4444', border: '1px solid #fee2e2', opacity: isProcessing ? 0.5 : 1 }}
+                        >
+                          {t.reject}
+                        </button>
+                      </>
+                    )}
+                    {rejectingId === item.id && (
+                      <div style={{ background: 'rgba(239,68,68,.06)', border: '1.5px solid #ef4444', borderRadius: 10, padding: 12, display: 'grid', gap: 8, minWidth: 200 }}>
+                        <label style={{ fontSize: 11, fontWeight: 700, color: '#ef4444' }}>{t.notes}</label>
+                        <input
+                          ref={rejectNoteRef}
+                          placeholder={ar ? 'سبب الرفض...' : 'Reason...'}
+                          autoFocus
+                          style={{ border: '1.5px solid #ef4444', borderRadius: 7, padding: '6px 10px', fontSize: 13, width: '100%' }}
+                        />
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button
+                            disabled={isProcessing}
+                            onClick={() => review(item, 'rejected', rejectNoteRef.current?.value || '')}
+                            style={{ flex: 1, background: '#ef4444', color: 'white', border: 'none', borderRadius: 7, padding: '7px 0', fontWeight: 900, fontSize: 12, cursor: 'pointer', opacity: isProcessing ? 0.5 : 1 }}
+                          >
+                            {isProcessing ? t.processing : (ar ? 'تأكيد الرفض' : 'Confirm')}
+                          </button>
+                          <button
+                            onClick={() => setRejectingId(null)}
+                            style={{ background: 'none', border: '1px solid #cbd5e1', borderRadius: 7, padding: '7px 10px', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
+                          >
+                            {ar ? 'إلغاء' : 'Cancel'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

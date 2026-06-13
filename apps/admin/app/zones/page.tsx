@@ -102,6 +102,7 @@ export default function Zones() {
   const [allowed, setAllowed] = useState(false);
   const [cityId, setCityId] = useState('rufaa');
   const [zones, setZones] = useState<Zone[]>([]);
+  const [categories, setCategories] = useState<string[]>(CATEGORIES);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('');
@@ -123,14 +124,15 @@ export default function Zones() {
 
   useEffect(() => {
     const role = sessionStorage.getItem('jnbk_active_role') || '';
-    const devAuth = sessionStorage.getItem('jnbk_dev_auth') === 'true' && role === 'developer';
-    const opsAuth = sessionStorage.getItem('jnbk_operations_auth') === 'true' && ['operations', 'supervisor'].includes(role);
-    setAllowed(devAuth || opsAuth);
+    const ok = role === 'developer' || role === 'business' ||
+      (sessionStorage.getItem('jnbk_operations_auth') === 'true' && ['operations', 'supervisor'].includes(role));
+    setAllowed(ok);
   }, []);
 
   useEffect(() => {
     if (!allowed) return;
     fetchZones();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allowed, cityId]);
 
   async function fetchZones() {
@@ -140,6 +142,10 @@ export default function Zones() {
       { zones: [], categories: [] }
     );
     setZones(data.zones || []);
+    if (data.categories && data.categories.length > 0) {
+      setCategories(data.categories);
+      setAddCategory((prev) => data.categories.includes(prev) ? prev : data.categories[0]);
+    }
     setLoading(false);
   }
 
@@ -174,7 +180,7 @@ export default function Zones() {
     setEditId(zone.id);
     setEditNameAr(zone.nameAr);
     setEditNameEn(zone.nameEn || zone.nameAr);
-    setEditCategory(zone.category || CATEGORIES[0]);
+    setEditCategory(zone.category || categories[0]);
   }
 
   async function submitEdit(e: FormEvent) {
@@ -211,7 +217,7 @@ export default function Zones() {
     return matchesQuery && matchesCat;
   });
 
-  const categoryCounts = CATEGORIES.reduce<Record<string, number>>((acc, cat) => {
+  const categoryCounts = categories.reduce<Record<string, number>>((acc, cat) => {
     acc[cat] = zones.filter((z) => z.category === cat).length;
     return acc;
   }, {});
@@ -280,9 +286,9 @@ export default function Zones() {
           <p className="muted">{t.total}</p>
           <strong style={{ fontSize: 32 }}>{zones.length}</strong>
         </div>
-        {CATEGORIES.slice(0, 2).map((cat) => (
+        {categories.slice(0, 2).map((cat) => (
           <div className="card" key={cat}>
-            <p className="muted">{CATEGORY_ICONS[cat]} {cat}</p>
+            <p className="muted">{CATEGORY_ICONS[cat] || '📍'} {cat}</p>
             <strong>{categoryCounts[cat] || 0}</strong>
           </div>
         ))}
@@ -298,7 +304,7 @@ export default function Zones() {
           >
             {t.allCats} ({zones.length})
           </button>
-          {CATEGORIES.filter((c) => categoryCounts[c] > 0).map((cat) => (
+          {categories.filter((c) => categoryCounts[c] > 0).map((cat) => (
             <button
               key={cat}
               className={`chip${activeCategory === cat ? ' chipActive' : ''}`}
@@ -342,7 +348,7 @@ export default function Zones() {
             <div style={{ marginBottom: 16 }}>
               <label className="label">{t.category}</label>
               <select className="input" value={addCategory} onChange={(e) => setAddCategory(e.target.value)}>
-                {CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_ICONS[c]} {c}</option>)}
+                {categories.map((c) => <option key={c} value={c}>{CATEGORY_ICONS[c] || '📍'} {c}</option>)}
               </select>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -371,7 +377,7 @@ export default function Zones() {
                   <form onSubmit={submitEdit} style={{ padding: '12px 0', borderBottom: '1px solid var(--glass-border-dark)' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, alignItems: 'center' }}>
                       <select className="input" value={editCategory} onChange={(e) => setEditCategory(e.target.value)}>
-                        {CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_ICONS[c]} {c}</option>)}
+                        {categories.map((c) => <option key={c} value={c}>{CATEGORY_ICONS[c] || '📍'} {c}</option>)}
                       </select>
                       <input className="input" value={editNameAr} onChange={(e) => setEditNameAr(e.target.value)} dir="rtl" required />
                       <input className="input" value={editNameEn} onChange={(e) => setEditNameEn(e.target.value)} />

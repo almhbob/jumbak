@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { getOpsSource, loadOpsDrivers, loadOpsRides, loadOpsSupport, OpsDriver, OpsRide, OpsSupport } from './firebaseOps';
+import { apiPatch } from '../lib/apiClient';
 
 type Lang = 'ar' | 'en';
 
@@ -9,8 +10,8 @@ const fallbackDrivers: OpsDriver[] = [{ id: 'driver_1', name: 'Preview Driver', 
 const fallbackSupport: OpsSupport[] = [{ id: 'support_preview_1', category: 'Preview', message: 'Firebase/backend requests appear here.', lang: 'en', status: 'OPEN' }];
 
 const copy = {
-  ar: { title: 'لوحة إدارة التطبيق', sub: 'مساحة التشغيل اليومية: الرحلات، السائقين، الدعم، ومؤشرات الأداء.', back: 'خروج', support: 'طلبات الدعم', drivers: 'السائقون', rides: 'الرحلات', tasks: 'تقسيم المهام اليومي', shift: 'مسؤول الوردية', supportRole: 'الدعم الفني', finance: 'المحاسبة', online: 'متصل', offline: 'غير متصل', verified: 'معتمد', pending: 'قيد المراجعة', toggle: 'English', source: 'مصدر البيانات', denied: 'هذه الصفحة مخصصة لحسابات التشغيل والمشرفين ومسؤولي العملاء فقط. سجّل الدخول من البوابة الموحدة.' },
-  en: { title: 'Operations Dashboard', sub: 'Daily workspace: rides, drivers, support, and performance indicators.', back: 'Logout', support: 'Support', drivers: 'Drivers', rides: 'Rides', tasks: 'Daily task split', shift: 'Shift lead', supportRole: 'Support team', finance: 'Finance', online: 'Online', offline: 'Offline', verified: 'Verified', pending: 'Pending', toggle: 'العربية', source: 'Data source', denied: 'This page is only for operations, supervisor, and customer support accounts. Log in from the unified portal.' },
+  ar: { title: 'لوحة إدارة التطبيق', sub: 'مساحة التشغيل اليومية: الرحلات، السائقين، الدعم، ومؤشرات الأداء.', back: 'خروج', support: 'طلبات الدعم', drivers: 'السائقون', rides: 'الرحلات', tasks: 'تقسيم المهام اليومي', shift: 'مسؤول الوردية', supportRole: 'الدعم الفني', finance: 'المحاسبة', online: 'متصل', offline: 'غير متصل', verified: 'معتمد', pending: 'قيد المراجعة', toggle: 'English', source: 'مصدر البيانات', denied: 'هذه الصفحة مخصصة لحسابات التشغيل والمشرفين ومسؤولي العملاء فقط. سجّل الدخول من البوابة الموحدة.', closeTicket: 'إغلاق', inReview: 'قيد المراجعة', resolve: 'تم الحل', closedLabel: 'مغلق', resolvedLabel: 'محلول' },
+  en: { title: 'Operations Dashboard', sub: 'Daily workspace: rides, drivers, support, and performance indicators.', back: 'Logout', support: 'Support', drivers: 'Drivers', rides: 'Rides', tasks: 'Daily task split', shift: 'Shift lead', supportRole: 'Support team', finance: 'Finance', online: 'Online', offline: 'Offline', verified: 'Verified', pending: 'Pending', toggle: 'العربية', source: 'Data source', denied: 'This page is only for operations, supervisor, and customer support accounts. Log in from the unified portal.', closeTicket: 'Close', inReview: 'In review', resolve: 'Resolved', closedLabel: 'Closed', resolvedLabel: 'Resolved' },
 };
 
 function truncate(m?: string) { const t = m || ''; return t.length > 70 ? t.slice(0, 70) + '...' : t; }
@@ -28,6 +29,7 @@ export default function Operations() {
   const [rides, setRides] = useState<OpsRide[]>([]);
   const [support, setSupport] = useState<OpsSupport[]>(fallbackSupport);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [updatingTicket, setUpdatingTicket] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   function refresh() {
@@ -35,6 +37,20 @@ export default function Operations() {
     loadOpsRides([]).then(setRides);
     loadOpsSupport(fallbackSupport).then(setSupport);
     setLastRefresh(new Date());
+  }
+
+  async function updateTicketStatus(id: string, status: 'IN_REVIEW' | 'RESOLVED' | 'CLOSED') {
+    if (id.startsWith('support_preview')) {
+      setSupport((prev) => prev.map((x) => x.id === id ? { ...x, status } : x));
+      return;
+    }
+    setUpdatingTicket(id);
+    try {
+      await apiPatch(`/api/support/${id}/status`, { status });
+      setSupport((prev) => prev.map((x) => x.id === id ? { ...x, status } : x));
+    } catch { /* silent — optimistic already set */ } finally {
+      setUpdatingTicket(null);
+    }
   }
 
   useEffect(() => {
@@ -143,14 +159,40 @@ export default function Operations() {
       <section className="panel">
         <h2>{t.support}</h2>
         <div className="table">
-          {support.slice(0, 8).map((x) => (
-            <div className="row" key={x.id}>
-              <span>{x.category || 'Support'}</span>
-              <span>{truncate(x.message)}</span>
-              <span>{x.lang || 'ar'}</span>
-              <b>{x.status || 'OPEN'}</b>
-            </div>
-          ))}
+          {support.slice(0, 10).map((x) => {
+            const isOpen = !x.status || x.status === 'OPEN';
+            const isInReview = x.status === 'IN_REVIEW';
+            const isClosed = x.status === 'CLOSED' || x.status === 'RESOLVED';
+            const isUpdating = updatingTicket === x.id;
+            const statusColor = isClosed ? '#10b981' : isInReview ? '#f59e0b' : '#ef4444';
+            return (
+              <div key={x.id} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto auto', gap: 12, alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                <span style={{ fontWeight: 700, fontSize: 13 }}>{x.category || 'Support'}</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{truncate(x.message)}</span>
+                <b style={{ fontSize: 11, color: statusColor, whiteSpace: 'nowrap' }}>{x.status || 'OPEN'}</b>
+                {!isClosed && (
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {isOpen && (
+                      <button
+                        disabled={isUpdating}
+                        onClick={() => updateTicketStatus(x.id, 'IN_REVIEW')}
+                        style={{ background: '#f59e0b', color: 'white', border: 'none', borderRadius: 6, padding: '4px 9px', fontSize: 11, fontWeight: 700, cursor: 'pointer', opacity: isUpdating ? 0.5 : 1 }}
+                      >
+                        {t.inReview}
+                      </button>
+                    )}
+                    <button
+                      disabled={isUpdating}
+                      onClick={() => updateTicketStatus(x.id, 'CLOSED')}
+                      style={{ background: '#10b981', color: 'white', border: 'none', borderRadius: 6, padding: '4px 9px', fontSize: 11, fontWeight: 700, cursor: 'pointer', opacity: isUpdating ? 0.5 : 1 }}
+                    >
+                      {t.closeTicket}
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </section>
 

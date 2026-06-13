@@ -134,9 +134,8 @@ export default function StaffPage() {
   const ar = lang === 'ar';
 
   useEffect(() => {
-    const ok =
-      sessionStorage.getItem('jnbk_business_auth') === 'true' &&
-      sessionStorage.getItem('jnbk_active_role') === 'business';
+    const role = sessionStorage.getItem('jnbk_active_role') || '';
+    const ok = role === 'business' || role === 'developer';
     setAllowed(ok);
     if (!ok) return;
     apiGet<Staff[]>('/api/staff', []).then(setStaff).catch(() => {
