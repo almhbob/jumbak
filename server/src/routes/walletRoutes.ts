@@ -218,6 +218,8 @@ router.patch('/admin/withdrawals/:txId', requireAuth, requireRole('developer', '
     return res.status(400).json({ error: 'action must be approve or reject' });
   }
 
+  const note = String(req.body.note || '').trim();
+
   if (prisma) {
     const tx = await prisma.walletTransaction.findUnique({ where: { id: txId } }).catch(() => null);
     if (!tx) return res.status(404).json({ error: 'Transaction not found' });
@@ -233,7 +235,7 @@ router.patch('/admin/withdrawals/:txId', requireAuth, requireRole('developer', '
           walletId: tx.walletId,
           amount: Math.abs(tx.amount),
           type: 'REFUND',
-          description: `رد مبلغ سحب مرفوض — مراجع: ${reviewedBy}`,
+          description: `رد مبلغ سحب مرفوض — مراجع: ${reviewedBy}${note ? ` — السبب: ${note}` : ''}`,
         },
       }).catch(() => null);
     }
@@ -241,7 +243,7 @@ router.patch('/admin/withdrawals/:txId', requireAuth, requireRole('developer', '
     const updated = await prisma.walletTransaction.update({
       where: { id: txId },
       data: {
-        description: `${tx.description} — ${action === 'approve' ? 'تمت الموافقة' : 'مرفوض'} بواسطة: ${reviewedBy}`,
+        description: `${tx.description} — ${action === 'approve' ? 'تمت الموافقة' : 'مرفوض'} بواسطة: ${reviewedBy}${note ? ` — السبب: ${note}` : ''}`,
       },
     }).catch(() => null);
 

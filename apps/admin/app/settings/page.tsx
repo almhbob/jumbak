@@ -1,15 +1,17 @@
 'use client';
-import { FormEvent, useState } from 'react';
-import { apiPost } from '../lib/apiClient';
+import { FormEvent, useEffect, useState } from 'react';
+import { apiPost, apiPatch } from '../lib/apiClient';
 
 type Lang = 'ar' | 'en';
 type State = { type: 'idle' | 'success' | 'error'; message: string };
+type VehicleType = { id: string; nameAr: string; nameEn: string; baseFare: number; perKmFare: number; minimumFare: number };
+type City = { id: string; nameAr: string; nameEn: string; countryId: string };
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
 
 const subscriptions = [
   ['Firebase', 'Firestore and app data', 'Environment variables', 'Required'],
-  ['Vercel', 'Admin dashboard hosting', 'jumbak-admin.vercel.app', 'Active'],
+  ['Cloudflare Pages', 'Admin dashboard hosting', 'jnbk-admin.pages.dev', 'Active'],
   ['Expo / EAS', 'Mobile preview and APK builds', 'EAS profile', 'Required before APK'],
   ['Google Play', 'Android publishing', 'Developer account', 'Pending'],
   ['Maps', 'Routing and map services', 'API key', 'Optional now'],
@@ -19,7 +21,7 @@ const subscriptions = [
 const systemItems = [
   ['NEXT_PUBLIC_API_URL', apiUrl || 'Not configured', 'Admin API connection'],
   ['EXPO_PUBLIC_API_URL', 'Set in Expo/EAS', 'Mobile API connection'],
-  ['Firebase config', 'Set in Vercel and Expo env', 'Firestore connection'],
+  ['Firebase config', 'Set in Cloudflare and Expo env', 'Firestore connection'],
   ['DATABASE_URL', 'Railway secret', 'Backend database'],
   ['JWT_SECRET', 'Railway secret', 'Staff/API sessions'],
   ['ALLOWED_ORIGINS', 'Comma-separated URLs', 'CORS whitelist'],
@@ -27,16 +29,16 @@ const systemItems = [
 ];
 
 const ar = {
-  login: 'دخول حساب المطور',
-  loginHint: 'سجّل الدخول عبر البوابة الموحدة باختيار حساب المطور.',
+  login: 'دخول المطور أو الإدارة',
+  loginHint: 'سجّل الدخول عبر البوابة الموحدة باختيار حساب المطور أو الإدارة.',
   goPortal: 'فتح البوابة',
-  title: 'لوحة المطور',
+  title: 'الإعدادات والبنية التحتية',
   sub: 'إدارة المدن والمناطق وأنواع المركبات والأسعار وإعدادات النظام والاشتراكات التقنية في Jnbk جنبك.',
-  back: 'العودة للوحة الإدارة',
+  back: 'الرئيسية',
   toggle: 'English',
-  important: 'نسخة الإدارة غير قابلة للتعديل',
+  important: 'نسخة الاتفاقات',
   importantHint: 'النسب والاتفاقات ومنصرفات التطبيق تظهر للإدارة للعلم فقط.',
-  openImportant: 'فتح نسخة الإدارة',
+  openImportant: 'فتح نسخة الاتفاقات',
   api: 'حالة الربط',
   connected: 'رابط API مضبوط',
   missing: 'رابط API غير مضبوط؛ ستظهر الصفحة لكن الحفظ لن يعمل حتى ربط Railway.',
@@ -67,19 +69,29 @@ const ar = {
   endpoints: 'واجهات API',
   status: 'الحالة',
   details: 'التفاصيل',
+  existingVehicles: 'المركبات والخدمات الحالية',
+  existingVehiclesHint: 'انقر تعديل لتحديث أسعار أي خدمة.',
+  existingCities: 'المدن الحالية',
+  edit: 'تعديل',
+  cancel: 'إلغاء',
+  saving: 'جارٍ الحفظ...',
+  saveEdit: 'حفظ التعديل',
+  noVehicles: 'لا توجد مركبات مسجلة بعد.',
+  noCities: 'لا توجد مدن مسجلة بعد.',
+  sdg: 'ج.س',
 };
 
 const en: typeof ar = {
-  login: 'Developer login',
-  loginHint: 'Log in from the unified portal by selecting the Developer account.',
+  login: 'Developer or business login',
+  loginHint: 'Log in from the unified portal by selecting the Developer or Business account.',
   goPortal: 'Open portal',
-  title: 'Developer Panel',
+  title: 'Settings and Infrastructure',
   sub: 'Manage cities, zones, vehicle types, pricing, system settings, and technical subscriptions for Jnbk جنبك.',
   back: 'Back to dashboard',
   toggle: 'العربية',
-  important: 'Read-only management copy',
+  important: 'Agreements copy',
   importantHint: 'Profit shares, agreements, and app costs are visible to management for awareness only.',
-  openImportant: 'Open management copy',
+  openImportant: 'Open agreements',
   api: 'Connection status',
   connected: 'API URL configured',
   missing: 'API URL is missing; page is visible but saving requires Railway backend.',
@@ -110,6 +122,16 @@ const en: typeof ar = {
   endpoints: 'API endpoints',
   status: 'Status',
   details: 'Details',
+  existingVehicles: 'Current vehicles and services',
+  existingVehiclesHint: 'Click edit to update pricing for any service.',
+  existingCities: 'Current cities',
+  edit: 'Edit',
+  cancel: 'Cancel',
+  saving: 'Saving...',
+  saveEdit: 'Save changes',
+  noVehicles: 'No vehicles registered yet.',
+  noCities: 'No cities registered yet.',
+  sdg: 'SDG',
 };
 
 function list(v: string): string[] {
@@ -122,17 +144,54 @@ export default function Settings() {
   const [lang] = useState<Lang>(initial);
   const [state, setState] = useState<State>({ type: 'idle', message: '' });
 
+  const [vehicles, setVehicles] = useState<VehicleType[]>([]);
+  const [cities, setCities] = useState<City[]>([]);
+  const [editVehicle, setEditVehicle] = useState<VehicleType | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+
   const t = lang === 'ar' ? ar : en;
   const rtl = lang === 'ar';
 
-  // Authorization: must be logged in as developer through the portal
-  const isAuthorized =
-    typeof window !== 'undefined' &&
-    sessionStorage.getItem('jnbk_dev_auth') === 'true' &&
-    sessionStorage.getItem('jnbk_active_role') === 'developer';
+  const activeRole = typeof window !== 'undefined' ? sessionStorage.getItem('jnbk_active_role') : null;
+  const isAuthorized = activeRole === 'developer' || activeRole === 'business';
 
   function go(path: string) {
     if (typeof window !== 'undefined') window.location.href = path;
+  }
+
+  useEffect(() => {
+    if (!isAuthorized || !apiUrl) return;
+    const token = sessionStorage.getItem('jnbk_staff_token') || '';
+    const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+    fetch(`${apiUrl}/api/config`, { headers })
+      .then((r) => r.ok ? r.json() : { vehicleTypes: [], cities: [] })
+      .then((data) => {
+        setVehicles(Array.isArray(data.vehicleTypes) ? data.vehicleTypes : []);
+        setCities(Array.isArray(data.cities) ? data.cities : []);
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function saveVehicleEdit() {
+    if (!editVehicle) return;
+    setEditSaving(true);
+    try {
+      await apiPatch(`/api/admin/vehicle-types/${editVehicle.id}`, {
+        nameAr: editVehicle.nameAr,
+        nameEn: editVehicle.nameEn,
+        baseFare: editVehicle.baseFare,
+        perKmFare: editVehicle.perKmFare,
+        minimumFare: editVehicle.minimumFare,
+      });
+      setVehicles((prev) => prev.map((v) => v.id === editVehicle.id ? editVehicle : v));
+      setEditVehicle(null);
+      setState({ type: 'success', message: t.success });
+    } catch {
+      setState({ type: 'error', message: t.fail });
+    } finally {
+      setEditSaving(false);
+    }
   }
 
   async function submitCity(e: FormEvent<HTMLFormElement>) {
@@ -150,6 +209,7 @@ export default function Settings() {
     try {
       await apiPost('/api/admin/cities', body);
       setState({ type: 'success', message: t.success });
+      setCities((prev) => prev.some(c => c.id === body.id) ? prev.map(c => c.id === body.id ? { ...c, ...body } : c) : [...prev, body]);
       e.currentTarget.reset();
     } catch {
       setState({ type: 'error', message: t.fail });
@@ -173,13 +233,13 @@ export default function Settings() {
     try {
       await apiPost('/api/admin/vehicle-types', body);
       setState({ type: 'success', message: t.success });
+      setVehicles((prev) => prev.some(v => v.id === body.id) ? prev.map(v => v.id === body.id ? body : v) : [...prev, body]);
       e.currentTarget.reset();
     } catch {
       setState({ type: 'error', message: t.fail });
     }
   }
 
-  // Not authorized — redirect to portal
   if (!isAuthorized) {
     return (
       <main dir={rtl ? 'rtl' : 'ltr'} style={{ textAlign: rtl ? 'right' : 'left' }}>
@@ -218,12 +278,6 @@ export default function Settings() {
             <button className="languageSwitch buttonReset" onClick={() => go(`/zones?lang=${lang}`)}>
               {lang === 'ar' ? 'المناطق' : 'Zones'}
             </button>
-            <button className="languageSwitch buttonReset" onClick={() => go(`/workflow?lang=${lang}`)}>
-              {lang === 'ar' ? 'تنسيق العمل' : 'Workflow'}
-            </button>
-            <button className="languageSwitch buttonReset" onClick={() => go(`/launch?lang=${lang}`)}>
-              {lang === 'ar' ? 'الإطلاق' : 'Launch'}
-            </button>
             <button className="languageSwitch buttonReset" onClick={() => go(`/settings?lang=${lang === 'ar' ? 'en' : 'ar'}`)}>
               {t.toggle}
             </button>
@@ -231,54 +285,124 @@ export default function Settings() {
         </div>
       </section>
 
+      {/* ── Status cards ── */}
       <section className="grid settingsGrid">
         <div className="card">
           <p>{t.api}</p>
           <strong className={apiUrl ? 'status-online' : 'status-pending'}>{apiUrl ? t.connected : t.missing}</strong>
         </div>
-        <div className="card"><p>{t.env}</p><strong>Developer</strong></div>
-        <div className="card"><p>{t.subscriptions}</p><strong>Managed</strong></div>
-        <div className="card"><p>Services</p><strong>Vehicles</strong></div>
+        <div className="card"><p>{lang === 'ar' ? 'الدور النشط' : 'Active role'}</p><strong>{activeRole}</strong></div>
+        <div className="card"><p>{lang === 'ar' ? 'المركبات' : 'Vehicles'}</p><strong>{vehicles.length}</strong></div>
+        <div className="card"><p>{lang === 'ar' ? 'المدن' : 'Cities'}</p><strong>{cities.length}</strong></div>
       </section>
 
       {state.message ? <div className={`notice ${state.type}`}>{state.message}</div> : null}
 
+      {/* ── Existing vehicle types ── */}
       <section className="panel">
-        <h2>{t.important}</h2>
-        <p className="muted">{t.importantHint}</p>
-        <button className="primaryAction" style={{ display: 'inline-block', marginTop: 12 }} onClick={() => go('/business')}>
-          {t.openImportant}
-        </button>
-      </section>
+        <h2>{t.existingVehicles}</h2>
+        <p className="muted">{t.existingVehiclesHint}</p>
 
-      <section className="panel">
-        <h2>{t.env}</h2>
-        <div className="table">
-          {systemItems.map((r) => (
-            <div className="row" key={r[0]}>
-              <span>{r[0]}</span>
-              <span>{r[1]}</span>
-              <span>{t.details}</span>
-              <b>{r[2]}</b>
+        {vehicles.length === 0 ? (
+          <div className="empty">{t.noVehicles}</div>
+        ) : (
+          <div className="table">
+            {/* Header row */}
+            <div className="row" style={{ background: 'linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%)', color: 'white' }}>
+              {['ID', lang === 'ar' ? 'الاسم' : 'Name', lang === 'ar' ? 'فتح الرحلة' : 'Base fare', lang === 'ar' ? 'كيلومتر' : 'Per km', lang === 'ar' ? 'الحد الأدنى' : 'Minimum', ''].map((h) => (
+                <span key={h} style={{ color: 'rgba(255,255,255,.85)', fontWeight: 900, fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 }}>{h}</span>
+              ))}
             </div>
-          ))}
-        </div>
+
+            {vehicles.map((v) => (
+              <div key={v.id}>
+                {editVehicle?.id === v.id ? (
+                  /* ── Inline edit row ── */
+                  <div style={{ background: 'rgba(214,169,54,.06)', border: '1.5px solid var(--gold)', borderRadius: 12, padding: '16px 20px', marginBottom: 4, display: 'grid', gap: 10 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8 }}>
+                      <div>
+                        <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>{lang === 'ar' ? 'الاسم عربي' : 'Name AR'}</label>
+                        <input value={editVehicle.nameAr} onChange={e => setEditVehicle({ ...editVehicle, nameAr: e.target.value })} style={{ width: '100%', marginTop: 4 }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>{lang === 'ar' ? 'الاسم إنجليزي' : 'Name EN'}</label>
+                        <input value={editVehicle.nameEn} onChange={e => setEditVehicle({ ...editVehicle, nameEn: e.target.value })} style={{ width: '100%', marginTop: 4 }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>{t.base}</label>
+                        <input type="number" value={editVehicle.baseFare} onChange={e => setEditVehicle({ ...editVehicle, baseFare: Number(e.target.value) })} style={{ width: '100%', marginTop: 4 }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>{t.km}</label>
+                        <input type="number" value={editVehicle.perKmFare} onChange={e => setEditVehicle({ ...editVehicle, perKmFare: Number(e.target.value) })} style={{ width: '100%', marginTop: 4 }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>{t.min}</label>
+                        <input type="number" value={editVehicle.minimumFare} onChange={e => setEditVehicle({ ...editVehicle, minimumFare: Number(e.target.value) })} style={{ width: '100%', marginTop: 4 }} />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={saveVehicleEdit}
+                        disabled={editSaving}
+                        style={{ background: 'linear-gradient(135deg, var(--teal) 0%, #0A7A63 100%)', color: 'white', border: 'none', borderRadius: 8, padding: '8px 18px', fontWeight: 900, fontSize: 13, cursor: editSaving ? 'not-allowed' : 'pointer', opacity: editSaving ? 0.6 : 1 }}
+                      >
+                        {editSaving ? t.saving : t.saveEdit}
+                      </button>
+                      <button
+                        onClick={() => setEditVehicle(null)}
+                        style={{ background: 'var(--card-bg)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 18px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+                      >
+                        {t.cancel}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="row" style={{ alignItems: 'center' }}>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 13, color: 'var(--gold)' }}>{v.id}</span>
+                    <span style={{ fontWeight: 700 }}>{lang === 'ar' ? v.nameAr : v.nameEn}</span>
+                    <span>{v.baseFare.toLocaleString()} <small style={{ color: 'var(--text-muted)' }}>{t.sdg}</small></span>
+                    <span>{v.perKmFare.toLocaleString()} <small style={{ color: 'var(--text-muted)' }}>{t.sdg}</small></span>
+                    <span>{v.minimumFare.toLocaleString()} <small style={{ color: 'var(--text-muted)' }}>{t.sdg}</small></span>
+                    <button
+                      onClick={() => setEditVehicle({ ...v })}
+                      style={{ background: 'none', border: '1.5px solid var(--navy)', color: 'var(--navy)', borderRadius: 8, padding: '5px 14px', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
+                    >
+                      {t.edit}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
+      {/* ── Existing cities ── */}
       <section className="panel">
-        <h2>{t.subscriptions}</h2>
-        <div className="table">
-          {subscriptions.map((r) => (
-            <div className="row" key={r[0]}>
-              <span>{r[0]}</span>
-              <span>{r[1]}</span>
-              <span>{r[2]}</span>
-              <b>{r[3]}</b>
+        <h2>{t.existingCities}</h2>
+        {cities.length === 0 ? (
+          <div className="empty">{t.noCities}</div>
+        ) : (
+          <div className="table">
+            <div className="row" style={{ background: 'linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%)', color: 'white' }}>
+              {['ID', lang === 'ar' ? 'الاسم عربي' : 'Name AR', lang === 'ar' ? 'الاسم إنجليزي' : 'Name EN', lang === 'ar' ? 'الدولة' : 'Country'].map((h) => (
+                <span key={h} style={{ color: 'rgba(255,255,255,.85)', fontWeight: 900, fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 }}>{h}</span>
+              ))}
             </div>
-          ))}
-        </div>
+            {cities.map((c) => (
+              <div className="row" key={c.id}>
+                <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 13, color: 'var(--teal)' }}>{c.id}</span>
+                <span style={{ fontWeight: 700 }}>{c.nameAr}</span>
+                <span>{c.nameEn}</span>
+                <span style={{ color: 'var(--text-muted)' }}>{c.countryId?.toUpperCase()}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
+      {/* ── Add city form ── */}
       <section className="panel">
         <h2>{t.city}</h2>
         <p className="muted">{t.cityHint}</p>
@@ -293,6 +417,7 @@ export default function Settings() {
         </form>
       </section>
 
+      {/* ── Add vehicle form ── */}
       <section className="panel">
         <h2>{t.vehicle}</h2>
         <p className="muted">{t.vehicleHint}</p>
@@ -307,23 +432,66 @@ export default function Settings() {
         </form>
       </section>
 
-      <section className="grid devGrid">
-        <div className="panel">
-          <h2>{t.workflow}</h2>
-          <ol>
-            <li>Define city and zones.</li>
-            <li>Add vehicle pricing.</li>
-            <li>Test passenger flow.</li>
-            <li>Register drivers.</li>
-          </ol>
-        </div>
-        <div className="panel">
-          <h2>{t.endpoints}</h2>
-          <code>POST /api/admin/cities</code>
-          <code>POST /api/admin/vehicle-types</code>
-          <code>GET /api/config</code>
-        </div>
+      {/* ── Agreements link ── */}
+      <section className="panel">
+        <h2>{t.important}</h2>
+        <p className="muted">{t.importantHint}</p>
+        <button className="primaryAction" style={{ display: 'inline-block', marginTop: 12 }} onClick={() => go('/business')}>
+          {t.openImportant}
+        </button>
       </section>
+
+      {/* ── Developer-only sections ── */}
+      {activeRole === 'developer' && (
+        <>
+          <section className="panel">
+            <h2>{t.env}</h2>
+            <div className="table">
+              {systemItems.map((r) => (
+                <div className="row" key={r[0]}>
+                  <span>{r[0]}</span>
+                  <span>{r[1]}</span>
+                  <span>{t.details}</span>
+                  <b>{r[2]}</b>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="panel">
+            <h2>{t.subscriptions}</h2>
+            <div className="table">
+              {subscriptions.map((r) => (
+                <div className="row" key={r[0]}>
+                  <span>{r[0]}</span>
+                  <span>{r[1]}</span>
+                  <span>{r[2]}</span>
+                  <b>{r[3]}</b>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="grid devGrid">
+            <div className="panel">
+              <h2>{t.workflow}</h2>
+              <ol>
+                <li>Define city and zones.</li>
+                <li>Add vehicle pricing.</li>
+                <li>Test passenger flow.</li>
+                <li>Register drivers.</li>
+              </ol>
+            </div>
+            <div className="panel">
+              <h2>{t.endpoints}</h2>
+              <code>POST /api/admin/cities</code>
+              <code>POST /api/admin/vehicle-types</code>
+              <code>PATCH /api/admin/vehicle-types/:id</code>
+              <code>GET /api/config</code>
+            </div>
+          </section>
+        </>
+      )}
     </main>
   );
 }

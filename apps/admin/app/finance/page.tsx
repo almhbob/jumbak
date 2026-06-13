@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState, Suspense, useCallback } from 'react';
+import { useEffect, useMemo, useState, Suspense, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 type Lang = 'ar' | 'en';
@@ -61,11 +61,18 @@ const copy = {
     withdrawalRejected: 'مرفوض',
     loading: 'جاري التحميل...',
     confirmApprove: 'هل أنت متأكد من الموافقة على هذا الطلب؟',
-    confirmReject: 'هل أنت متأكد من رفض هذا الطلب؟ سيُعاد الرصيد للمستخدم.',
     denied: 'هذه الصفحة مخصصة للمحاسب والإدارة فقط. سجّل الدخول من البوابة الموحدة.',
     refreshWithdrawals: 'تحديث',
     totalWithdrawals: 'إجمالي طلبات السحب',
     sdg: 'ج.س',
+    filterAll: 'الكل',
+    filterPending: 'بانتظار المراجعة',
+    filterApproved: 'تمت الموافقة',
+    filterRejected: 'مرفوض',
+    rejectNote: 'سبب الرفض (اختياري)',
+    rejectNotePlaceholder: 'مثال: لا يتطابق اسم الحساب...',
+    confirmRejectBtn: 'تأكيد الرفض',
+    cancelReject: 'إلغاء',
   },
   en: {
     title: 'Accountant Workspace',
@@ -92,11 +99,18 @@ const copy = {
     withdrawalRejected: 'Rejected',
     loading: 'Loading...',
     confirmApprove: 'Approve this withdrawal request?',
-    confirmReject: 'Reject this request? The balance will be refunded to the user.',
     denied: 'This page is only for accountant and business admin accounts. Log in from the unified portal.',
     refreshWithdrawals: 'Refresh',
     totalWithdrawals: 'Total withdrawal requests',
     sdg: 'SDG',
+    filterAll: 'All',
+    filterPending: 'Pending',
+    filterApproved: 'Approved',
+    filterRejected: 'Rejected',
+    rejectNote: 'Rejection note (optional)',
+    rejectNotePlaceholder: 'e.g. Account name does not match...',
+    confirmRejectBtn: 'Confirm reject',
+    cancelReject: 'Cancel',
   },
 };
 
@@ -133,6 +147,9 @@ function FinanceContent() {
   const [wLoading, setWLoading] = useState(false);
   const [actionMsg, setActionMsg] = useState<{ id: string; type: 'success' | 'error'; text: string } | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const rejectNoteRef = useRef<HTMLInputElement>(null);
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
   const getToken = () => sessionStorage.getItem('jnbk_staff_token') || '';
@@ -173,17 +190,19 @@ function FinanceContent() {
     }
   }, [apiBase, loadWithdrawals]);
 
-  async function reviewWithdrawal(txId: string, action: 'approve' | 'reject') {
-    const confirm = window.confirm(action === 'approve' ? t.confirmApprove : t.confirmReject);
-    if (!confirm) return;
+  async function reviewWithdrawal(txId: string, action: 'approve' | 'reject', note?: string) {
+    if (action === 'approve') {
+      if (!window.confirm(t.confirmApprove)) return;
+    }
 
     setProcessingId(txId);
+    setRejectingId(null);
     setActionMsg(null);
     try {
       const res = await fetch(`${apiBase}/api/wallet/admin/withdrawals/${txId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ action, reviewedBy: staffUsername }),
+        body: JSON.stringify({ action, reviewedBy: staffUsername, note: note || '' }),
       });
       if (res.ok) {
         setActionMsg({ id: txId, type: 'success', text: action === 'approve' ? (ar ? 'تمت الموافقة بنجاح ✓' : 'Approved successfully ✓') : (ar ? 'تم الرفض وإعادة الرصيد ✓' : 'Rejected and refunded ✓') });
@@ -206,6 +225,16 @@ function FinanceContent() {
   const operatorShare = Math.round(net * operatorPct / 100);
   const pendingWithdrawals = withdrawals.filter(w => !w.description?.includes('تمت الموافقة') && !w.description?.includes('مرفوض') && !w.description?.toLowerCase().includes('approved') && !w.description?.toLowerCase().includes('rejected'));
   const pendingTotal = pendingWithdrawals.reduce((s, w) => s + Math.abs(w.amount), 0);
+  const filteredWithdrawals = useMemo(() => {
+    if (filterStatus === 'all') return withdrawals;
+    return withdrawals.filter(w => {
+      const status = txStatus(w.description, t);
+      if (filterStatus === 'pending') return status.label === t.withdrawalPending;
+      if (filterStatus === 'approved') return status.label === t.withdrawalApproved;
+      if (filterStatus === 'rejected') return status.label === t.withdrawalRejected;
+      return true;
+    });
+  }, [withdrawals, filterStatus, t]);
 
   const label = (v: string) => (t as Record<string, string>)[v] || v;
 
@@ -267,37 +296,64 @@ function FinanceContent() {
 
       {/* ── Withdrawals ── */}
       <section className="panel">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 10 }}>
           <h2 style={{ margin: 0 }}>{t.withdrawals}</h2>
           <button className="languageSwitch buttonReset" onClick={loadWithdrawals} disabled={wLoading}>
             {wLoading ? '...' : t.refreshWithdrawals}
           </button>
         </div>
 
+        {/* ── Filter buttons ── */}
+        {withdrawals.length > 0 && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+            {(['all', 'pending', 'approved', 'rejected'] as const).map((f) => {
+              const count = f === 'all' ? withdrawals.length
+                : f === 'pending' ? withdrawals.filter(w => txStatus(w.description, t).label === t.withdrawalPending).length
+                : f === 'approved' ? withdrawals.filter(w => txStatus(w.description, t).label === t.withdrawalApproved).length
+                : withdrawals.filter(w => txStatus(w.description, t).label === t.withdrawalRejected).length;
+              const active = filterStatus === f;
+              const colors: Record<string, string> = { all: 'var(--navy)', pending: 'var(--gold)', approved: 'var(--teal)', rejected: '#E74C3C' };
+              return (
+                <button
+                  key={f}
+                  onClick={() => setFilterStatus(f)}
+                  style={{
+                    padding: '6px 14px', borderRadius: 20, border: `1.5px solid ${colors[f]}`,
+                    background: active ? colors[f] : 'transparent', color: active ? 'white' : colors[f],
+                    fontWeight: 700, fontSize: 12, cursor: 'pointer', transition: 'all 0.15s',
+                  }}
+                >
+                  {t[`filter${f.charAt(0).toUpperCase() + f.slice(1)}` as keyof typeof t]} ({count})
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {wLoading && <p className="muted">{t.loading}</p>}
 
-        {!wLoading && withdrawals.length === 0 && (
+        {!wLoading && filteredWithdrawals.length === 0 && (
           <div className="empty">{t.withdrawalEmpty}</div>
         )}
 
-        {!wLoading && withdrawals.length > 0 && (
+        {!wLoading && filteredWithdrawals.length > 0 && (
           <div className="table">
             {/* Header */}
             <div className="row" style={{ background: 'linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%)', color: 'white' }}>
-              <span style={{ color: 'rgba(255,255,255,.85)', fontWeight: 900, fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 }}>{t.withdrawalUser}</span>
-              <span style={{ color: 'rgba(255,255,255,.85)', fontWeight: 900, fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 }}>{t.withdrawalAmount}</span>
-              <span style={{ color: 'rgba(255,255,255,.85)', fontWeight: 900, fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 }}>{t.withdrawalAccount}</span>
-              <span style={{ color: 'rgba(255,255,255,.85)', fontWeight: 900, fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 }}>{t.withdrawalStatus}</span>
+              {[t.withdrawalUser, t.withdrawalAmount, t.withdrawalAccount, t.withdrawalStatus].map(h => (
+                <span key={h} style={{ color: 'rgba(255,255,255,.85)', fontWeight: 900, fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 }}>{h}</span>
+              ))}
             </div>
 
-            {withdrawals.map((tx) => {
+            {filteredWithdrawals.map((tx) => {
               const status = txStatus(tx.description, t);
               const isPending = status.label === t.withdrawalPending;
               const isProcessing = processingId === tx.id;
+              const isRejecting = rejectingId === tx.id;
               const msg = actionMsg?.id === tx.id ? actionMsg : null;
 
               return (
-                <div key={tx.id} style={{ display: 'grid', gap: 12, marginBottom: 2 }}>
+                <div key={tx.id} style={{ marginBottom: 2 }}>
                   <div className="row" style={{ gridTemplateColumns: isPending ? '1fr 1fr 1fr auto' : 'repeat(4, 1fr)', alignItems: 'center' }}>
                     <span style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'monospace', fontWeight: 700 }}>
                       {tx.wallet?.userId ? tx.wallet.userId.slice(-8) : '—'}
@@ -311,7 +367,7 @@ function FinanceContent() {
                       <small style={{ color: 'var(--text-muted)', fontSize: 11 }}>
                         {new Date(tx.createdAt).toLocaleDateString(ar ? 'ar-SD' : 'en-GB')}
                       </small>
-                      {isPending && (
+                      {isPending && !isRejecting && (
                         <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
                           <button
                             disabled={isProcessing}
@@ -327,7 +383,7 @@ function FinanceContent() {
                           </button>
                           <button
                             disabled={isProcessing}
-                            onClick={() => reviewWithdrawal(tx.id, 'reject')}
+                            onClick={() => setRejectingId(tx.id)}
                             style={{
                               background: 'linear-gradient(135deg, #E74C3C 0%, #C0392B 100%)',
                               color: 'white', border: 'none', borderRadius: 8,
@@ -335,14 +391,47 @@ function FinanceContent() {
                               opacity: isProcessing ? 0.5 : 1, transition: 'all 0.18s',
                             }}
                           >
-                            {isProcessing ? '...' : t.reject}
+                            {t.reject}
                           </button>
                         </div>
                       )}
                     </div>
                   </div>
+
+                  {/* ── Rejection note panel ── */}
+                  {isRejecting && (
+                    <div style={{ background: 'rgba(231,76,60,.06)', border: '1.5px solid #E74C3C', borderRadius: 12, padding: '14px 18px', marginTop: 4, marginBottom: 4, display: 'grid', gap: 10 }}>
+                      <label style={{ fontSize: 13, fontWeight: 700, color: '#E74C3C' }}>{t.rejectNote}</label>
+                      <input
+                        ref={rejectNoteRef}
+                        placeholder={t.rejectNotePlaceholder}
+                        style={{ width: '100%', border: '1.5px solid #E74C3C' }}
+                        autoFocus
+                      />
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          disabled={isProcessing}
+                          onClick={() => reviewWithdrawal(tx.id, 'reject', rejectNoteRef.current?.value || '')}
+                          style={{
+                            background: 'linear-gradient(135deg, #E74C3C 0%, #C0392B 100%)',
+                            color: 'white', border: 'none', borderRadius: 8, padding: '8px 18px',
+                            fontWeight: 900, fontSize: 13, cursor: isProcessing ? 'not-allowed' : 'pointer', opacity: isProcessing ? 0.5 : 1,
+                          }}
+                        >
+                          {isProcessing ? '...' : t.confirmRejectBtn}
+                        </button>
+                        <button
+                          onClick={() => setRejectingId(null)}
+                          style={{ background: 'var(--card-bg)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 18px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+                        >
+                          {t.cancelReject}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {msg && (
-                    <div className={`notice ${msg.type === 'success' ? 'success' : 'error'}`} style={{ margin: 0 }}>
+                    <div className={`notice ${msg.type === 'success' ? 'success' : 'error'}`} style={{ margin: '4px 0' }}>
                       {msg.text}
                     </div>
                   )}

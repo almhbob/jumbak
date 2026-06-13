@@ -131,24 +131,31 @@ router.patch('/change-password', requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
-// Update staff status or role — business/developer only
+// Update staff member — business/developer only
 router.patch('/:id', requireAuth, requireRole('business', 'developer'), async (req, res) => {
   const id = String(req.params.id);
   const rawStatus = req.body.status ? String(req.body.status).toUpperCase() : undefined;
   const newRole = req.body.role ? normalizeStaffRole(String(req.body.role)) : undefined;
+  const name = req.body.name ? String(req.body.name).trim() : undefined;
+  const phone = req.body.phone !== undefined ? (String(req.body.phone).trim() || null) : undefined;
+  const email = req.body.email !== undefined ? (String(req.body.email).trim() || null) : undefined;
+  const notes = req.body.notes !== undefined ? (String(req.body.notes).trim() || null) : undefined;
 
   if (rawStatus && !['ACTIVE', 'PAUSED'].includes(rawStatus)) {
     return res.status(400).json({ error: 'Invalid status value' });
   }
 
   if (prisma) {
-    const member = await prisma.staffMember.update({
-      where: { id },
-      data: {
-        ...(rawStatus ? { status: rawStatus as StaffStatus } : {}),
-        ...(newRole ? { role: toDbStaffRole(newRole) } : {}),
-      },
-    }).catch(() => null);
+    const data: Record<string, unknown> = {};
+    if (rawStatus) data.status = rawStatus as StaffStatus;
+    if (newRole) data.role = toDbStaffRole(newRole);
+    if (name) data.name = name;
+    if (phone !== undefined) data.phone = phone;
+    if (email !== undefined) data.email = email;
+    if (notes !== undefined) data.notes = notes;
+    if (Object.keys(data).length === 0) return res.status(400).json({ error: 'Nothing to update' });
+
+    const member = await prisma.staffMember.update({ where: { id }, data }).catch(() => null);
     if (!member) return res.status(404).json({ error: 'Staff member not found' });
     return res.json({ ok: true, staff: publicStaff(member) });
   }
@@ -157,7 +164,23 @@ router.patch('/:id', requireAuth, requireRole('business', 'developer'), async (r
   if (!member) return res.status(404).json({ error: 'Staff member not found' });
   if (rawStatus) member.status = rawStatus.toLowerCase();
   if (newRole) member.role = newRole;
+  if (name) member.name = name;
+  if (phone !== undefined) member.phone = phone;
+  if (email !== undefined) member.email = email;
+  if (notes !== undefined) member.notes = notes;
   res.json({ ok: true, staff: publicStaff(member) });
+});
+
+// Delete staff member — business/developer only
+router.delete('/:id', requireAuth, requireRole('business', 'developer'), async (req, res) => {
+  const id = String(req.params.id);
+  if (prisma) {
+    await prisma.staffMember.delete({ where: { id } }).catch(() => null);
+    return res.json({ ok: true });
+  }
+  const idx = memoryStaff.findIndex((m) => m.id === id);
+  if (idx >= 0) memoryStaff.splice(idx, 1);
+  res.json({ ok: true });
 });
 
 export default router;
