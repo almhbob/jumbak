@@ -17,7 +17,7 @@ function getOrCreateMemoryWallet(userId: string) {
 
 // GET /api/wallet/:userId — authenticated users only
 router.get('/:userId', requireAuth, async (req, res) => {
-  const { userId } = req.params;
+  const userId = String(req.params['userId'] || '');
 
   if (prisma) {
     let wallet = await prisma.wallet.findUnique({
@@ -99,7 +99,7 @@ router.post('/:userId/pay', requireAuth, validateBody(walletPaySchema), async (r
 
 // POST /api/wallet/:userId/earn
 router.post('/:userId/earn', requireAuth, requireRole('operations', 'supervisor', 'accountant', 'finance', 'business', 'developer'), async (req, res) => {
-  const { userId } = req.params;
+  const userId = String(req.params['userId'] || '');
   const amount = Math.round(Number(req.body.amount || 0));
   const rideId = String(req.body.rideId || '');
   const description = String(req.body.description || 'أرباح رحلة');
@@ -182,6 +182,26 @@ router.post('/:userId/withdraw', requireAuth, validateBody(walletWithdrawSchema)
     status: 'pending_review',
     message: 'سيتم مراجعة طلب السحب خلال 1-3 أيام عمل',
   });
+});
+
+// GET /api/wallet/admin/wallets — list all wallets (admin overview)
+router.get('/admin/wallets', requireAuth, requireRole('developer', 'business', 'accountant', 'finance', 'operations', 'supervisor'), async (req, res) => {
+  const search = String(req.query.search || '').trim();
+  const take = Math.min(Number(req.query.take || 50), 200);
+
+  if (prisma) {
+    const wallets = await prisma.wallet.findMany({
+      where: search ? { userId: { contains: search } } : undefined,
+      orderBy: { updatedAt: 'desc' },
+      take,
+      include: { transactions: { orderBy: { createdAt: 'desc' }, take: 5 } },
+    });
+    return res.json(wallets);
+  }
+
+  const all = Object.entries(memoryWallets).map(([userId, w]) => ({ userId, ...w }));
+  const filtered = search ? all.filter((w) => w.userId.includes(search)) : all;
+  res.json(filtered.slice(0, take));
 });
 
 // GET /api/wallet/admin/withdrawals — list pending withdrawals (admin only)

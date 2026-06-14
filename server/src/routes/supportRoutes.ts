@@ -1,10 +1,13 @@
 import { Router } from 'express';
 import { prisma } from '../db.js';
 import { memorySupportRequests } from '../store.js';
+import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = Router();
 
-router.get('/', async (_req, res) => {
+const SUPPORT_ROLES = ['operations', 'supervisor', 'support', 'accountant', 'finance', 'developer', 'business'] as const;
+
+router.get('/', requireAuth, requireRole(...SUPPORT_ROLES), async (_req, res) => {
   if (prisma) {
     const requests = await prisma.supportRequest.findMany({
       orderBy: { createdAt: 'desc' },
@@ -46,20 +49,22 @@ router.post('/', async (req, res) => {
   res.status(201).json({ ok: true, request });
 });
 
-router.patch('/:id/status', async (req, res) => {
+router.patch('/:id/status', requireAuth, requireRole(...SUPPORT_ROLES), async (req, res) => {
   const status = String(req.body.status || 'OPEN');
   const allowed = ['OPEN', 'IN_REVIEW', 'RESOLVED', 'CLOSED'];
   if (!allowed.includes(status)) return res.status(400).json({ error: 'Invalid status value' });
 
+  const id = String(req.params['id'] || '');
+
   if (prisma) {
     const request = await prisma.supportRequest
-      .update({ where: { id: req.params.id }, data: { status: status as 'OPEN' | 'IN_REVIEW' | 'RESOLVED' | 'CLOSED' } })
+      .update({ where: { id }, data: { status: status as 'OPEN' | 'IN_REVIEW' | 'RESOLVED' | 'CLOSED' } })
       .catch(() => null);
     if (!request) return res.status(404).json({ error: 'Support request not found' });
     return res.json(request);
   }
 
-  const request = memorySupportRequests.find((r) => r.id === req.params.id);
+  const request = memorySupportRequests.find((r) => r.id === id);
   if (!request) return res.status(404).json({ error: 'Support request not found' });
   request.status = status;
   request.updatedAt = new Date().toISOString();

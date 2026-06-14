@@ -149,6 +149,7 @@ function FinanceContent() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
   const rejectNoteRef = useRef<HTMLInputElement>(null);
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
@@ -173,7 +174,7 @@ function FinanceContent() {
 
   useEffect(() => {
     const role = sessionStorage.getItem('jnbk_active_role');
-    const ok = role === 'accountant' || role === 'business';
+    const ok = ['accountant', 'finance', 'business', 'developer'].includes(role || '');
     setAllowed(ok);
     if (!ok) return;
 
@@ -191,12 +192,9 @@ function FinanceContent() {
   }, [apiBase, loadWithdrawals]);
 
   async function reviewWithdrawal(txId: string, action: 'approve' | 'reject', note?: string) {
-    if (action === 'approve') {
-      if (!window.confirm(t.confirmApprove)) return;
-    }
-
     setProcessingId(txId);
     setRejectingId(null);
+    setApprovingId(null);
     setActionMsg(null);
     try {
       const res = await fetch(`${apiBase}/api/wallet/admin/withdrawals/${txId}`, {
@@ -264,6 +262,7 @@ function FinanceContent() {
           <div className="topActions">
             <button className="languageSwitch buttonReset" onClick={() => logout(lang)}>{t.logout}</button>
             <a className="languageSwitch" href="/">{t.back}</a>
+            <a className="languageSwitch" href={`/wallet?lang=${lang}`}>{ar ? 'المحافظ' : 'Wallets'}</a>
             <a className="languageSwitch" href={`/business?lang=${lang}`}>{t.business}</a>
             <a className="languageSwitch" href={`/finance?lang=${ar ? 'en' : 'ar'}`}>{t.toggle}</a>
           </div>
@@ -367,11 +366,11 @@ function FinanceContent() {
                       <small style={{ color: 'var(--text-muted)', fontSize: 11 }}>
                         {new Date(tx.createdAt).toLocaleDateString(ar ? 'ar-SD' : 'en-GB')}
                       </small>
-                      {isPending && !isRejecting && (
+                      {isPending && !isRejecting && !approvingId && (
                         <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
                           <button
                             disabled={isProcessing}
-                            onClick={() => reviewWithdrawal(tx.id, 'approve')}
+                            onClick={() => setApprovingId(tx.id)}
                             style={{
                               background: 'linear-gradient(135deg, var(--teal) 0%, #0A7A63 100%)',
                               color: 'white', border: 'none', borderRadius: 8,
@@ -397,6 +396,32 @@ function FinanceContent() {
                       )}
                     </div>
                   </div>
+
+                  {/* ── Approve confirm panel ── */}
+                  {approvingId === tx.id && (
+                    <div style={{ background: 'rgba(14,143,179,.07)', border: '1.5px solid var(--teal)', borderRadius: 12, padding: '14px 18px', marginTop: 4, marginBottom: 4, display: 'grid', gap: 10 }}>
+                      <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--teal)' }}>{t.confirmApprove}</label>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          disabled={isProcessing}
+                          onClick={() => reviewWithdrawal(tx.id, 'approve')}
+                          style={{
+                            background: 'linear-gradient(135deg, var(--teal) 0%, #0A7A63 100%)',
+                            color: 'white', border: 'none', borderRadius: 8, padding: '8px 18px',
+                            fontWeight: 900, fontSize: 13, cursor: isProcessing ? 'not-allowed' : 'pointer', opacity: isProcessing ? 0.5 : 1,
+                          }}
+                        >
+                          {isProcessing ? '...' : t.approve}
+                        </button>
+                        <button
+                          onClick={() => setApprovingId(null)}
+                          style={{ background: 'var(--card-bg)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 18px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+                        >
+                          {t.cancelReject}
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* ── Rejection note panel ── */}
                   {isRejecting && (
