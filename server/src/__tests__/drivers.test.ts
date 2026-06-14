@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
+import { signToken } from '../middleware/auth.js';
 
 const { app } = await import('../main.js');
+
+const adminToken = signToken({ staffId: 'staff_test', username: 'admin', role: 'developer' });
+const adminAuth = { Authorization: `Bearer ${adminToken}` };
 
 describe('Drivers', () => {
   it('GET /api/drivers — returns array', async () => {
@@ -53,7 +57,7 @@ describe('Drivers', () => {
   });
 
   it('GET /api/drivers/applications — returns list', async () => {
-    const res = await request(app).get('/api/drivers/applications');
+    const res = await request(app).get('/api/drivers/applications').set(adminAuth);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
   });
