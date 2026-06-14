@@ -15,8 +15,8 @@ function getOrCreateMemoryWallet(userId: string) {
   return memoryWallets[userId];
 }
 
-// GET /api/wallet/:userId
-router.get('/:userId', async (req, res) => {
+// GET /api/wallet/:userId — authenticated users only
+router.get('/:userId', requireAuth, async (req, res) => {
   const { userId } = req.params;
 
   if (prisma) {
@@ -42,8 +42,8 @@ router.get('/:userId', async (req, res) => {
   });
 });
 
-// POST /api/wallet/:userId/topup
-router.post('/:userId/topup', validateBody(walletTopupSchema), async (req, res) => {
+// POST /api/wallet/:userId/topup — staff only (admin credits a user)
+router.post('/:userId/topup', requireAuth, requireRole('operations', 'supervisor', 'accountant', 'finance', 'business', 'developer'), validateBody(walletTopupSchema), async (req, res) => {
   const userId = String(req.params.userId);
   const { amount, description = 'شحن رصيد' } = req.body as { amount: number; description?: string };
 
@@ -71,7 +71,7 @@ router.post('/:userId/topup', validateBody(walletTopupSchema), async (req, res) 
 });
 
 // POST /api/wallet/:userId/pay
-router.post('/:userId/pay', validateBody(walletPaySchema), async (req, res) => {
+router.post('/:userId/pay', requireAuth, validateBody(walletPaySchema), async (req, res) => {
   const userId = String(req.params.userId);
   const { amount, rideId = '', description = 'دفع رحلة' } = req.body as { amount: number; rideId?: string; description?: string };
 
@@ -98,7 +98,7 @@ router.post('/:userId/pay', validateBody(walletPaySchema), async (req, res) => {
 });
 
 // POST /api/wallet/:userId/earn
-router.post('/:userId/earn', async (req, res) => {
+router.post('/:userId/earn', requireAuth, requireRole('operations', 'supervisor', 'accountant', 'finance', 'business', 'developer'), async (req, res) => {
   const { userId } = req.params;
   const amount = Math.round(Number(req.body.amount || 0));
   const rideId = String(req.body.rideId || '');
@@ -126,7 +126,7 @@ router.post('/:userId/earn', async (req, res) => {
 });
 
 // POST /api/wallet/:userId/withdraw — request a withdrawal (pending admin approval)
-router.post('/:userId/withdraw', validateBody(walletWithdrawSchema), async (req, res) => {
+router.post('/:userId/withdraw', requireAuth, validateBody(walletWithdrawSchema), async (req, res) => {
   const userId = String(req.params.userId);
   const { amount, bankAccount, description = 'طلب سحب' } = req.body as {
     amount: number; bankAccount: string; description?: string;

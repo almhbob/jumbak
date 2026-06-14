@@ -7,9 +7,12 @@ import { RideStatus } from '@prisma/client';
 import { sendPushNotifications, rideStatusMessage } from '../services/notificationService.js';
 import { emitRideUpdate } from '../services/socketService.js';
 import { validateBody, createRideSchema, updateRideStatusSchema, rateRideSchema } from '../middleware/validate.js';
+import { requireAuth, requireRole } from '../middleware/auth.js';
 import { logger } from '../services/logger.js';
 
 const router = Router();
+
+const STAFF_ROLES = ['operations', 'supervisor', 'support', 'accountant', 'finance', 'developer', 'business'] as const;
 
 function toRideStatus(value: string): RideStatus {
   const upper = value.toUpperCase();
@@ -31,7 +34,7 @@ router.get('/', async (_req, res) => {
   res.json(memoryRides.slice().reverse());
 });
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', requireAuth, async (req, res) => {
   const rideId = String(req.params['id']);
   if (prisma) {
     const ride = await prisma.ride.findUnique({
@@ -46,7 +49,7 @@ router.get('/:id', async (req, res) => {
   res.json(ride);
 });
 
-router.post('/', validateBody(createRideSchema), async (req, res) => {
+router.post('/', requireAuth, validateBody(createRideSchema), async (req, res) => {
   const { cityId, vehicleTypeId, pickupLabel, destinationLabel, distanceKm = 2, stops } = req.body as {
     cityId: string; vehicleTypeId: string; pickupLabel: string; destinationLabel: string;
     distanceKm?: number; stops?: string[];
@@ -136,7 +139,7 @@ router.post('/', validateBody(createRideSchema), async (req, res) => {
   res.status(201).json(ride);
 });
 
-router.patch('/:id/status', validateBody(updateRideStatusSchema), async (req, res) => {
+router.patch('/:id/status', requireAuth, validateBody(updateRideStatusSchema), async (req, res) => {
   const rideId = String(req.params['id']);
   const { status: statusInput } = req.body as { status: string };
   const status = toRideStatus(statusInput);
@@ -201,7 +204,7 @@ router.patch('/:id/status', validateBody(updateRideStatusSchema), async (req, re
   res.json(ride);
 });
 
-router.patch('/:id/rating', validateBody(rateRideSchema), async (req, res) => {
+router.patch('/:id/rating', requireAuth, validateBody(rateRideSchema), async (req, res) => {
   const rideId = String(req.params['id']);
   const { rating } = req.body as { rating: number };
 
