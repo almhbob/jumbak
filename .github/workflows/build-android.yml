@@ -67,15 +67,34 @@ jobs:
           GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m"
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
           ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.1.12297006
+          SENTRY_DISABLE_AUTO_UPLOAD: true
+          SENTRY_NO_PROGRESS_BAR: true
         run: ./gradlew assembleRelease --stacktrace
 
       - name: Find APK
         if: always()
         run: find apps/mobile/android/app/build/outputs -name "*.apk" 2>/dev/null || echo "No APK found"
 
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: jnbk-release-apk
           path: apps/mobile/android/app/build/outputs/apk/release/*.apk
           retention-days: 30
+
+      - name: Upload APK to Gofile
+        run: |
+          APK=$(find apps/mobile/android/app/build/outputs/apk/release -name "*.apk" | head -1)
+          if [ -z "$APK" ]; then echo "No APK found"; exit 1; fi
+          SERVER=$(curl -s https://api.gofile.io/servers | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['data']['servers'][0]['name'])")
+          RESULT=$(curl -s -F "file=@$APK" "https://${SERVER}.gofile.io/contents/uploadfile")
+          echo "Gofile result: $RESULT"
+          LINK=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['data']['downloadPage'])")
+          echo "✅ APK download link: $LINK"
+          echo "GOFILE_LINK=$LINK" >> $GITHUB_ENV
+
+      - name: Comment APK link in job summary
+        run: |
+          echo "## 📱 APK جاهز للتحميل" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**رابط التحميل:** $GOFILE_LINK" >> $GITHUB_STEP_SUMMARY
