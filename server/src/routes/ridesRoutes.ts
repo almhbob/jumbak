@@ -184,6 +184,27 @@ router.patch('/:id/status', requireAuth, validateBody(updateRideStatusSchema), a
       }
     }
 
+    // Auto-credit driver earnings on completion
+    if (status === RideStatus.COMPLETED && ride.driverId && ride.driver?.user) {
+      const earnAmount = Number(ride.estimatedFare || 0);
+      if (earnAmount > 0) {
+        const driverUserId = ride.driver.user.id;
+        const driverTokens = ride.driver.user.deviceTokens.map((d: { token: string }) => d.token);
+        prisma.wallet.upsert({
+          where: { userId: driverUserId },
+          update: { balance: { increment: earnAmount } },
+          create: { userId: driverUserId, balance: earnAmount },
+        }).then(async (w) => {
+          await prisma!.walletTransaction.create({
+            data: { walletId: w.id, amount: earnAmount, type: 'DRIVER_EARNING', description: 'أرباح رحلة', rideId: ride.id },
+          });
+          if (driverTokens.length) {
+            sendPushNotifications(driverTokens, 'تم إضافة أرباحك', `${earnAmount} SDG`, { type: 'earnings', rideId: ride.id }).catch(() => null);
+          }
+        }).catch(() => null);
+      }
+    }
+
     logger.info('Ride status updated', { rideId: ride.id, status });
     return res.json(ride);
   }

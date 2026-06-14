@@ -5,7 +5,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { colors } from '../src/constants/theme';
 import { dict, Lang } from '../src/i18n';
-import { getRides, updateRideStatus, getWallet, walletEarn, toggleDriverOnline } from '../src/api';
+import { getRides, updateRideStatus, getWallet, toggleDriverOnline } from '../src/api';
 import { getSocket, onRideUpdate, disconnectSocket } from '../src/socketClient';
 
 type Ride = { id: string; pickupLabel?: string; destinationLabel?: string; estimatedFare?: number; distanceKm?: number; status?: string };
@@ -68,7 +68,7 @@ export default function Driver() {
     }
 
     fetchRides();
-    pollRef.current = setInterval(fetchRides, 8000);
+    pollRef.current = setInterval(fetchRides, 30000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [online]);
 
@@ -81,7 +81,12 @@ export default function Driver() {
     }
     if (driverId && !toggleLoading) {
       setToggleLoading(true);
-      toggleDriverOnline(driverId, val).catch(() => null).finally(() => setToggleLoading(false));
+      toggleDriverOnline(driverId, val)
+        .catch(() => {
+          setOnline(!val);
+          Alert.alert('Jnbk', lang === 'ar' ? 'تعذر تغيير الحالة — يُرجى إعادة المحاولة' : 'Could not update status — please try again');
+        })
+        .finally(() => setToggleLoading(false));
     }
   }
 
@@ -94,12 +99,8 @@ export default function Driver() {
     }
     if (status === 'COMPLETED') {
       setActiveRide(null);
-      // Credit driver earnings
-      if (userId && ride.estimatedFare) {
-        walletEarn(userId, ride.estimatedFare, ride.id, lang === 'ar' ? 'أرباح رحلة' : 'Ride earnings')
-          .then((w) => setWalletBalance(w.balance))
-          .catch(() => null);
-      }
+      // Server auto-credits earnings — just refresh the wallet balance
+      if (userId) getWallet(userId).then((w) => setWalletBalance(w.balance)).catch(() => null);
     } else {
       setActiveRide({ ...ride, status });
     }

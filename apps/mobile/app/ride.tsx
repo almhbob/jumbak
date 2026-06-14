@@ -13,7 +13,7 @@ import { joinRide, leaveRide, onRideUpdate } from '../src/socketClient';
 type Driver = { id: string; name: string; vehicle: string; rating: number; online?: boolean };
 type RideDetails = { id: string; pickupLabel?: string; destinationLabel?: string; estimatedFare?: number; finalFare?: number; status?: string; driver?: { user?: { name?: string; phone?: string }; vehicle?: { vehicleType?: { nameAr?: string; nameEn?: string } } }; vehicleType?: { nameAr?: string; nameEn?: string }; city?: { nameAr?: string; nameEn?: string } };
 const order = ['REQUESTED', 'ACCEPTED', 'ARRIVING', 'ACTIVE', 'COMPLETED'];
-function step(status?: string) { const i = order.indexOf(String(status || 'REQUESTED')); return i < 0 ? 0 : Math.min(i, 3); }
+function step(status?: string) { if (status === 'CANCELLED') return -1; const i = order.indexOf(String(status || 'REQUESTED')); return i < 0 ? 0 : Math.min(i, 3); }
 function titleFor(status: string | undefined, t: any, lang: Lang) { const ar = lang === 'ar'; const m: Record<string, string> = { REQUESTED: t.searching, ACCEPTED: t.accepted, ARRIVING: t.arriving, ACTIVE: t.started, COMPLETED: ar ? 'تم إكمال الرحلة' : 'Trip completed', CANCELLED: ar ? 'تم إلغاء الرحلة' : 'Trip cancelled' }; return m[String(status || 'REQUESTED')] || t.searching; }
 
 export default function Ride() {
@@ -36,6 +36,7 @@ export default function Ride() {
   const driverVehicle = lang === 'ar' ? (ride?.driver?.vehicle?.vehicleType?.nameAr || ride?.vehicleType?.nameAr) : (ride?.driver?.vehicle?.vehicleType?.nameEn || ride?.vehicleType?.nameEn);
   const selectedDriver = driverName ? { id: 'api_driver', name: driverName, vehicle: driverVehicle || params.vehicle || 'Vehicle', rating: 4.8 } : drivers[0] || { id: 'local_driver', name: lang === 'ar' ? 'محمد أحمد' : 'Mohammed Ahmed', vehicle: lang === 'ar' ? 'ركشة زرقاء' : 'Blue rickshaw', rating: 4.8 };
   const completed = currentStatus === 'COMPLETED';
+  const cancelled = currentStatus === 'CANCELLED';
   async function loadRide(silent = false) { if (!params.rideId) return; if (!silent) setLoading(true); try { const data = await getRide(String(params.rideId)); setRide(data); setSource('api'); } catch { setSource('local'); } finally { if (!silent) setLoading(false); } }
   useEffect(() => { async function loadDrivers() { try { const result = await getDrivers(params.cityId, params.vehicleTypeId); if (Array.isArray(result) && result.length > 0) setDrivers(result); } catch { setDrivers([]); } } loadDrivers(); loadRide(true); }, [params.cityId, params.vehicleTypeId, params.rideId]);
 
@@ -50,8 +51,9 @@ export default function Ride() {
       if (data.rideId === rideId) loadRide(true);
     });
 
-    // Fallback polling (every 8s) in case socket is not connected
-    const fallbackTimer = autoRefresh && !completed ? setInterval(() => loadRide(true), 8000) : null;
+    // Fallback polling (every 30s) in case socket is not connected
+    const isFinal = completed || currentStatus === 'CANCELLED';
+    const fallbackTimer = autoRefresh && !isFinal ? setInterval(() => loadRide(true), 30000) : null;
 
     return () => {
       leaveRide(rideId);
@@ -76,8 +78,8 @@ export default function Ride() {
       </View>
       {(currentStep > 0 || ride?.driver) && <View style={[styles.driverCard, rtl && styles.driverCardRtl]}><View style={styles.driverAvatar}><Text style={styles.driverInitial}>{selectedDriver.name.slice(0, 1)}</Text></View><View style={styles.driverInfo}><Text style={[styles.section, rtl && styles.rtl]}>{t.driver}</Text><Text style={[styles.name, rtl && styles.rtl]}>{selectedDriver.name}</Text><Text style={[styles.muted, rtl && styles.rtl]}>{selectedDriver.vehicle} - rating {selectedDriver.rating}</Text></View></View>}
       <View style={styles.fareCard}><Text style={[styles.section, rtl && styles.rtl]}>{t.fare}</Text><Text style={[styles.fare, rtl && styles.rtl]}>{fare} SDG</Text><Text style={[styles.muted, rtl && styles.rtl]}>{completed ? (lang === 'ar' ? 'يمكنك الآن تقييم الرحلة' : 'You can now rate this trip') : t.cashNote}</Text></View>
-      {completed ? <Button title={t.completeRate} variant='gold' onPress={() => router.push({ pathname: '/rating', params: { lang, rideId: params.rideId } })} /> : <Button title={loading ? (lang === 'ar' ? 'جاري التحديث...' : 'Refreshing...') : (lang === 'ar' ? 'تحديث حالة الرحلة' : 'Refresh trip status')} variant='gold' onPress={() => loadRide()} />}
-      <Button title={completed ? t.tripHistory : t.cancel} variant='ghost' onPress={() => completed ? router.push({ pathname: '/trips', params: { lang } }) : router.back()} />
+      {!cancelled && (completed ? <Button title={t.completeRate} variant='gold' onPress={() => router.push({ pathname: '/rating', params: { lang, rideId: params.rideId } })} /> : <Button title={loading ? (lang === 'ar' ? 'جاري التحديث...' : 'Refreshing...') : (lang === 'ar' ? 'تحديث حالة الرحلة' : 'Refresh trip status')} variant='gold' onPress={() => loadRide()} />)}
+      <Button title={completed || cancelled ? t.tripHistory : t.cancel} variant='ghost' onPress={() => completed || cancelled ? router.push({ pathname: '/trips', params: { lang } }) : router.back()} />
       <Pressable style={styles.autoToggle} onPress={() => setAutoRefresh(!autoRefresh)}><Text style={styles.autoText}>{autoRefresh ? (lang === 'ar' ? 'التحديث التلقائي مفعل' : 'Auto-refresh on') : (lang === 'ar' ? 'التحديث التلقائي متوقف' : 'Auto-refresh off')}</Text></Pressable>
     </ScrollView>
   );
