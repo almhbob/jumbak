@@ -69,6 +69,7 @@ jobs:
           ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.1.12297006
           SENTRY_DISABLE_AUTO_UPLOAD: true
           SENTRY_NO_PROGRESS_BAR: true
+          EXPO_PUBLIC_API_URL: https://jumbakserver-production.up.railway.app
         run: ./gradlew assembleRelease --stacktrace
 
       - name: Find APK
