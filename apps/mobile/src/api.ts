@@ -81,7 +81,14 @@ async function apiFetch(path: string, options?: RequestInit): Promise<any> {
     throw new Error('Session expired');
   }
 
-  if (!response.ok) throw new Error(`Request failed: ${path}`);
+  if (!response.ok) {
+    let errMsg = `Request failed: ${path}`;
+    try {
+      const body = await response.json();
+      if (body?.error) errMsg = body.error;
+    } catch {}
+    throw new Error(errMsg);
+  }
   return response.json();
 }
 

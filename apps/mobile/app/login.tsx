@@ -69,12 +69,16 @@ export default function Login() {
         setDevCode(null);
         Alert.alert('Jnbk', lang === 'ar' ? 'تم إرسال رمز التحقق عبر SMS' : 'OTP sent via SMS');
       }
-    } catch {
-      // Server unreachable — proceed anyway so the user can try entering the code
-      Alert.alert('Jnbk', lang === 'ar' ? 'أدخل رمز التحقق' : 'Enter your OTP code');
+      setOtpSent(true);
+    } catch (err: any) {
+      const msg = err?.message?.includes('Too many') || err?.message?.includes('wait')
+        ? (lang === 'ar' ? 'طلبات كثيرة جداً — انتظر 10 دقائق وحاول مجدداً' : 'Too many requests — wait 10 min and try again')
+        : err?.message?.includes('No backend')
+        ? (lang === 'ar' ? 'خطأ في إعدادات التطبيق — تواصل مع الدعم' : 'App configuration error — contact support')
+        : (lang === 'ar' ? `تعذر الإرسال — ${err?.message || 'خطأ في الاتصال'}` : `Send failed — ${err?.message || 'Connection error'}`);
+      Alert.alert('Jnbk', msg);
     } finally {
       setLoading(false);
-      setOtpSent(true);
     }
   }
 
