@@ -6,17 +6,39 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Button } from '../src/components/Button';
 import { brand, colors } from '../src/constants/theme';
 import { dict, Lang } from '../src/i18n';
+import { setTokenCache } from '../src/api';
 
 const logoSource = require('../assets/icon.png');
+const API_URL = process.env.EXPO_PUBLIC_API_URL || '';
 
-function isTokenValid(token: string): boolean {
+function decodeToken(token: string): { exp?: number; role?: string } {
   try {
     const payload = token.split('.')[1];
     const padded = payload + '==='.slice(payload.length % 4);
-    const decoded = JSON.parse(atob(padded));
-    return typeof decoded.exp === 'number' && decoded.exp * 1000 > Date.now();
+    return JSON.parse(atob(padded));
   } catch {
-    return false;
+    return {};
+  }
+}
+
+function isTokenValid(token: string): boolean {
+  const { exp } = decodeToken(token);
+  return typeof exp === 'number' && exp * 1000 > Date.now();
+}
+
+async function tryRefresh(refreshToken: string): Promise<string | null> {
+  if (!API_URL) return null;
+  try {
+    const res = await fetch(`${API_URL}/api/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.token ?? null;
+  } catch {
+    return null;
   }
 }
 
@@ -25,15 +47,37 @@ export default function Welcome() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.multiGet(['jnbk_auth_token', 'jnbk_lang']).then(([[, token], [, savedLang]]) => {
+    (async () => {
+      const [[, token], [, refreshToken], [, savedLang], [, savedRole]] =
+        await AsyncStorage.multiGet(['jnbk_auth_token', 'jnbk_refresh_token', 'jnbk_lang', 'jnbk_user_role']);
+
       if (savedLang === 'en' || savedLang === 'ar') setLang(savedLang as Lang);
+
+      const navigateTo = (t: string) => {
+        const role = decodeToken(t).role || savedRole || 'passenger';
+        setTokenCache(t);
+        router.replace(role === 'driver' ? '/driver' : '/home');
+      };
+
       if (token && isTokenValid(token)) {
-        router.replace('/home');
-      } else {
-        if (token) AsyncStorage.multiRemove(['jnbk_auth_token', 'jnbk_refresh_token', 'jnbk_user_id']);
-        setReady(true);
+        navigateTo(token);
+        return;
       }
-    });
+
+      // Access token expired — try refresh token (valid 7 days)
+      if (refreshToken) {
+        const newToken = await tryRefresh(refreshToken);
+        if (newToken) {
+          await AsyncStorage.setItem('jnbk_auth_token', newToken);
+          navigateTo(newToken);
+          return;
+        }
+      }
+
+      // Both expired — clear session
+      await AsyncStorage.multiRemove(['jnbk_auth_token', 'jnbk_refresh_token', 'jnbk_user_id', 'jnbk_user_role']);
+      setReady(true);
+    })();
   }, []);
 
   if (!ready) return null;

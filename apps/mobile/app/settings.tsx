@@ -86,6 +86,7 @@ export default function Settings() {
               'jnbk_auth_token',
               'jnbk_refresh_token',
               'jnbk_user_id',
+              'jnbk_user_role',
               'jnbk_driver_id',
               'jnbk_push_token',
             ]);

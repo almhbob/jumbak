@@ -42,6 +42,7 @@ export default function Login() {
       ['jnbk_user_id', userId],
       ['jnbk_auth_token', token],
       ['jnbk_lang', lang],
+      ['jnbk_user_role', role.toLowerCase()],
     ];
     if (refreshToken) pairs.push(['jnbk_refresh_token', refreshToken]);
     await AsyncStorage.multiSet(pairs);
