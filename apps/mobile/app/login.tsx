@@ -24,6 +24,7 @@ export default function Login() {
   const [role, setRole] = useState<Role>('PASSENGER');
   const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [devCode, setDevCode] = useState<string | null>(null);
 
   const t = dict[lang];
   const rtl = lang === 'ar';
@@ -60,11 +61,12 @@ export default function Login() {
     setLoading(true);
     try {
       const res = await requestOtp(trimmed);
-      // Dev/staging: server returns dev_code when SMS provider is not configured
       if (res?.dev_code) {
-        setCode(String(res.dev_code));
-        Alert.alert('Jnbk [DEV]', `OTP: ${res.dev_code}`);
+        const c = String(res.dev_code);
+        setCode(c);
+        setDevCode(c);
       } else {
+        setDevCode(null);
         Alert.alert('Jnbk', lang === 'ar' ? 'تم إرسال رمز التحقق عبر SMS' : 'OTP sent via SMS');
       }
     } catch {
@@ -171,6 +173,14 @@ export default function Login() {
             </View>
           </View>
 
+          {devCode && (
+            <View style={styles.devBanner}>
+              <Text style={styles.devBannerLabel}>{lang === 'ar' ? 'رمز التحقق الخاص بك:' : 'Your OTP code:'}</Text>
+              <Text style={styles.devBannerCode}>{devCode}</Text>
+              <Text style={styles.devBannerNote}>{lang === 'ar' ? '(SMS غير مُفعّل — الرمز أعلاه)' : '(SMS not configured — use code above)'}</Text>
+            </View>
+          )}
+
           {!otpSent ? (
             <Button title={sendLabel} variant="gold" onPress={handleSend} disabled={loading} />
           ) : (
@@ -212,4 +222,8 @@ const styles = StyleSheet.create({
   rtl: { textAlign: 'right', writingDirection: 'rtl' },
   resend: { alignSelf: 'center', paddingVertical: 10 },
   resendText: { color: 'rgba(255,255,255,.8)', fontSize: 14, textDecorationLine: 'underline' },
+  devBanner: { backgroundColor: '#FFF8E1', borderRadius: 20, padding: 18, alignItems: 'center', borderWidth: 2, borderColor: '#F59E0B', gap: 4 },
+  devBannerLabel: { color: '#92400E', fontWeight: '800', fontSize: 13 },
+  devBannerCode: { color: '#063B63', fontWeight: '900', fontSize: 38, letterSpacing: 8 },
+  devBannerNote: { color: '#B45309', fontWeight: '700', fontSize: 11 },
 });
