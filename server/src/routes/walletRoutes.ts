@@ -6,6 +6,13 @@ import { logger } from '../services/logger.js';
 
 const router = Router();
 
+const STAFF_ROLES = ['operations', 'supervisor', 'support', 'accountant', 'finance', 'developer', 'business'];
+
+function isOwnerOrStaff(req: { staff?: { staffId: string; role: string } }, userId: string): boolean {
+  if (!req.staff) return false;
+  return STAFF_ROLES.includes(req.staff.role) || req.staff.staffId === userId;
+}
+
 const memoryWallets: Record<string, { balance: number; currency: string; transactions: unknown[] }> = {};
 
 function getOrCreateMemoryWallet(userId: string) {
@@ -15,9 +22,10 @@ function getOrCreateMemoryWallet(userId: string) {
   return memoryWallets[userId];
 }
 
-// GET /api/wallet/:userId — authenticated users only
+// GET /api/wallet/:userId — authenticated users only (own wallet or staff)
 router.get('/:userId', requireAuth, async (req, res) => {
   const userId = String(req.params['userId'] || '');
+  if (!isOwnerOrStaff(req, userId)) return res.status(403).json({ error: 'Access denied' });
 
   if (prisma) {
     let wallet = await prisma.wallet.findUnique({
@@ -70,9 +78,10 @@ router.post('/:userId/topup', requireAuth, requireRole('operations', 'supervisor
   res.json({ userId, balance: wallet.balance, currency: wallet.currency, transactions: (wallet.transactions as unknown[]).slice().reverse().slice(0, 30) });
 });
 
-// POST /api/wallet/:userId/pay
+// POST /api/wallet/:userId/pay — own wallet only (or staff)
 router.post('/:userId/pay', requireAuth, validateBody(walletPaySchema), async (req, res) => {
   const userId = String(req.params.userId);
+  if (!isOwnerOrStaff(req, userId)) return res.status(403).json({ error: 'Access denied' });
   const { amount, rideId = '', description = 'دفع رحلة' } = req.body as { amount: number; rideId?: string; description?: string };
 
   if (prisma) {
@@ -125,9 +134,10 @@ router.post('/:userId/earn', requireAuth, requireRole('operations', 'supervisor'
   res.json({ ok: true, balance: wallet.balance, credited: amount });
 });
 
-// POST /api/wallet/:userId/withdraw — request a withdrawal (pending admin approval)
+// POST /api/wallet/:userId/withdraw — own wallet only (or staff)
 router.post('/:userId/withdraw', requireAuth, validateBody(walletWithdrawSchema), async (req, res) => {
   const userId = String(req.params.userId);
+  if (!isOwnerOrStaff(req, userId)) return res.status(403).json({ error: 'Access denied' });
   const { amount, bankAccount, description = 'طلب سحب' } = req.body as {
     amount: number; bankAccount: string; description?: string;
   };

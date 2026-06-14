@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'jnbk-dev-secret-change-in-production';
 const JWT_EXPIRY = '12h';
-const REFRESH_EXPIRY = '30d';
+const REFRESH_EXPIRY = '7d';
 
 if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
   console.error('FATAL: JWT_SECRET env var is not set. Using insecure default in production is not allowed.');

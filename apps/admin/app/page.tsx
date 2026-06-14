@@ -73,10 +73,10 @@ async function apiGet<T>(path: string, fallback: T): Promise<T> {
   } catch { return fallback; }
 }
 
-async function loadList<T>(collectionName: string, apiPath: string, fallback: T[]): Promise<T[]> {
-  return isFirebaseConfigured()
-    ? getFirebaseCollection<T>(collectionName, fallback)
-    : apiGet<T[]>(apiPath, fallback);
+async function loadList<T>(collectionName: string, apiPath: string, fallback: T[], requiresAuth = false): Promise<T[]> {
+  if (isFirebaseConfigured()) return getFirebaseCollection<T>(collectionName, fallback);
+  if (requiresAuth) return fallback; // these endpoints need a user session — skip at build time
+  return apiGet<T[]>(apiPath, fallback);
 }
 
 export default async function Dashboard({ searchParams }: { searchParams?: { lang?: string } }) {
@@ -86,8 +86,8 @@ export default async function Dashboard({ searchParams }: { searchParams?: { lan
 
   const config   = await apiGet<AppConfig>('/api/config', fallbackConfig);
   const drivers  = await loadList<Driver>('driverApplications', '/api/drivers', fallbackDrivers);
-  const rides    = await loadList<Ride>('rides', '/api/rides', []);
-  const support  = await loadList<SupportRequest>('supportRequests', '/api/support', fallbackSupport);
+  const rides    = await loadList<Ride>('rides', '/api/rides', [], true);
+  const support  = await loadList<SupportRequest>('supportRequests', '/api/support', fallbackSupport, true);
 
   const isFirebase   = isFirebaseConfigured();
   const hasBackend   = !!process.env.NEXT_PUBLIC_API_URL;

@@ -69,8 +69,8 @@ function normalizeUserRole(role?: string): UserRole {
 router.post('/auth/request-otp', otpLimiter, validateBody(requestOtpSchema), async (req, res) => {
   const { phone } = req.body as { phone: string };
 
-  // Dev/test override: accept any request without sending real SMS
-  if (process.env.OTP_OVERRIDE) {
+  // Dev/test override: accept any request without sending real SMS (never active in production)
+  if (process.env.OTP_OVERRIDE && process.env.NODE_ENV !== 'production') {
     logger.info('OTP request (override mode)', { phone });
     return res.json({ ok: true, phone, message: 'OTP sent', dev: true });
   }
@@ -103,8 +103,8 @@ router.post('/auth/verify-otp', otpLimiter, validateBody(verifyOtpSchema), async
   };
   const role = normalizeUserRole(roleInput);
 
-  // Override mode: accept the static OTP_OVERRIDE value
-  if (process.env.OTP_OVERRIDE) {
+  // Override mode: accept the static OTP_OVERRIDE value (dev/test only)
+  if (process.env.OTP_OVERRIDE && process.env.NODE_ENV !== 'production') {
     if (code !== process.env.OTP_OVERRIDE) {
       return res.status(401).json({ error: 'Invalid OTP' });
     }
@@ -223,7 +223,7 @@ router.post('/staff/login', loginLimiter, validateBody(staffLoginSchema), async 
 });
 
 // POST /api/auth/refresh — get a new access token using a refresh token
-router.post('/auth/refresh', (req, res) => {
+router.post('/auth/refresh', loginLimiter, (req, res) => {
   const refreshToken = String(req.body.refreshToken || '').trim();
   if (!refreshToken) return res.status(400).json({ error: 'refreshToken is required' });
 

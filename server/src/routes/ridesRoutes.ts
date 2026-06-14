@@ -22,7 +22,7 @@ function toRideStatus(value: string): RideStatus {
   return RideStatus.REQUESTED;
 }
 
-router.get('/', async (_req, res) => {
+router.get('/', requireAuth, async (_req, res) => {
   if (prisma) {
     const rides = await prisma.ride.findMany({
       orderBy: { createdAt: 'desc' },

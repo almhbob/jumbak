@@ -8,7 +8,7 @@ const router = Router();
 
 // POST /api/notifications/register-token
 // Body: { token: string, userId: string }
-router.post('/register-token', async (req, res) => {
+router.post('/register-token', requireAuth, async (req, res) => {
   const { token, userId } = req.body;
 
   if (!token || !Expo.isExpoPushToken(token)) {
@@ -38,7 +38,7 @@ router.post('/register-token', async (req, res) => {
 
 // DELETE /api/notifications/register-token
 // Body: { token: string }
-router.delete('/register-token', async (req, res) => {
+router.delete('/register-token', requireAuth, async (req, res) => {
   const { token } = req.body;
   if (!token) return res.status(400).json({ error: 'token is required' });
 
