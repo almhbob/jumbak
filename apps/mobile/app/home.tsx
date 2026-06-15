@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, Text, StyleSheet, Pressable, View, Alert } from 'react-native';
+import { ScrollView, Text, StyleSheet, Pressable, View, Alert, BackHandler } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../src/components/Button';
@@ -85,6 +85,11 @@ export default function Home() {
   const vehicleName = lang === 'ar' ? vehicle.nameAr : vehicle.nameEn;
   const modeName = lang === 'ar' ? mode.nameAr : mode.nameEn;
   const rtl = lang === 'ar';
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     getAppConfig()

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Switch, Pressable, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, Switch, Pressable, ScrollView, Alert, BackHandler } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../src/components/Button';
@@ -45,9 +45,12 @@ export default function Driver() {
       }
     });
 
+    const backSub = BackHandler.addEventListener('hardwareBackPress', () => true);
+
     return () => {
       unsub();
       disconnectSocket();
+      backSub.remove();
     };
   }, []);
 

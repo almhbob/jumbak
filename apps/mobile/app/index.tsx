@@ -26,19 +26,22 @@ function isTokenValid(token: string): boolean {
   return typeof exp === 'number' && exp * 1000 > Date.now();
 }
 
-async function tryRefresh(refreshToken: string): Promise<string | null> {
-  if (!API_URL) return null;
+type RefreshResult = { status: 'ok'; token: string } | { status: 'expired' } | { status: 'network' };
+
+async function tryRefresh(refreshToken: string): Promise<RefreshResult> {
+  if (!API_URL) return { status: 'network' };
   try {
     const res = await fetch(`${API_URL}/api/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken }),
     });
-    if (!res.ok) return null;
+    if (res.status === 401) return { status: 'expired' };
+    if (!res.ok) return { status: 'network' };
     const data = await res.json();
-    return data.token ?? null;
+    return data.token ? { status: 'ok', token: data.token } : { status: 'expired' };
   } catch {
-    return null;
+    return { status: 'network' };
   }
 }
 
@@ -66,15 +69,23 @@ export default function Welcome() {
 
       // Access token expired — try refresh token (valid 7 days)
       if (refreshToken) {
-        const newToken = await tryRefresh(refreshToken);
-        if (newToken) {
-          await AsyncStorage.setItem('jnbk_auth_token', newToken);
-          navigateTo(newToken);
+        const result = await tryRefresh(refreshToken);
+        if (result.status === 'ok') {
+          await AsyncStorage.setItem('jnbk_auth_token', result.token);
+          navigateTo(result.token);
           return;
         }
+        if (result.status === 'network') {
+          // Network unavailable — keep session, navigate with saved role
+          const role = savedRole || 'passenger';
+          if (token) setTokenCache(token);
+          router.replace(role === 'driver' ? '/driver' : '/home');
+          return;
+        }
+        // status === 'expired' — server rejected token, clear session
       }
 
-      // Both expired — clear session
+      // No valid session — clear and show welcome screen
       await AsyncStorage.multiRemove(['jnbk_auth_token', 'jnbk_refresh_token', 'jnbk_user_id', 'jnbk_user_role']);
       setReady(true);
     })();
