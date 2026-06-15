@@ -35,6 +35,30 @@ import supportRoutes from './routes/supportRoutes.js';
 import legalRoutes from './routes/legalRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import walletRoutes from './routes/walletRoutes.js';
+import { memoryStaff } from './store.js';
+import bcrypt from 'bcryptjs';
+
+// Bootstrap developer account for memory mode (no database)
+(async () => {
+  if (memoryStaff.length === 0) {
+    const pwd = process.env.BOOTSTRAP_ADMIN_PASSWORD || '123456';
+    const hash = await bcrypt.hash(pwd, 10);
+    memoryStaff.push({
+      id: 'dev_bootstrap',
+      name: 'Developer',
+      phone: null,
+      email: null,
+      username: 'developer',
+      passwordHash: hash,
+      role: 'developer',
+      status: 'active',
+      notes: null,
+      createdAt: new Date().toISOString(),
+      lastLoginAt: null,
+    });
+    logger.info('Bootstrap developer account created for memory mode');
+  }
+})();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, '..', 'public');
