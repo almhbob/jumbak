@@ -111,9 +111,14 @@ export default function Driver() {
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={[styles.header, rtl && styles.reverse]}>
         <Text style={[styles.title, rtl && styles.rtl]}>{t.driverDashboard}</Text>
-        <Pressable onPress={() => setLang(lang === 'ar' ? 'en' : 'ar')} style={styles.langBtn}>
-          <Text style={styles.langText}>{t.language}</Text>
-        </Pressable>
+        <View style={[styles.headerRight, rtl && styles.reverse]}>
+          <Pressable onPress={() => router.push({ pathname: '/settings', params: { lang } })} style={styles.settingsBtn}>
+            <Text style={styles.settingsBtnText}>{lang === 'ar' ? 'الإعدادات' : 'Settings'}</Text>
+          </Pressable>
+          <Pressable onPress={() => setLang(lang === 'ar' ? 'en' : 'ar')} style={styles.langBtn}>
+            <Text style={styles.langText}>{t.language}</Text>
+          </Pressable>
+        </View>
       </View>
 
       {isVerified === false && (
@@ -167,8 +172,11 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 20, gap: 16 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  headerRight: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   reverse: { flexDirection: 'row-reverse' },
   title: { fontSize: 26, fontWeight: '900', color: colors.navy },
+  settingsBtn: { backgroundColor: '#F1F5F9', padding: 10, borderRadius: 12, borderWidth: 1, borderColor: '#DCE6EF' },
+  settingsBtnText: { color: colors.navy, fontWeight: '900', fontSize: 13 },
   langBtn: { backgroundColor: colors.navy, padding: 10, borderRadius: 12 },
   langText: { color: colors.white },
   card: { backgroundColor: colors.white, padding: 16, borderRadius: 20, flexDirection: 'row', justifyContent: 'space-between' },
