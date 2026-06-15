@@ -91,6 +91,7 @@ model VehicleType {
   baseFare    Int
   perKmFare   Int
   minimumFare Int
+  isVisible   Boolean  @default(true)
   vehicles    Vehicle[]
   rides       Ride[]
   createdAt   DateTime @default(now())

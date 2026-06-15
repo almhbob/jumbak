@@ -70,7 +70,7 @@ router.post('/vehicle-types', requireAuth, requireRole('developer', 'business'),
   res.status(201).json(item);
 });
 
-// GET vehicle types — business / operations / finance / developer
+// GET vehicle types — business / operations / finance / developer (returns ALL including hidden)
 router.get('/vehicle-types', requireAuth, requireRole('developer', 'business', 'operations', 'finance', 'supervisor'), async (req, res) => {
   if (prisma) {
     const types = await prisma.vehicleType.findMany({ orderBy: { id: 'asc' } });
@@ -79,19 +79,20 @@ router.get('/vehicle-types', requireAuth, requireRole('developer', 'business', '
   res.json(memoryVehicleTypes);
 });
 
-// PATCH /vehicle-types/:id — update fares only (business / operations / finance / developer)
+// PATCH /vehicle-types/:id — update fares and visibility (business / operations / finance / developer)
 router.patch('/vehicle-types/:id', requireAuth, requireRole('developer', 'business', 'operations', 'finance'), async (req, res) => {
   const id = String(req.params.id).trim().toLowerCase();
   const baseFare = req.body.baseFare !== undefined ? Number(req.body.baseFare) : undefined;
   const perKmFare = req.body.perKmFare !== undefined ? Number(req.body.perKmFare) : undefined;
   const minimumFare = req.body.minimumFare !== undefined ? Number(req.body.minimumFare) : undefined;
 
-  const data: Record<string, number | string> = {};
+  const data: Record<string, number | string | boolean> = {};
   if (baseFare !== undefined && baseFare > 0) data.baseFare = baseFare;
   if (perKmFare !== undefined && perKmFare > 0) data.perKmFare = perKmFare;
   if (minimumFare !== undefined && minimumFare > 0) data.minimumFare = minimumFare;
   if (req.body.nameAr) data.nameAr = String(req.body.nameAr).trim();
   if (req.body.nameEn) data.nameEn = String(req.body.nameEn).trim();
+  if (req.body.isVisible !== undefined) data.isVisible = Boolean(req.body.isVisible);
 
   if (Object.keys(data).length === 0) {
     return res.status(400).json({ error: 'No valid fields to update' });

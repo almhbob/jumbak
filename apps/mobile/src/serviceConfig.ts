@@ -310,8 +310,6 @@ export const cities: City[] = [
 
 export const vehicleTypes: VehicleType[] = [
   { id: 'rickshaw', nameAr: 'ركشة', nameEn: 'Rickshaw', baseFare: 500, perKmFare: 300, minimumFare: 1000, icon: 'R' },
-  { id: 'car', nameAr: 'جنبك تاكسي', nameEn: 'Jnbk Taxi', baseFare: 900, perKmFare: 550, minimumFare: 1800, icon: 'T' },
-  { id: 'van', nameAr: 'حافلة صغيرة', nameEn: 'Van', baseFare: 1200, perKmFare: 700, minimumFare: 2500, icon: 'V' }
 ];
 
 export const serviceModes: ServiceMode[] = [

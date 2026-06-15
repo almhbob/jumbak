@@ -124,7 +124,7 @@ app.get('/api/config', async (_req, res) => {
     const [dbCountries, dbCities, dbVehicleTypes] = await Promise.all([
       prisma.country.findMany(),
       prisma.city.findMany({ include: { zones: true } }),
-      prisma.vehicleType.findMany(),
+      prisma.vehicleType.findMany({ where: { isVisible: true }, orderBy: { id: 'asc' } }),
     ]);
     return res.json({ countries: dbCountries, cities: dbCities, vehicleTypes: dbVehicleTypes });
   }

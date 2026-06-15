@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { apiGet, apiPost, apiPatch } from '../lib/apiClient';
 
 type Lang = 'ar' | 'en';
-type VehicleType = { id: string; nameAr: string; nameEn: string; baseFare: number; perKmFare: number; minimumFare: number };
+type VehicleType = { id: string; nameAr: string; nameEn: string; baseFare: number; perKmFare: number; minimumFare: number; isVisible?: boolean };
 type EditState = { baseFare: string; perKmFare: string; minimumFare: string; nameAr: string; nameEn: string };
 
 const ALLOWED_ROLES = ['developer', 'operations', 'finance', 'supervisor', 'business'];
@@ -30,6 +30,10 @@ const ar = {
   saved: 'تم الحفظ بنجاح',
   failed: 'تعذر الحفظ. تحقق من الاتصال بالخادم.',
   required: 'أكمل جميع الحقول',
+  show: 'إظهار في التطبيق',
+  hide: 'إخفاء من التطبيق',
+  visible: 'ظاهر',
+  hidden: 'مخفي',
   currency: 'SDG',
   fareCalc: 'التسعيرة: فتح الرحلة + (المسافة × سعر الكيلومتر) — لا تقل عن الحد الأدنى',
   editFares: 'تعديل الأسعار',
@@ -60,6 +64,10 @@ const en: typeof ar = {
   saved: 'Saved successfully',
   failed: 'Could not save. Check server connection.',
   required: 'Complete all fields',
+  show: 'Show in app',
+  hide: 'Hide from app',
+  visible: 'Visible',
+  hidden: 'Hidden',
   currency: 'SDG',
   fareCalc: 'Formula: base fare + (distance × per-km fare), not less than minimum',
   editFares: 'Edit Fares',
@@ -164,6 +172,17 @@ export default function Pricing() {
       setNotice({ type: 'error', msg: t.failed });
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function toggleVisibility(vt: VehicleType) {
+    const newVal = !vt.isVisible;
+    try {
+      await apiPatch(`/api/admin/vehicle-types/${vt.id}`, { isVisible: newVal });
+      setVehicleTypes((prev) => prev.map((v) => v.id === vt.id ? { ...v, isVisible: newVal } : v));
+      setNotice({ type: 'success', msg: t.saved });
+    } catch {
+      setNotice({ type: 'error', msg: t.failed });
     }
   }
 
@@ -274,20 +293,38 @@ export default function Pricing() {
                   </div>
                 ) : (
                   /* ── Display row ── */
-                  <div className="row">
-                    <span><b>{lang === 'ar' ? vt.nameAr : vt.nameEn}</b><br /><small style={{ color: '#94a3b8' }}>{vt.id}</small></span>
+                  <div className="row" style={{ opacity: vt.isVisible === false ? 0.55 : 1 }}>
+                    <span>
+                      <b>{lang === 'ar' ? vt.nameAr : vt.nameEn}</b>
+                      <br />
+                      <small style={{ color: '#94a3b8' }}>{vt.id}</small>
+                      {' '}
+                      <span style={{ fontSize: 11, fontWeight: 800, padding: '2px 7px', borderRadius: 99, background: vt.isVisible === false ? '#fee2e2' : '#dcfce7', color: vt.isVisible === false ? '#b91c1c' : '#15803d' }}>
+                        {vt.isVisible === false ? t.hidden : t.visible}
+                      </span>
+                    </span>
                     <span>{vt.baseFare.toLocaleString('en')} {t.currency}</span>
                     <span>{vt.perKmFare.toLocaleString('en')} {t.currency}</span>
                     <span>{vt.minimumFare.toLocaleString('en')} {t.currency}</span>
                     <span style={{ color: '#f59e0b', fontWeight: 900 }}>{calcExample(vt)} {t.currency}</span>
-                    <button
-                      className="primaryAction"
-                      style={{ padding: '6px 14px', fontSize: 13 }}
-                      onClick={() => startEdit(vt)}
-                      disabled={!isApiReady}
-                    >
-                      {t.edit}
-                    </button>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <button
+                        className="primaryAction"
+                        style={{ padding: '6px 14px', fontSize: 13 }}
+                        onClick={() => startEdit(vt)}
+                        disabled={!isApiReady}
+                      >
+                        {t.edit}
+                      </button>
+                      <button
+                        className="languageSwitch buttonReset"
+                        style={{ padding: '6px 12px', fontSize: 13, background: vt.isVisible === false ? '#dcfce7' : '#fee2e2', color: vt.isVisible === false ? '#15803d' : '#b91c1c', border: 'none' }}
+                        onClick={() => toggleVisibility(vt)}
+                        disabled={!isApiReady}
+                      >
+                        {vt.isVisible === false ? t.show : t.hide}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

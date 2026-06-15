@@ -67,9 +67,9 @@ async function main() {
 
   // ─── Vehicle types ────────────────────────────────────────────────────────────
   const vehicleTypes = [
-    { id: 'rickshaw', nameAr: 'ركشة',         nameEn: 'Rickshaw', baseFare: 500,  perKmFare: 300, minimumFare: 1000 },
-    { id: 'car',      nameAr: 'سيارة',         nameEn: 'Car',      baseFare: 900,  perKmFare: 550, minimumFare: 1800 },
-    { id: 'van',      nameAr: 'حافلة صغيرة',  nameEn: 'Van',      baseFare: 1200, perKmFare: 700, minimumFare: 2500 },
+    { id: 'rickshaw', nameAr: 'ركشة',         nameEn: 'Rickshaw', baseFare: 500,  perKmFare: 300, minimumFare: 1000, isVisible: true  },
+    { id: 'car',      nameAr: 'سيارة',         nameEn: 'Car',      baseFare: 900,  perKmFare: 550, minimumFare: 1800, isVisible: false },
+    { id: 'van',      nameAr: 'حافلة صغيرة',  nameEn: 'Van',      baseFare: 1200, perKmFare: 700, minimumFare: 2500, isVisible: false },
   ];
   for (const item of vehicleTypes) {
     await prisma.vehicleType.upsert({ where: { id: item.id }, update: item, create: item });
