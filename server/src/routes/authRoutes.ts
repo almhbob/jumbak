@@ -75,17 +75,23 @@ router.post('/auth/request-otp', otpLimiter, validateBody(requestOtpSchema), asy
     return res.json({ ok: true, phone, message: 'OTP sent', dev: true });
   }
 
+  const code = generateOtp();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+  // Persist OTP in DB when available so server restarts don't invalidate it
+  if (prisma) {
+    await prisma.user.upsert({
+      where: { phone },
+      update: { otpCode: code, otpExpiresAt: expiresAt, otpAttempts: 0 },
+      create: { phone, otpCode: code, otpExpiresAt: expiresAt, otpAttempts: 0 },
+    }).catch(() => null);
+  }
+  storeOtp(phone, code);
+
   if (!isSmsConfigured()) {
-    // Generate OTP and return dev_code regardless of environment when SMS is not configured.
-    // In production with real AT credentials this block is never reached.
-    const code = generateOtp();
-    storeOtp(phone, code);
     logger.warn('OTP generated without SMS (AT not configured)', { phone, code });
     return res.json({ ok: true, phone, message: 'OTP generated (no SMS provider)', dev_code: code });
   }
-
-  const code = generateOtp();
-  storeOtp(phone, code);
 
   const sent = await sendSms(phone, `رمز التحقق الخاص بك في جنبك: ${code}\nYour Jnbk OTP: ${code}`);
   if (!sent) {
@@ -112,12 +118,33 @@ router.post('/auth/verify-otp', otpLimiter, validateBody(verifyOtpSchema), async
     // Verify against the generated code in the store (works for both dev and prod without AT)
     const result = verifyOtp(phone, code);
     if (result !== 'ok') {
-      const messages: Record<string, string> = {
-        invalid: 'Invalid OTP',
-        expired: 'OTP expired, please request a new one',
-        too_many_attempts: 'Too many failed attempts, please request a new OTP',
-      };
-      return res.status(401).json({ error: messages[result] || 'Invalid OTP' });
+      // In-memory store may have been wiped by a server restart — fall back to DB
+      if (result === 'invalid' && prisma) {
+        const dbUser = await prisma.user.findUnique({ where: { phone } }).catch(() => null);
+        if (dbUser && dbUser.otpCode && dbUser.otpExpiresAt) {
+          if (dbUser.otpAttempts >= 5) {
+            return res.status(401).json({ error: 'Too many failed attempts, please request a new OTP' });
+          }
+          if (new Date() > dbUser.otpExpiresAt) {
+            return res.status(401).json({ error: 'OTP expired, please request a new one' });
+          }
+          if (dbUser.otpCode !== code) {
+            await prisma.user.update({ where: { phone }, data: { otpAttempts: { increment: 1 } } }).catch(() => null);
+            return res.status(401).json({ error: 'Invalid OTP' });
+          }
+          // DB OTP matches — clear it to prevent reuse
+          await prisma.user.update({ where: { phone }, data: { otpCode: null, otpExpiresAt: null, otpAttempts: 0 } }).catch(() => null);
+          // Fall through to create/update user below
+        } else {
+          return res.status(401).json({ error: 'Invalid OTP' });
+        }
+      } else {
+        const messages: Record<string, string> = {
+          expired: 'OTP expired, please request a new one',
+          too_many_attempts: 'Too many failed attempts, please request a new OTP',
+        };
+        return res.status(401).json({ error: messages[result] || 'Invalid OTP' });
+      }
     }
   }
 
