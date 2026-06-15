@@ -140,9 +140,13 @@ router.patch('/:id', requireAuth, requireRole('business', 'developer'), async (r
   const phone = req.body.phone !== undefined ? (String(req.body.phone).trim() || null) : undefined;
   const email = req.body.email !== undefined ? (String(req.body.email).trim() || null) : undefined;
   const notes = req.body.notes !== undefined ? (String(req.body.notes).trim() || null) : undefined;
+  const newPassword = req.body.password ? String(req.body.password).trim() : undefined;
 
   if (rawStatus && !['ACTIVE', 'PAUSED'].includes(rawStatus)) {
     return res.status(400).json({ error: 'Invalid status value' });
+  }
+  if (newPassword && newPassword.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters' });
   }
 
   if (prisma) {
@@ -153,6 +157,7 @@ router.patch('/:id', requireAuth, requireRole('business', 'developer'), async (r
     if (phone !== undefined) data.phone = phone;
     if (email !== undefined) data.email = email;
     if (notes !== undefined) data.notes = notes;
+    if (newPassword) data.passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
     if (Object.keys(data).length === 0) return res.status(400).json({ error: 'Nothing to update' });
 
     const member = await prisma.staffMember.update({ where: { id }, data }).catch(() => null);
