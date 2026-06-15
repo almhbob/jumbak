@@ -108,6 +108,7 @@ export default function Home() {
                 id: String(z.id || i),
                 name: z.nameAr || z.nameEn || String(i),
                 category: z.category || undefined,
+                fixedFare: z.fixedFare != null ? Number(z.fixedFare) : undefined,
               }));
             }
           });
@@ -122,11 +123,16 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    const destItem = locationItems[destinationIndex];
+    if (destItem?.fixedFare) {
+      setFareOverride(destItem.fixedFare);
+      return;
+    }
     setFareOverride(null);
     estimatePrice({ cityId: city.id, vehicleTypeId: vehicle.id, distanceKm })
       .then((result) => setFareOverride(Number(result.estimatedFare || localFare)))
       .catch(() => setFareOverride(null));
-  }, [city.id, vehicle.id, distanceKm]);
+  }, [city.id, vehicle.id, distanceKm, destinationIndex, locationItems]);
 
   function changeCity(index: number) {
     const newCity = appCities[index];

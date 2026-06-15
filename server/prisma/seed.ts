@@ -28,8 +28,8 @@ async function main() {
   for (const zone of rufaaZones) {
     await prisma.zone.upsert({
       where: { id: zone.id },
-      update: { nameAr: zone.nameAr, nameEn: zone.nameEn, category: zone.category },
-      create: { id: zone.id, cityId: zone.cityId, nameAr: zone.nameAr, nameEn: zone.nameEn, category: zone.category },
+      update: { nameAr: zone.nameAr, nameEn: zone.nameEn, category: zone.category, fixedFare: zone.fixedFare ?? null },
+      create: { id: zone.id, cityId: zone.cityId, nameAr: zone.nameAr, nameEn: zone.nameEn, category: zone.category, fixedFare: zone.fixedFare ?? null },
     });
   }
 

@@ -1,5 +1,5 @@
 // Shared location item type — also used by LocationPicker and home
-export type LocationItem = { id: string; name: string; category?: string };
+export type LocationItem = { id: string; name: string; category?: string; fixedFare?: number };
 
 export type Country = {
   id: string;

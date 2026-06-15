@@ -81,6 +81,7 @@ model Zone {
   nameEn    String
   category  String   @default("مرافق ومعالم")
   multiplier Float   @default(1)
+  fixedFare Int?
   createdAt DateTime @default(now())
 }
 
