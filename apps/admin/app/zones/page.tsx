@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { apiGet, apiPost, apiPatch, apiDelete } from '../lib/apiClient';
 
 type Lang = 'ar' | 'en';
-type Zone = { id: string; nameAr: string; nameEn: string; category: string; cityId: string };
+type Zone = { id: string; nameAr: string; nameEn: string; category: string; cityId: string; fixedFare?: number | null };
 
 const CATEGORIES = [
   'أحياء وشوارع',
@@ -30,8 +30,8 @@ const CATEGORY_ICONS: Record<string, string> = {
 
 const copy = {
   ar: {
-    title: 'إدارة المناطق',
-    sub: 'عرض وإضافة وتعديل وحذف مناطق المدينة. تُستخدم هذه المناطق في التطبيق لتحديد نقطة الانطلاق والوجهة.',
+    title: 'إدارة المناطق والأسعار',
+    sub: 'عرض وتعديل مناطق المدينة وأسعار المشوار الثابتة. السعر المحدد هنا يظهر مباشرة في التطبيق.',
     back: 'خروج',
     toggle: 'English',
     denied: 'هذه الصفحة مخصصة لحسابات المطور والتشغيل فقط.',
@@ -47,7 +47,7 @@ const copy = {
     category: 'الفئة',
     save: 'حفظ',
     cancel: 'إلغاء',
-    edit: 'تعديل',
+    edit: 'تعديل السعر',
     delete: 'حذف',
     deleteConfirm: 'هل تريد حذف هذه المنطقة؟ لا يمكن التراجع.',
     total: 'منطقة',
@@ -58,10 +58,13 @@ const copy = {
     fail: 'تعذرت العملية. تحقق من الاتصال بالخادم.',
     required: 'الاسم بالعربية مطلوب.',
     source: 'مصدر البيانات',
+    fixedFare: 'سعر المشوار (جنيه)',
+    noFare: 'بدون سعر ثابت',
+    clearFare: 'إلغاء السعر',
   },
   en: {
-    title: 'Zone Management',
-    sub: 'View, add, edit, and delete city zones. These zones are used in the app for pickup and destination selection.',
+    title: 'Zone Management & Pricing',
+    sub: 'View and edit city zones with fixed fares. Prices set here appear directly in the app.',
     back: 'Logout',
     toggle: 'العربية',
     denied: 'This page is only for developer and operations accounts.',
@@ -77,7 +80,7 @@ const copy = {
     category: 'Category',
     save: 'Save',
     cancel: 'Cancel',
-    edit: 'Edit',
+    edit: 'Edit price',
     delete: 'Delete',
     deleteConfirm: 'Delete this zone? This cannot be undone.',
     total: 'zones',
@@ -88,6 +91,9 @@ const copy = {
     fail: 'Operation failed. Check server connection.',
     required: 'Arabic name is required.',
     source: 'Data source',
+    fixedFare: 'Fixed fare (SDG)',
+    noFare: 'No fixed fare',
+    clearFare: 'Clear fare',
   },
 };
 
@@ -121,6 +127,7 @@ export default function Zones() {
   const [editNameAr, setEditNameAr] = useState('');
   const [editNameEn, setEditNameEn] = useState('');
   const [editCategory, setEditCategory] = useState('');
+  const [editFixedFare, setEditFixedFare] = useState<string>('');
 
   useEffect(() => {
     const role = sessionStorage.getItem('jnbk_active_role') || '';
@@ -181,16 +188,19 @@ export default function Zones() {
     setEditNameAr(zone.nameAr);
     setEditNameEn(zone.nameEn || zone.nameAr);
     setEditCategory(zone.category || categories[0]);
+    setEditFixedFare(zone.fixedFare != null ? String(zone.fixedFare) : '');
   }
 
   async function submitEdit(e: FormEvent) {
     e.preventDefault();
     if (!editId || !editNameAr.trim()) return flash(t.required, 'err');
+    const fixedFare = editFixedFare.trim() === '' ? null : Number(editFixedFare);
     try {
       await apiPatch(`/api/admin/zones/${editId}`, {
         nameAr: editNameAr.trim(),
         nameEn: editNameEn.trim() || editNameAr.trim(),
         category: editCategory,
+        fixedFare,
       });
       flash(t.success, 'ok');
       setEditId(null);
@@ -366,32 +376,62 @@ export default function Zones() {
         ) : (
           <div className="table">
             <div className="row" style={{ fontWeight: 800, opacity: 0.6, fontSize: 13 }}>
-              <span>{CATEGORY_ICONS['مرافق ومعالم']} {lang === 'ar' ? 'الفئة' : 'Category'}</span>
               <span>{lang === 'ar' ? 'الاسم' : 'Name'}</span>
-              <span>{lang === 'ar' ? 'الإنجليزية' : 'English'}</span>
+              <span>{lang === 'ar' ? 'الفئة' : 'Category'}</span>
+              <span>{lang === 'ar' ? 'سعر المشوار' : 'Fixed Fare'}</span>
               <span>{lang === 'ar' ? 'إجراءات' : 'Actions'}</span>
             </div>
             {filtered.map((zone) => (
               <div key={zone.id}>
                 {editId === zone.id ? (
-                  <form onSubmit={submitEdit} style={{ padding: '12px 0', borderBottom: '1px solid var(--glass-border-dark)' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, alignItems: 'center' }}>
-                      <select className="input" value={editCategory} onChange={(e) => setEditCategory(e.target.value)}>
-                        {categories.map((c) => <option key={c} value={c}>{CATEGORY_ICONS[c] || '📍'} {c}</option>)}
-                      </select>
-                      <input className="input" value={editNameAr} onChange={(e) => setEditNameAr(e.target.value)} dir="rtl" required />
-                      <input className="input" value={editNameEn} onChange={(e) => setEditNameEn(e.target.value)} />
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button type="submit" className="btn" style={{ padding: '6px 12px', fontSize: 13 }}>{t.save}</button>
-                        <button type="button" className="btn btnGhost" style={{ padding: '6px 12px', fontSize: 13 }} onClick={() => setEditId(null)}>{t.cancel}</button>
+                  <form onSubmit={submitEdit} style={{ padding: '14px 0', borderBottom: '1px solid var(--glass-border-dark)' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, alignItems: 'end', marginBottom: 10 }}>
+                      <div>
+                        <label className="label">{t.nameAr}</label>
+                        <input className="input" value={editNameAr} onChange={(e) => setEditNameAr(e.target.value)} dir="rtl" required />
                       </div>
+                      <div>
+                        <label className="label">{t.nameEn}</label>
+                        <input className="input" value={editNameEn} onChange={(e) => setEditNameEn(e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="label">{t.category}</label>
+                        <select className="input" value={editCategory} onChange={(e) => setEditCategory(e.target.value)}>
+                          {categories.map((c) => <option key={c} value={c}>{CATEGORY_ICONS[c] || '📍'} {c}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="label">{t.fixedFare}</label>
+                        <input
+                          className="input"
+                          type="number"
+                          min="0"
+                          step="500"
+                          placeholder={t.noFare}
+                          value={editFixedFare}
+                          onChange={(e) => setEditFixedFare(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button type="submit" className="btn" style={{ padding: '7px 18px', fontSize: 13 }}>{t.save}</button>
+                      <button type="button" className="btn btnGhost" style={{ padding: '7px 14px', fontSize: 13 }} onClick={() => { setEditFixedFare(''); submitEdit({ preventDefault: () => {} } as FormEvent); }}>{t.clearFare}</button>
+                      <button type="button" className="btn btnGhost" style={{ padding: '7px 14px', fontSize: 13 }} onClick={() => setEditId(null)}>{t.cancel}</button>
                     </div>
                   </form>
                 ) : (
                   <div className="row">
-                    <span>{CATEGORY_ICONS[zone.category] || '📍'} {zone.category}</span>
                     <span style={{ fontWeight: 700 }}>{zone.nameAr}</span>
-                    <span className="muted">{zone.nameEn}</span>
+                    <span className="muted" style={{ fontSize: 13 }}>{CATEGORY_ICONS[zone.category] || '📍'} {zone.category}</span>
+                    <span>
+                      {zone.fixedFare != null ? (
+                        <span style={{ fontWeight: 900, color: '#0d7a45', background: '#dcfce7', padding: '3px 10px', borderRadius: 99, fontSize: 13 }}>
+                          {zone.fixedFare.toLocaleString('en')} {lang === 'ar' ? 'ج' : 'SDG'}
+                        </span>
+                      ) : (
+                        <span style={{ color: '#94a3b8', fontSize: 12 }}>{t.noFare}</span>
+                      )}
+                    </span>
                     <span style={{ display: 'flex', gap: 8 }}>
                       <button className="btn btnGhost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => startEdit(zone)}>{t.edit}</button>
                       <button className="btn" style={{ padding: '4px 10px', fontSize: 12, background: '#e53e3e', borderColor: '#e53e3e' }} onClick={() => handleDelete(zone.id)}>{t.delete}</button>

@@ -142,18 +142,22 @@ router.post('/zones', requireAuth, requireRole('developer', 'business', 'operati
   res.status(201).json(zone);
 });
 
-// PATCH /api/admin/zones/:id — edit a zone name
+// PATCH /api/admin/zones/:id — edit a zone (name, category, fixedFare)
 router.patch('/zones/:id', requireAuth, requireRole('developer', 'business', 'operations'), async (req, res) => {
   const id = String(req.params.id);
   const nameAr = String(req.body.nameAr || '').trim();
   const nameEn = String(req.body.nameEn || nameAr).trim();
   const category = String(req.body.category || '').trim();
+  const fixedFare = req.body.fixedFare !== undefined
+    ? (req.body.fixedFare === null || req.body.fixedFare === '' ? null : Number(req.body.fixedFare))
+    : undefined;
 
   if (!nameAr) return res.status(400).json({ error: 'nameAr is required' });
 
   if (prisma) {
-    const data: Record<string, string> = { nameAr, nameEn };
+    const data: Record<string, string | number | null> = { nameAr, nameEn };
     if (category) data.category = category;
+    if (fixedFare !== undefined) data.fixedFare = fixedFare;
     const zone = await prisma.zone.update({ where: { id }, data }).catch(() => null);
     if (!zone) return res.status(404).json({ error: 'Zone not found' });
     return res.json(zone);
