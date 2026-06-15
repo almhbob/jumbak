@@ -202,9 +202,7 @@ export default function Login() {
             </>
           )}
 
-          <Text style={styles.tagline}>
-            {lang === 'ar' ? 'جنبك دايما جنبك' : 'Jnbk — Always Beside You'}
-          </Text>
+          <Text style={styles.tagline}>جنبك JNBK دايما جنبك</Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
