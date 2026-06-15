@@ -201,6 +201,10 @@ export default function Login() {
               </Pressable>
             </>
           )}
+
+          <Text style={styles.tagline}>
+            {lang === 'ar' ? 'جنبك دايما جنبك' : 'Jnbk — Always Beside You'}
+          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
@@ -231,4 +235,5 @@ const styles = StyleSheet.create({
   devBannerLabel: { color: '#92400E', fontWeight: '800', fontSize: 13 },
   devBannerCode: { color: '#063B63', fontWeight: '900', fontSize: 38, letterSpacing: 8 },
   devBannerNote: { color: '#B45309', fontWeight: '700', fontSize: 11 },
+  tagline: { color: 'rgba(255,255,255,.55)', fontSize: 13, fontWeight: '800', textAlign: 'center', letterSpacing: 1.5, marginTop: 8, marginBottom: 4 },
 });
