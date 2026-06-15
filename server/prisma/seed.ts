@@ -112,7 +112,7 @@ async function main() {
   for (const account of staffAccounts) {
     await prisma.staffMember.upsert({
       where: { username: account.username },
-      update: { name: account.name, role: account.role },
+      update: { name: account.name, role: account.role, passwordHash: defaultPasswordHash },
       create: { username: account.username, name: account.name, role: account.role, passwordHash: defaultPasswordHash },
     });
   }
@@ -121,7 +121,7 @@ async function main() {
   const devPasswordHash = await bcrypt.hash(devPassword, BCRYPT_ROUNDS);
   await prisma.staffMember.upsert({
     where: { username: 'developer' },
-    update: { name: 'Developer', role: StaffRole.DEVELOPER },
+    update: { name: 'Developer', role: StaffRole.DEVELOPER, passwordHash: devPasswordHash },
     create: { username: 'developer', name: 'Developer', role: StaffRole.DEVELOPER, passwordHash: devPasswordHash },
   });
 
