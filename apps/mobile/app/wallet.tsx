@@ -176,6 +176,23 @@ export default function Wallet() {
       {!isDriver && (
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, rtl && styles.rtl]}>{t.walletTopup}</Text>
+
+          {/* Bank account card */}
+          <View style={styles.bankCard}>
+            <Text style={[styles.bankLabel, rtl && styles.rtl]}>
+              {lang === 'ar' ? 'حوّل المبلغ لحساب جنبك ثم اختر مبلغ الشحن' : 'Transfer to Jnbk account then select top-up amount'}
+            </Text>
+            <View style={[styles.bankRow, rtl && styles.reverseRow]}>
+              <Text style={styles.bankIcon}>🏦</Text>
+              <View>
+                <Text style={[styles.bankName, rtl && styles.rtl]}>
+                  {lang === 'ar' ? 'رقم حساب جنبك' : 'Jnbk Account Number'}
+                </Text>
+                <Text style={styles.bankNumber}>1791344</Text>
+              </View>
+            </View>
+          </View>
+
           <View style={[styles.amountsRow, rtl && styles.reverseRow]}>
             {TOPUP_AMOUNTS.map((amount) => (
               <Pressable
@@ -315,6 +332,15 @@ const styles = StyleSheet.create({
   amountText: { color: colors.navy, fontWeight: '900', fontSize: sw(17) },
   amountCurrency: { color: colors.muted, fontWeight: '800', fontSize: sw(11), marginTop: 2 },
   topupNote: { color: colors.muted, fontWeight: '700', fontSize: sw(12), lineHeight: 19 },
+  bankCard: {
+    backgroundColor: '#F0F9FF', borderRadius: 20, padding: sw(16),
+    borderWidth: 1.5, borderColor: '#BAE6FD', gap: 10,
+  },
+  bankLabel: { color: '#0369A1', fontWeight: '800', fontSize: sw(12), lineHeight: 18 },
+  bankRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  bankIcon: { fontSize: sw(28) },
+  bankName: { color: colors.muted, fontWeight: '700', fontSize: sw(11) },
+  bankNumber: { color: colors.navy, fontWeight: '900', fontSize: sw(26), letterSpacing: 3 },
   emptyCard: { backgroundColor: colors.white, borderRadius: 20, padding: sw(20), alignItems: 'center' },
   emptyText: { color: colors.muted, fontWeight: '800', fontSize: sw(14) },
   txRow: {

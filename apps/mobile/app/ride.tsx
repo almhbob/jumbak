@@ -77,7 +77,33 @@ export default function Ride() {
         <Text style={[styles.muted, rtl && styles.rtl]}>{source === 'api' ? (lang === 'ar' ? 'الحالة من الخادم' : 'Live backend status') : (lang === 'ar' ? 'وضع معاينة' : 'Preview mode')}</Text>
       </View>
       {(currentStep > 0 || ride?.driver) && <View style={[styles.driverCard, rtl && styles.driverCardRtl]}><View style={styles.driverAvatar}><Text style={styles.driverInitial}>{selectedDriver.name.slice(0, 1)}</Text></View><View style={styles.driverInfo}><Text style={[styles.section, rtl && styles.rtl]}>{t.driver}</Text><Text style={[styles.name, rtl && styles.rtl]}>{selectedDriver.name}</Text><Text style={[styles.muted, rtl && styles.rtl]}>{selectedDriver.vehicle} - rating {selectedDriver.rating}</Text></View></View>}
-      <View style={styles.fareCard}><Text style={[styles.section, rtl && styles.rtl]}>{t.fare}</Text><Text style={[styles.fare, rtl && styles.rtl]}>{fare} SDG</Text><Text style={[styles.muted, rtl && styles.rtl]}>{completed ? (lang === 'ar' ? 'يمكنك الآن تقييم الرحلة' : 'You can now rate this trip') : t.cashNote}</Text></View>
+      <View style={styles.fareCard}>
+        <Text style={[styles.section, rtl && styles.rtl]}>{t.fare}</Text>
+        <Text style={[styles.fare, rtl && styles.rtl]}>{fare} SDG</Text>
+        <Text style={[styles.muted, rtl && styles.rtl]}>
+          {completed
+            ? (lang === 'ar' ? 'يمكنك الآن تقييم الرحلة' : 'You can now rate this trip')
+            : t.cashNote}
+        </Text>
+        {completed && (
+          <View style={styles.payCard}>
+            <Text style={[styles.payHint, rtl && styles.rtl]}>
+              {lang === 'ar'
+                ? 'ادفع للسائق نقداً أو حوّل لحساب جنبك'
+                : 'Pay driver in cash or transfer to Jnbk account'}
+            </Text>
+            <View style={[styles.payRow, rtl && styles.reverse]}>
+              <Text style={styles.payIcon}>🏦</Text>
+              <View>
+                <Text style={[styles.payLabel, rtl && styles.rtl]}>
+                  {lang === 'ar' ? 'رقم حساب جنبك' : 'Jnbk Account'}
+                </Text>
+                <Text style={styles.payNumber}>1791344</Text>
+              </View>
+            </View>
+          </View>
+        )}
+      </View>
       {!cancelled && (completed ? <Button title={t.completeRate} variant='gold' onPress={() => router.push({ pathname: '/rating', params: { lang, rideId: params.rideId } })} /> : <Button title={loading ? (lang === 'ar' ? 'جاري التحديث...' : 'Refreshing...') : (lang === 'ar' ? 'تحديث حالة الرحلة' : 'Refresh trip status')} variant='gold' onPress={() => loadRide()} />)}
       <Button title={completed || cancelled ? t.tripHistory : t.cancel} variant='ghost' onPress={() => completed || cancelled ? router.push({ pathname: '/trips', params: { lang } }) : router.back()} />
       <Pressable style={styles.autoToggle} onPress={() => setAutoRefresh(!autoRefresh)}><Text style={styles.autoText}>{autoRefresh ? (lang === 'ar' ? 'التحديث التلقائي مفعل' : 'Auto-refresh on') : (lang === 'ar' ? 'التحديث التلقائي متوقف' : 'Auto-refresh off')}</Text></Pressable>
@@ -93,5 +119,11 @@ const styles = StyleSheet.create({
   refreshButton: { backgroundColor: colors.navy, borderRadius: 16, paddingVertical: 10, paddingHorizontal: 12 }, refreshText: { color: colors.white, fontWeight: '900', fontSize: sw(13) },
   mapCard: { height: sw(220), borderRadius: 32, padding: sw(18), alignItems: 'center', justifyContent: 'center', backgroundColor: '#DDF3FA' }, logo: { width: sw(160), height: sw(88) }, progressRow: { flexDirection: 'row', gap: 8, marginVertical: sw(14) }, dot: { width: sw(36), height: 7, borderRadius: 999, backgroundColor: colors.white }, dotActive: { backgroundColor: colors.navy }, route: { color: colors.navy, fontSize: sw(17), fontWeight: '900', textAlign: 'center' },
   driverCard: { backgroundColor: colors.white, borderRadius: 28, padding: sw(16), flexDirection: 'row', gap: 12, alignItems: 'center' }, driverCardRtl: { flexDirection: 'row-reverse' }, driverAvatar: { width: sw(48), height: sw(48), borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.navy }, driverInitial: { color: colors.gold, fontSize: sw(22), fontWeight: '900' }, driverInfo: { flex: 1 },
-  fareCard: { backgroundColor: colors.white, borderRadius: 28, padding: sw(16) }, section: { color: colors.muted, fontWeight: '800' }, name: { color: colors.text, fontSize: sw(20), fontWeight: '900' }, muted: { color: colors.muted, marginTop: 4 }, fare: { color: colors.gold, fontSize: sw(32), fontWeight: '900' }, autoToggle: { alignItems: 'center', padding: 10 }, autoText: { color: colors.teal, fontWeight: '900' }, rtl: { textAlign: 'right', writingDirection: 'rtl' }
+  fareCard: { backgroundColor: colors.white, borderRadius: 28, padding: sw(16), gap: sw(6) }, section: { color: colors.muted, fontWeight: '800' }, name: { color: colors.text, fontSize: sw(20), fontWeight: '900' }, muted: { color: colors.muted, marginTop: 4 }, fare: { color: colors.gold, fontSize: sw(32), fontWeight: '900' }, autoToggle: { alignItems: 'center', padding: 10 }, autoText: { color: colors.teal, fontWeight: '900' }, rtl: { textAlign: 'right', writingDirection: 'rtl' },
+  payCard: { backgroundColor: '#F0F9FF', borderRadius: 16, padding: sw(13), borderWidth: 1.5, borderColor: '#BAE6FD', gap: 8, marginTop: 6 },
+  payHint: { color: '#0369A1', fontWeight: '800', fontSize: sw(12) },
+  payRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  payIcon: { fontSize: sw(24) },
+  payLabel: { color: colors.muted, fontWeight: '700', fontSize: sw(11) },
+  payNumber: { color: colors.navy, fontWeight: '900', fontSize: sw(24), letterSpacing: 3 },
 });
