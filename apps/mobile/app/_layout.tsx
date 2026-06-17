@@ -3,6 +3,7 @@ import { Stack, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Sentry from '@sentry/react-native';
 import { setUnauthorizedHandler, setTokenCache } from '../src/api';
+import { colors } from '../src/constants/theme';
 import {
   registerForPushNotifications,
   saveTokenToServer,
@@ -57,7 +58,31 @@ function Layout() {
     };
   }, []);
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: true,
+        headerBackTitle: 'رجوع',
+        headerTitleAlign: 'center',
+        headerTintColor: colors.navy,
+        headerStyle: { backgroundColor: colors.bg },
+        headerShadowVisible: false,
+        headerTitleStyle: { color: colors.navy, fontWeight: '900' },
+        contentStyle: { backgroundColor: colors.bg },
+      }}
+    >
+      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="home" options={{ headerShown: false }} />
+      <Stack.Screen name="driver" options={{ headerShown: false }} />
+      <Stack.Screen name="login" options={{ title: 'تسجيل الدخول' }} />
+      <Stack.Screen name="driver-register" options={{ title: 'تسجيل السائق' }} />
+      <Stack.Screen name="ride" options={{ title: 'الرحلة' }} />
+      <Stack.Screen name="wallet" options={{ title: 'المحفظة' }} />
+      <Stack.Screen name="settings" options={{ title: 'الإعدادات' }} />
+      <Stack.Screen name="support" options={{ title: 'الدعم' }} />
+      <Stack.Screen name="legal" options={{ title: 'الشروط والسياسة' }} />
+    </Stack>
+  );
 }
 
 export default Sentry.wrap(Layout);
