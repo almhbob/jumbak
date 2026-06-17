@@ -11,7 +11,7 @@
     "build": "pnpm --filter @jumbak/server build",
     "start": "pnpm --filter @jumbak/server start:prod",
     "railway:build": "pnpm install --frozen-lockfile=false && pnpm --filter @jumbak/server build",
-    "railway:start": "pnpm --filter @jumbak/server start:prod",
+    "railway:start": "pnpm --filter @jumbak/server prisma:deploy && pnpm --filter @jumbak/server start:prod",
     "lint": "eslint \"server/src/**/*.ts\" \"apps/mobile/src/**/*.ts\" \"apps/mobile/app/**/*.tsx\"",
     "lint:fix": "eslint --fix \"server/src/**/*.ts\" \"apps/mobile/src/**/*.ts\" \"apps/mobile/app/**/*.tsx\"",
     "format": "prettier --write \"server/src/**/*.ts\" \"apps/mobile/src/**/*.ts\" \"apps/mobile/app/**/*.tsx\" \"apps/admin/app/**/*.tsx\"",
