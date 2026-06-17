@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { apiGet, apiPost, apiPatch } from '../lib/apiClient';
 
 type Lang = 'ar' | 'en';
@@ -11,69 +11,29 @@ const ALLOWED_ROLES = ['developer', 'operations', 'finance', 'supervisor', 'busi
 const ar = {
   title: 'إدارة التسعير',
   sub: 'عرض وتعديل أسعار خدمات رفاعة — التغييرات تُطبَّق فورًا على التطبيق.',
-  back: 'رجوع',
-  toggle: 'English',
-  loading: 'جارٍ التحميل...',
-  noApi: 'لم يتم ربط NEXT_PUBLIC_API_URL. الأسعار الظاهرة هي القيم الافتراضية.',
-  id: 'المعرف',
-  nameAr: 'الاسم عربي',
-  nameEn: 'الاسم إنجليزي',
-  base: 'فتح الرحلة',
-  km: 'سعر الكيلومتر',
-  min: 'الحد الأدنى',
-  edit: 'تعديل',
-  save: 'حفظ',
-  cancel: 'إلغاء',
-  add: 'إضافة نوع مركبة جديد',
-  addHint: 'أدخل بيانات الخدمة كاملة — هذا الإجراء للمطور فقط.',
-  addBtn: 'إضافة',
-  saved: 'تم الحفظ بنجاح',
-  failed: 'تعذر الحفظ. تحقق من الاتصال بالخادم.',
-  required: 'أكمل جميع الحقول',
-  show: 'إظهار في التطبيق',
-  hide: 'إخفاء من التطبيق',
-  visible: 'ظاهر',
-  hidden: 'مخفي',
-  currency: 'SDG',
-  fareCalc: 'التسعيرة: فتح الرحلة + (المسافة × سعر الكيلومتر) — لا تقل عن الحد الأدنى',
-  editFares: 'تعديل الأسعار',
-  loginRequired: 'يجب تسجيل الدخول بصلاحية مناسبة (عمليات، مالية، مطور)',
-  goPortal: 'الذهاب للبوابة',
-  example: 'مثال: رحلة 3 كم →',
+  back: 'الرئيسية', operations: 'التشغيل', portal: 'البوابة', toggle: 'English',
+  loading: 'جارٍ التحميل...', noApi: 'لم يتم ربط NEXT_PUBLIC_API_URL. الأسعار الظاهرة هي القيم الافتراضية.',
+  id: 'المعرف', nameAr: 'الاسم عربي', nameEn: 'الاسم إنجليزي', base: 'فتح الرحلة', km: 'سعر الكيلومتر', min: 'الحد الأدنى',
+  edit: 'تعديل', save: 'حفظ', cancel: 'إلغاء', add: 'إضافة نوع مركبة جديد', addHint: 'أدخل بيانات الخدمة كاملة — هذا الإجراء للمطور فقط.', addBtn: 'إضافة',
+  saved: 'تم الحفظ بنجاح', failed: 'تعذر الحفظ. تحقق من الاتصال بالخادم.', required: 'أكمل جميع الحقول',
+  show: 'إظهار في التطبيق', hide: 'إخفاء من التطبيق', visible: 'ظاهر', hidden: 'مخفي', currency: 'SDG',
+  fareCalc: 'التسعيرة = فتح الرحلة + (المسافة × سعر الكيلومتر)، ولا تقل عن الحد الأدنى.', editFares: 'تعديل الأسعار',
+  loginRequired: 'يجب تسجيل الدخول بصلاحية مناسبة (عمليات، مالية، مطور)', goPortal: 'الذهاب للبوابة', example: 'مثال 3 كم',
+  totalTypes: 'أنواع المركبات', visibleTypes: 'الظاهرة', hiddenTypes: 'المخفية', avgMinimum: 'متوسط الحد الأدنى', status: 'الحالة', actions: 'الإجراء',
 };
 
 const en: typeof ar = {
   title: 'Pricing Management',
   sub: 'View and edit service fares — changes apply to the app immediately.',
-  back: 'Back',
-  toggle: 'العربية',
-  loading: 'Loading...',
-  noApi: 'NEXT_PUBLIC_API_URL not configured. Showing default values.',
-  id: 'ID',
-  nameAr: 'Name Arabic',
-  nameEn: 'Name English',
-  base: 'Base fare',
-  km: 'Per km',
-  min: 'Minimum',
-  edit: 'Edit',
-  save: 'Save',
-  cancel: 'Cancel',
-  add: 'Add new vehicle type',
-  addHint: 'Enter complete service data — developer-only action.',
-  addBtn: 'Add',
-  saved: 'Saved successfully',
-  failed: 'Could not save. Check server connection.',
-  required: 'Complete all fields',
-  show: 'Show in app',
-  hide: 'Hide from app',
-  visible: 'Visible',
-  hidden: 'Hidden',
-  currency: 'SDG',
-  fareCalc: 'Formula: base fare + (distance × per-km fare), not less than minimum',
-  editFares: 'Edit Fares',
-  loginRequired: 'Login required with appropriate role (operations, finance, developer)',
-  goPortal: 'Go to portal',
-  example: 'Example: 3 km trip →',
+  back: 'Home', operations: 'Operations', portal: 'Portal', toggle: 'العربية',
+  loading: 'Loading...', noApi: 'NEXT_PUBLIC_API_URL not configured. Showing default values.',
+  id: 'ID', nameAr: 'Name Arabic', nameEn: 'Name English', base: 'Base fare', km: 'Per km', min: 'Minimum',
+  edit: 'Edit', save: 'Save', cancel: 'Cancel', add: 'Add new vehicle type', addHint: 'Enter complete service data — developer-only action.', addBtn: 'Add',
+  saved: 'Saved successfully', failed: 'Could not save. Check server connection.', required: 'Complete all fields',
+  show: 'Show in app', hide: 'Hide from app', visible: 'Visible', hidden: 'Hidden', currency: 'SDG',
+  fareCalc: 'Formula = base fare + (distance × per-km fare), not less than minimum.', editFares: 'Edit Fares',
+  loginRequired: 'Login required with appropriate role (operations, finance, developer)', goPortal: 'Go to portal', example: '3 km example',
+  totalTypes: 'Vehicle types', visibleTypes: 'Visible', hiddenTypes: 'Hidden', avgMinimum: 'Avg. minimum', status: 'Status', actions: 'Actions',
 };
 
 const fallbackTypes: VehicleType[] = [
@@ -84,6 +44,10 @@ const fallbackTypes: VehicleType[] = [
 
 function calcExample(vt: VehicleType) {
   return Math.max(vt.baseFare + 3 * vt.perKmFare, vt.minimumFare).toLocaleString('en');
+}
+
+function formatMoney(value: number, currency: string) {
+  return `${Number(value || 0).toLocaleString('en')} ${currency}`;
 }
 
 export default function Pricing() {
@@ -101,8 +65,6 @@ export default function Pricing() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isApiReady, setIsApiReady] = useState(false);
-
-  // Add form state (developer only)
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState({ id: '', nameAr: '', nameEn: '', baseFare: '', perKmFare: '', minimumFare: '' });
 
@@ -124,7 +86,6 @@ export default function Pricing() {
         setLoading(false);
       })
       .catch(() => {
-        // Fallback to public config
         apiGet<{ vehicleTypes?: VehicleType[] }>('/api/config', {})
           .then((cfg) => {
             if (Array.isArray(cfg.vehicleTypes) && cfg.vehicleTypes.length) setVehicleTypes(cfg.vehicleTypes);
@@ -133,17 +94,24 @@ export default function Pricing() {
       });
   }, []);
 
+  const stats = useMemo(() => {
+    const visible = vehicleTypes.filter((x) => x.isVisible !== false).length;
+    const hidden = vehicleTypes.length - visible;
+    const avg = vehicleTypes.length ? Math.round(vehicleTypes.reduce((s, x) => s + Number(x.minimumFare || 0), 0) / vehicleTypes.length) : 0;
+    return { total: vehicleTypes.length, visible, hidden, avg };
+  }, [vehicleTypes]);
+
   if (!role || !ALLOWED_ROLES.includes(role)) {
     return (
       <main dir={rtl ? 'rtl' : 'ltr'} style={{ textAlign: rtl ? 'right' : 'left' }}>
         <section className="hero">
           <div className="heroTop">
             <div><p className="kicker">Jnbk جنبك</p><h1>{t.loginRequired}</h1></div>
-            <button className="languageSwitch buttonReset" onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}>{t.toggle}</button>
+            <div className="adminHeroActions">
+              <button className="languageSwitch buttonReset" onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}>{t.toggle}</button>
+              <button className="primaryAction" onClick={() => { window.location.href = `/portal?lang=${lang}`; }}>{t.goPortal}</button>
+            </div>
           </div>
-        </section>
-        <section className="panel">
-          <button className="primaryAction" onClick={() => { window.location.href = `/portal?lang=${lang}`; }}>{t.goPortal}</button>
         </section>
       </main>
     );
@@ -161,7 +129,7 @@ export default function Pricing() {
     const baseFare = Number(editForm.baseFare);
     const perKmFare = Number(editForm.perKmFare);
     const minimumFare = Number(editForm.minimumFare);
-    if (!baseFare || !perKmFare || !minimumFare) return setNotice({ type: 'error', msg: t.required });
+    if (!baseFare || !perKmFare || !minimumFare || !editForm.nameAr || !editForm.nameEn) return setNotice({ type: 'error', msg: t.required });
     setSaving(true);
     try {
       const updated = await apiPatch<VehicleType>(`/api/admin/vehicle-types/${id}`, { baseFare, perKmFare, minimumFare, nameAr: editForm.nameAr, nameEn: editForm.nameEn });
@@ -212,116 +180,69 @@ export default function Pricing() {
             <h1>{t.title}</h1>
             <p>{t.sub}</p>
           </div>
-          <div className="topActions">
+          <div className="adminHeroActions">
             <button className="languageSwitch buttonReset" onClick={() => window.location.href = '/'}>{t.back}</button>
+            <button className="languageSwitch buttonReset" onClick={() => window.location.href = `/operations?lang=${lang}`}>{t.operations}</button>
+            <button className="languageSwitch buttonReset" onClick={() => window.location.href = `/portal?lang=${lang}`}>{t.portal}</button>
             <button className="languageSwitch buttonReset" onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}>{t.toggle}</button>
           </div>
         </div>
       </section>
 
+      <section className="adminStatGrid">
+        <div className="card"><p>{t.totalTypes}</p><strong>{stats.total}</strong></div>
+        <div className="card"><p>{t.visibleTypes}</p><strong style={{ background: 'none', WebkitTextFillColor: '#10b981', color: '#10b981' }}>{stats.visible}</strong></div>
+        <div className="card"><p>{t.hiddenTypes}</p><strong style={{ background: 'none', WebkitTextFillColor: '#ef4444', color: '#ef4444' }}>{stats.hidden}</strong></div>
+        <div className="card"><p>{t.avgMinimum}</p><strong>{formatMoney(stats.avg, t.currency)}</strong></div>
+      </section>
+
       {notice && (
-        <div className={`notice ${notice.type}`} style={{ margin: '0 24px 8px' }}>
-          {notice.msg}
-        </div>
+        <div className={`notice ${notice.type}`} style={{ margin: '12px 0' }}>{notice.msg}</div>
       )}
 
       <section className="panel">
-        <p className="muted" style={{ marginBottom: 12 }}>{t.fareCalc}</p>
+        <div className="adminSectionHeader" style={{ marginTop: 0 }}>
+          <div>
+            <h2>{t.editFares}</h2>
+            <p className="muted" style={{ margin: 0 }}>{t.fareCalc}</p>
+          </div>
+          <span className={isApiReady ? 'adminBadge adminBadgeSuccess' : 'adminBadge adminBadgeWarn'}>
+            {isApiReady ? 'API' : 'Preview'}
+          </span>
+        </div>
 
         {loading ? (
           <p className="muted">{t.loading}</p>
         ) : (
-          <div className="table">
-            {/* Header */}
-            <div className="row" style={{ fontWeight: 900 }}>
-              <span>{t.nameAr}</span>
-              <span>{t.base}</span>
-              <span>{t.km}</span>
-              <span>{t.min}</span>
-              <span>{t.example}</span>
-              <span></span>
-            </div>
-
+          <div className="pricingList">
             {vehicleTypes.map((vt) => (
               <div key={vt.id}>
                 {editingId === vt.id ? (
-                  /* ── Edit row ── */
-                  <div className="row" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                    <input
-                      style={inputStyle}
-                      value={editForm.nameAr}
-                      onChange={(e) => setEditForm((f) => ({ ...f, nameAr: e.target.value }))}
-                      placeholder={t.nameAr}
-                    />
-                    <input
-                      style={inputStyle}
-                      type="number"
-                      value={editForm.baseFare}
-                      onChange={(e) => setEditForm((f) => ({ ...f, baseFare: e.target.value }))}
-                      placeholder={t.base}
-                    />
-                    <input
-                      style={inputStyle}
-                      type="number"
-                      value={editForm.perKmFare}
-                      onChange={(e) => setEditForm((f) => ({ ...f, perKmFare: e.target.value }))}
-                      placeholder={t.km}
-                    />
-                    <input
-                      style={inputStyle}
-                      type="number"
-                      value={editForm.minimumFare}
-                      onChange={(e) => setEditForm((f) => ({ ...f, minimumFare: e.target.value }))}
-                      placeholder={t.min}
-                    />
-                    <span style={{ color: '#64748b', fontSize: 13 }}>
-                      {(() => {
-                        const b = Number(editForm.baseFare) || 0;
-                        const k = Number(editForm.perKmFare) || 0;
-                        const m = Number(editForm.minimumFare) || 0;
-                        return `${Math.max(b + 3 * k, m).toLocaleString('en')} ${t.currency}`;
-                      })()}
-                    </span>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button className="primaryAction" style={{ padding: '6px 16px', fontSize: 13 }} onClick={() => saveEdit(vt.id)} disabled={saving}>
-                        {saving ? '...' : t.save}
-                      </button>
-                      <button className="languageSwitch buttonReset" style={{ padding: '6px 12px', fontSize: 13 }} onClick={cancelEdit}>
-                        {t.cancel}
-                      </button>
+                  <div className="pricingEditGrid">
+                    <label className="label">{t.nameAr}<input className="input" value={editForm.nameAr} onChange={(e) => setEditForm((f) => ({ ...f, nameAr: e.target.value }))} placeholder={t.nameAr} /></label>
+                    <label className="label">{t.nameEn}<input className="input" value={editForm.nameEn} onChange={(e) => setEditForm((f) => ({ ...f, nameEn: e.target.value }))} placeholder={t.nameEn} /></label>
+                    <label className="label">{t.base}<input className="input" type="number" value={editForm.baseFare} onChange={(e) => setEditForm((f) => ({ ...f, baseFare: e.target.value }))} placeholder={t.base} /></label>
+                    <label className="label">{t.km}<input className="input" type="number" value={editForm.perKmFare} onChange={(e) => setEditForm((f) => ({ ...f, perKmFare: e.target.value }))} placeholder={t.km} /></label>
+                    <label className="label">{t.min}<input className="input" type="number" value={editForm.minimumFare} onChange={(e) => setEditForm((f) => ({ ...f, minimumFare: e.target.value }))} placeholder={t.min} /></label>
+                    <div className="pricingActions">
+                      <button className="adminMiniButton adminMiniButtonSuccess" onClick={() => saveEdit(vt.id)} disabled={saving}>{saving ? '...' : t.save}</button>
+                      <button className="adminMiniButton adminMiniButtonMuted" onClick={cancelEdit}>{t.cancel}</button>
                     </div>
                   </div>
                 ) : (
-                  /* ── Display row ── */
-                  <div className="row" style={{ opacity: vt.isVisible === false ? 0.55 : 1 }}>
-                    <span>
-                      <b>{lang === 'ar' ? vt.nameAr : vt.nameEn}</b>
-                      <br />
-                      <small style={{ color: '#94a3b8' }}>{vt.id}</small>
-                      {' '}
-                      <span style={{ fontSize: 11, fontWeight: 800, padding: '2px 7px', borderRadius: 99, background: vt.isVisible === false ? '#fee2e2' : '#dcfce7', color: vt.isVisible === false ? '#b91c1c' : '#15803d' }}>
-                        {vt.isVisible === false ? t.hidden : t.visible}
-                      </span>
-                    </span>
-                    <span>{vt.baseFare.toLocaleString('en')} {t.currency}</span>
-                    <span>{vt.perKmFare.toLocaleString('en')} {t.currency}</span>
-                    <span>{vt.minimumFare.toLocaleString('en')} {t.currency}</span>
-                    <span style={{ color: '#f59e0b', fontWeight: 900 }}>{calcExample(vt)} {t.currency}</span>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      <button
-                        className="primaryAction"
-                        style={{ padding: '6px 14px', fontSize: 13 }}
-                        onClick={() => startEdit(vt)}
-                        disabled={!isApiReady}
-                      >
-                        {t.edit}
-                      </button>
-                      <button
-                        className="languageSwitch buttonReset"
-                        style={{ padding: '6px 12px', fontSize: 13, background: vt.isVisible === false ? '#dcfce7' : '#fee2e2', color: vt.isVisible === false ? '#15803d' : '#b91c1c', border: 'none' }}
-                        onClick={() => toggleVisibility(vt)}
-                        disabled={!isApiReady}
-                      >
+                  <div className={`pricingCard ${vt.isVisible === false ? 'pricingCardHidden' : ''}`}>
+                    <div className="pricingName">
+                      <strong>{lang === 'ar' ? vt.nameAr : vt.nameEn}</strong>
+                      <span className="adminInfoMuted">{vt.id}</span>
+                      <span className={vt.isVisible === false ? 'adminBadge adminBadgeDanger' : 'adminBadge adminBadgeSuccess'}>{vt.isVisible === false ? t.hidden : t.visible}</span>
+                    </div>
+                    <div className="pricingMetric"><label>{t.base}</label><b>{formatMoney(vt.baseFare, t.currency)}</b></div>
+                    <div className="pricingMetric"><label>{t.km}</label><b>{formatMoney(vt.perKmFare, t.currency)}</b></div>
+                    <div className="pricingMetric"><label>{t.min}</label><b>{formatMoney(vt.minimumFare, t.currency)}</b></div>
+                    <div className="pricingMetric"><label>{t.example}</label><b style={{ color: '#f59e0b' }}>{calcExample(vt)} {t.currency}</b></div>
+                    <div className="pricingActions">
+                      <button className="adminMiniButton adminMiniButtonSuccess" onClick={() => startEdit(vt)} disabled={!isApiReady}>{t.edit}</button>
+                      <button className={vt.isVisible === false ? 'adminMiniButton adminMiniButtonSuccess' : 'adminMiniButton adminMiniButtonWarn'} onClick={() => toggleVisibility(vt)} disabled={!isApiReady}>
                         {vt.isVisible === false ? t.show : t.hide}
                       </button>
                     </div>
@@ -333,14 +254,16 @@ export default function Pricing() {
         )}
       </section>
 
-      {/* Add new vehicle type — developer only */}
       {role === 'developer' && (
         <section className="panel">
-          <h2>{t.add}</h2>
-          <p className="muted">{t.addHint}</p>
-          {!showAdd ? (
-            <button className="primaryAction" style={{ marginTop: 8 }} onClick={() => setShowAdd(true)}>{t.add}</button>
-          ) : (
+          <div className="adminSectionHeader" style={{ marginTop: 0 }}>
+            <div>
+              <h2>{t.add}</h2>
+              <p className="muted" style={{ margin: 0 }}>{t.addHint}</p>
+            </div>
+            {!showAdd && <button className="primaryAction" onClick={() => setShowAdd(true)}>{t.add}</button>}
+          </div>
+          {showAdd && (
             <div className="formGrid" style={{ marginTop: 12 }}>
               <input placeholder={t.id} value={addForm.id} onChange={(e) => setAddForm((f) => ({ ...f, id: e.target.value }))} />
               <input placeholder={t.nameAr} value={addForm.nameAr} onChange={(e) => setAddForm((f) => ({ ...f, nameAr: e.target.value }))} />
@@ -348,9 +271,9 @@ export default function Pricing() {
               <input type="number" placeholder={t.base} value={addForm.baseFare} onChange={(e) => setAddForm((f) => ({ ...f, baseFare: e.target.value }))} />
               <input type="number" placeholder={t.km} value={addForm.perKmFare} onChange={(e) => setAddForm((f) => ({ ...f, perKmFare: e.target.value }))} />
               <input type="number" placeholder={t.min} value={addForm.minimumFare} onChange={(e) => setAddForm((f) => ({ ...f, minimumFare: e.target.value }))} />
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className="primaryAction" onClick={submitAdd} disabled={saving}>{saving ? '...' : t.addBtn}</button>
-                <button className="languageSwitch buttonReset" onClick={() => setShowAdd(false)}>{t.cancel}</button>
+              <div className="pricingActions">
+                <button className="adminMiniButton adminMiniButtonSuccess" onClick={submitAdd} disabled={saving}>{saving ? '...' : t.addBtn}</button>
+                <button className="adminMiniButton adminMiniButtonMuted" onClick={() => setShowAdd(false)}>{t.cancel}</button>
               </div>
             </div>
           )}
@@ -359,8 +282,3 @@ export default function Pricing() {
     </main>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  padding: '8px 12px', borderRadius: 10, border: '1.5px solid #d9e2ec',
-  fontSize: 14, fontWeight: 700, width: 110, background: '#f8fafc',
-};
