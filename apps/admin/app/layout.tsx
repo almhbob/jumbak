@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import './style.css';
 import './pro-admin.css';
+import './admin-page-polish.css';
 
 export const metadata = {
   title: 'Jnbk جنبك — Admin Portal',
