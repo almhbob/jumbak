@@ -58,6 +58,7 @@ router.post('/', requireAuth, requireRole('business', 'developer'), async (req, 
 
   if (!name || !username) return res.status(400).json({ error: 'name and username are required' });
   if (name.length > 100 || username.length > 50) return res.status(400).json({ error: 'Input exceeds allowed length' });
+  if (temporaryPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
 
   const passwordHash = await bcrypt.hash(temporaryPassword, BCRYPT_ROUNDS);
 
@@ -102,9 +103,6 @@ router.patch('/change-password', requireAuth, async (req, res) => {
   }
   if (newPassword.length < 6) {
     return res.status(400).json({ error: 'newPassword must be at least 6 characters' });
-  }
-  if (newPassword === '123456') {
-    return res.status(400).json({ error: 'Cannot reuse the default password' });
   }
 
   const staffId = req.staff!.staffId;
@@ -173,6 +171,7 @@ router.patch('/:id', requireAuth, requireRole('business', 'developer'), async (r
   if (phone !== undefined) member.phone = phone;
   if (email !== undefined) member.email = email;
   if (notes !== undefined) member.notes = notes;
+  if (newPassword) member.passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
   res.json({ ok: true, staff: publicStaff(member) });
 });
 
