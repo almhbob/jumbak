@@ -1,5 +1,5 @@
 'use client';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { staffLogin } from '../lib/apiClient';
 
@@ -8,48 +8,60 @@ type Lang = 'ar' | 'en';
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
 
-const roles: Record<Role, { ar: string; en: string; descAr: string; descEn: string; path: string }> = {
-  operations:  { ar: 'مدير التشغيل',         en: 'Operations Manager',   descAr: 'إدارة الرحلات والسائقين والبلاغات ومؤشرات الأداء اليومية.',  descEn: 'Rides, drivers, incidents, and daily performance.',                path: '/operations' },
-  supervisor:  { ar: 'مشرف الوردية',          en: 'Shift Supervisor',     descAr: 'متابعة الطلبات الحية والسائقين المتاحين والتصعيد السريع.',    descEn: 'Live requests, available drivers, and quick escalation.',           path: '/operations' },
-  support:     { ar: 'مسؤول العملاء',         en: 'Customer Support',     descAr: 'الشكاوى، المفقودات، طلبات الهاتف، ومتابعة كبار السن.',         descEn: 'Complaints, lost items, phone orders, and senior support.',        path: '/operations' },
-  accountant:  { ar: 'المحاسب',               en: 'Accountant',           descAr: 'المحفظة، العمولات، الاشتراكات، التحصيل، والمصروفات.',           descEn: 'Wallet, commissions, subscriptions, collections, and expenses.',   path: '/finance'    },
-  finance:     { ar: 'المالية',               en: 'Finance',              descAr: 'متابعة الماليات العامة والاشتراكات.',                          descEn: 'Track finance and subscriptions.',                                 path: '/finance'    },
-  developer:   { ar: 'حساب المطور',           en: 'Developer Account',    descAr: 'الربط التقني وإعدادات الخادم فقط.',                           descEn: 'Technical integrations and server settings only.',                 path: '/settings'   },
-  business:    { ar: 'الإدارة',              en: 'Management',           descAr: 'المدن، المناطق، المركبات، الأسعار، الاتفاقات، ونسب الأرباح.',  descEn: 'Cities, zones, vehicles, pricing, agreements, and profit share.', path: '/business'   },
+const roles: Record<Role, { ar: string; en: string; descAr: string; descEn: string; path: string; username: string }> = {
+  operations:  { ar: 'مدير التشغيل',         en: 'Operations Manager',   descAr: 'إدارة الرحلات والسائقين والبلاغات ومؤشرات الأداء اليومية.',  descEn: 'Rides, drivers, incidents, and daily performance.',                path: '/operations', username: 'operations.manager' },
+  supervisor:  { ar: 'مشرف الوردية',          en: 'Shift Supervisor',     descAr: 'متابعة الطلبات الحية والسائقين المتاحين والتصعيد السريع.',    descEn: 'Live requests, available drivers, and quick escalation.',           path: '/operations', username: 'shift.supervisor' },
+  support:     { ar: 'مسؤول العملاء',         en: 'Customer Support',     descAr: 'الشكاوى، المفقودات، طلبات الهاتف، ومتابعة كبار السن.',         descEn: 'Complaints, lost items, phone orders, and senior support.',        path: '/operations', username: 'customer.support' },
+  accountant:  { ar: 'المحاسب',               en: 'Accountant',           descAr: 'المحفظة، العمولات، الاشتراكات، التحصيل، والمصروفات.',           descEn: 'Wallet, commissions, subscriptions, collections, and expenses.',   path: '/finance',    username: 'accountant' },
+  finance:     { ar: 'المالية',               en: 'Finance',              descAr: 'متابعة الماليات العامة والاشتراكات.',                          descEn: 'Track finance and subscriptions.',                                 path: '/finance',    username: 'finance.officer' },
+  developer:   { ar: 'حساب المطور',           en: 'Developer Account',    descAr: 'الربط التقني وإعدادات الخادم فقط.',                           descEn: 'Technical integrations and server settings only.',                 path: '/settings',   username: 'developer' },
+  business:    { ar: 'الإدارة',              en: 'Management',           descAr: 'المدن، المناطق، المركبات، الأسعار، الاتفاقات، ونسب الأرباح.',  descEn: 'Cities, zones, vehicles, pricing, agreements, and profit share.', path: '/business',   username: 'business.admin' },
 };
 
 const copy = {
   ar: {
     title: 'بوابة دخول Jnbk جنبك',
-    sub: 'رابط موحد لكل الموظفين والمشغلين مع صلاحيات منفصلة لكل وظيفة.',
+    sub: 'اضغط على مسمى الحساب، ثم اكتب كلمة السر فقط.',
     username: 'اسم المستخدم',
     password: 'كلمة السر',
     login: 'دخول',
     bad: 'بيانات الدخول غير صحيحة لهذه الصلاحية',
-    choose: 'اختر حساب الموظف',
+    choose: 'اختر حسابك',
     toggle: 'English',
     home: 'الرئيسية',
-    note: 'كلمة السر الافتراضية لكل حسابات الموظفين هي 123456. يجب تغييرها بعد أول دخول.',
+    note: 'اضغط على الصلاحية المطلوبة، وسيتم تجهيز اسم المستخدم تلقائيًا. كلمة السر الافتراضية 123456.',
     noApi: 'وضع المعاينة — سيعمل التطبيق بدون خادم. تأكد من ربط NEXT_PUBLIC_API_URL للإنتاج.',
     show: 'إظهار',
     hide: 'إخفاء',
     connecting: 'جارٍ التحقق...',
+    selected: 'الحساب المختار',
+    change: 'تغيير الحساب',
+    customUsername: 'اسم مستخدم آخر',
+    useCustom: 'دخول باسم مستخدم آخر',
+    hideCustom: 'إخفاء اسم المستخدم',
+    clickToLogin: 'اضغط للدخول',
   },
   en: {
     title: 'Jnbk Staff Portal',
-    sub: 'One link for all operators and staff with separated permissions per job.',
+    sub: 'Tap your account type, then enter only the password.',
     username: 'Username',
     password: 'Password',
     login: 'Login',
     bad: 'Invalid credentials for this role',
-    choose: 'Choose staff account',
+    choose: 'Choose your account',
     toggle: 'العربية',
     home: 'Home',
-    note: 'The default password for all staff accounts is 123456. Each staff member must change it after first login.',
+    note: 'Tap the required role and the username will be prepared automatically. Default password is 123456.',
     noApi: 'Preview mode — app works without a backend. Connect NEXT_PUBLIC_API_URL for production.',
     show: 'Show',
     hide: 'Hide',
     connecting: 'Verifying...',
+    selected: 'Selected account',
+    change: 'Change account',
+    customUsername: 'Another username',
+    useCustom: 'Use another username',
+    hideCustom: 'Hide username',
+    clickToLogin: 'Tap to login',
   },
 };
 
@@ -85,29 +97,46 @@ export default function Portal() {
   const params = new URLSearchParams(typeof window === 'undefined' ? '' : window.location.search);
   const initial = (params.get('lang') === 'en' ? 'en' : 'ar') as Lang;
   const [lang] = useState<Lang>(initial);
-  const [role, setRole] = useState<Role>('operations');
+  const [role, setRole] = useState<Role | null>(null);
   const [username, setUsername] = useState('');
   const [pw, setPw] = useState('');
   const [showPw, setShowPw] = useState(false);
+  const [showUsername, setShowUsername] = useState(false);
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
+  const passwordRef = useRef<HTMLInputElement | null>(null);
   const t = copy[lang];
   const ar = lang === 'ar';
 
+  function selectRole(nextRole: Role) {
+    setRole(nextRole);
+    setUsername(roles[nextRole].username);
+    setPw('');
+    setErr('');
+    setShowUsername(false);
+  }
+
+  useEffect(() => {
+    if (!role) return;
+    const timer = window.setTimeout(() => passwordRef.current?.focus(), 80);
+    return () => window.clearTimeout(timer);
+  }, [role]);
+
   async function login(e: FormEvent) {
     e.preventDefault();
+    if (!role) return;
     setErr('');
     setLoading(true);
+    const loginUsername = username || roles[role].username;
 
     if (!apiUrl) {
-      // Preview mode: accept any credentials with a clear warning already shown
-      storeSession(role, { username: username || role, role }, undefined);
+      storeSession(role, { username: loginUsername, role }, undefined);
       redirectAfterLogin(role, lang, pw === '123456');
       return;
     }
 
     try {
-      const result = await staffLogin(username, pw, role);
+      const result = await staffLogin(loginUsername, pw, role);
       storeSession(role, result.staff, result.token);
       redirectAfterLogin(role, lang, pw === '123456');
     } catch (err_: unknown) {
@@ -122,7 +151,7 @@ export default function Portal() {
     <main dir={ar ? 'rtl' : 'ltr'} style={{ textAlign: ar ? 'right' : 'left' }}>
       <header className="site-header">
         <Image src="/logo.png" alt="Jnbk جنبك" width={120} height={52} className="site-logo" priority />
-        <div style={{ marginInlineStart: 'auto', display: 'flex', gap: 8 }}>
+        <div className="adminHeroActions" style={{ marginInlineStart: 'auto' }}>
           <a className="languageSwitch" href="/">{t.home}</a>
           <a className="languageSwitch" href={`/portal?lang=${ar ? 'en' : 'ar'}`}>{t.toggle}</a>
         </div>
@@ -141,60 +170,81 @@ export default function Portal() {
         </div>
       </section>
 
-      {!apiUrl && (
-        <div className="notice error" style={{ margin: '0 0 8px' }}>{t.noApi}</div>
-      )}
+      {!apiUrl && <div className="notice error" style={{ margin: '0 0 8px' }}>{t.noApi}</div>}
 
       <section className="panel">
-        <h2>{t.choose}</h2>
-        <p className="muted">{t.note}</p>
-        <div className="grid settingsGrid">
-          {(Object.keys(roles) as Role[]).map((k) => (
-            <button
-              key={k}
-              className="card buttonReset"
-              type="button"
-              onClick={() => setRole(k)}
-              style={{ border: role === k ? '2px solid #D6A936' : '0', textAlign: ar ? 'right' : 'left' }}
-            >
-              <p>{ar ? roles[k].ar : roles[k].en}</p>
-              <strong>{k}</strong>
-              <p className="muted">{ar ? roles[k].descAr : roles[k].descEn}</p>
-            </button>
-          ))}
+        <div className="adminSectionHeader" style={{ marginTop: 0 }}>
+          <div>
+            <h2>{t.choose}</h2>
+            <p className="muted" style={{ margin: 0 }}>{t.note}</p>
+          </div>
+          {role && <button className="languageSwitch buttonReset" type="button" onClick={() => { setRole(null); setPw(''); }}>{t.change}</button>}
         </div>
 
-        {err ? <div className="notice error">{err}</div> : null}
-
-        <form className="formGrid" onSubmit={login}>
-          <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder={t.username}
-            autoComplete="username"
-          />
-          <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
-            <input
-              style={{ flex: 1 }}
-              type={showPw ? 'text' : 'password'}
-              value={pw}
-              onChange={(e) => setPw(e.target.value)}
-              placeholder={t.password}
-              autoComplete="current-password"
-            />
-            <button
-              className="languageSwitch buttonReset"
-              type="button"
-              onClick={() => setShowPw(!showPw)}
-              style={{ color: '#063B63', background: '#F7FAFC', border: '1px solid #D9E2EC' }}
-            >
-              {showPw ? t.hide : t.show}
-            </button>
+        {!role ? (
+          <div className="grid settingsGrid">
+            {(Object.keys(roles) as Role[]).map((k) => (
+              <button
+                key={k}
+                className="card buttonReset"
+                type="button"
+                onClick={() => selectRole(k)}
+                style={{ textAlign: ar ? 'right' : 'left' }}
+              >
+                <p>{ar ? roles[k].ar : roles[k].en}</p>
+                <strong>{ar ? t.clickToLogin : k}</strong>
+                <p className="muted">{ar ? roles[k].descAr : roles[k].descEn}</p>
+              </button>
+            ))}
           </div>
-          <button className="primaryAction" type="submit" disabled={loading}>
-            {loading ? t.connecting : `${t.login} — ${ar ? roles[role].ar : roles[role].en}`}
-          </button>
-        </form>
+        ) : (
+          <form className="formGrid" onSubmit={login}>
+            <div className="adminDataCard">
+              <span className="adminDataLabel">{t.selected}</span>
+              <strong className="adminDataValue" style={{ fontSize: 22 }}>{ar ? roles[role].ar : roles[role].en}</strong>
+              <span className="adminInfoMuted">{username || roles[role].username}</span>
+            </div>
+
+            {showUsername && (
+              <input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder={t.username}
+                autoComplete="username"
+              />
+            )}
+
+            <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+              <input
+                ref={passwordRef}
+                style={{ flex: 1 }}
+                type={showPw ? 'text' : 'password'}
+                value={pw}
+                onChange={(e) => setPw(e.target.value)}
+                placeholder={t.password}
+                autoComplete="current-password"
+              />
+              <button
+                className="languageSwitch buttonReset"
+                type="button"
+                onClick={() => setShowPw(!showPw)}
+                style={{ color: '#063B63', background: '#F7FAFC', border: '1px solid #D9E2EC' }}
+              >
+                {showPw ? t.hide : t.show}
+              </button>
+            </div>
+
+            <button className="languageSwitch buttonReset" type="button" onClick={() => setShowUsername(!showUsername)} style={{ color: '#063B63', background: '#F7FAFC', border: '1px solid #D9E2EC' }}>
+              {showUsername ? t.hideCustom : t.useCustom}
+            </button>
+
+            {err ? <div className="notice error">{err}</div> : null}
+
+            <button className="primaryAction" type="submit" disabled={loading || !pw}>
+              {loading ? t.connecting : `${t.login} — ${ar ? roles[role].ar : roles[role].en}`}
+            </button>
+          </form>
+        )}
       </section>
     </main>
   );
