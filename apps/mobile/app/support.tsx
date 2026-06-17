@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Pressable, Alert, ScrollView, KeyboardAvoidingView, Platform, Linking } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { colors } from '../src/constants/theme';
@@ -7,6 +7,9 @@ import { dict, Lang } from '../src/i18n';
 import { createSupportRequest } from '../src/supportApi';
 import { autosaveLabel, useAutosave } from '../src/hooks/useAutosave';
 import { sw } from '../src/constants/responsive';
+
+const SUPPORT_WHATSAPP_URL = process.env.EXPO_PUBLIC_SUPPORT_WHATSAPP_URL || '';
+const SUPPORT_EMAIL = 'jnbk2003@gmail.com';
 
 const issues = {
   ar: ['مشكلة في الرحلة', 'السعر غير واضح', 'سلوك السائق', 'طلب إضافة مدينة', 'اقتراح تحسين'],
@@ -47,6 +50,20 @@ export default function Support() {
     }
   }
 
+  async function openWhatsAppSupport() {
+    if (!SUPPORT_WHATSAPP_URL) {
+      Alert.alert('Jnbk', lang === 'ar' ? 'رابط واتساب الدعم غير مضبوط بعد.' : 'WhatsApp support link is not configured yet.');
+      return;
+    }
+    await Linking.openURL(SUPPORT_WHATSAPP_URL);
+  }
+
+  async function openEmailSupport() {
+    const subject = encodeURIComponent(lang === 'ar' ? 'طلب دعم من تطبيق جنبك' : 'Support request from Jnbk app');
+    const body = encodeURIComponent(message || '');
+    await Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`);
+  }
+
   return (
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -67,6 +84,19 @@ export default function Support() {
       <View style={styles.card}>
         <Text style={[styles.cardTitle, rtl && styles.rtl]}>{lang === 'ar' ? 'كيف يمكننا مساعدتك؟' : 'How can we help?'}</Text>
         <Text style={[styles.cardText, rtl && styles.rtl]}>{lang === 'ar' ? 'اختر نوع الطلب واكتب التفاصيل بوضوح. سيتم حفظ ما تكتبه تلقائيًا.' : 'Choose a request type and describe the issue clearly. Your input is saved automatically.'}</Text>
+      </View>
+
+      <View style={styles.channelCard}>
+        <Text style={[styles.channelTitle, rtl && styles.rtl]}>{lang === 'ar' ? 'قنوات الدعم الرسمية' : 'Official support channels'}</Text>
+        <Text style={[styles.channelText, rtl && styles.rtl]}>{lang === 'ar' ? 'للدعم السريع، استخدم واتساب أو البريد الرسمي.' : 'For quick support, use WhatsApp or official email.'}</Text>
+        <View style={[styles.channelActions, rtl && styles.reverse]}>
+          <Pressable style={styles.whatsappButton} onPress={openWhatsAppSupport}>
+            <Text style={styles.whatsappText}>{lang === 'ar' ? 'الدعم عبر واتساب' : 'WhatsApp support'}</Text>
+          </Pressable>
+          <Pressable style={styles.emailButton} onPress={openEmailSupport}>
+            <Text style={styles.emailText}>{SUPPORT_EMAIL}</Text>
+          </Pressable>
+        </View>
       </View>
 
       <View style={[styles.wrap, rtl && styles.reverseWrap]}>
@@ -106,6 +136,14 @@ const styles = StyleSheet.create({
   card: { backgroundColor: colors.white, borderRadius: 28, padding: 20 },
   cardTitle: { color: colors.navy, fontSize: 22, fontWeight: '900' },
   cardText: { color: colors.muted, lineHeight: 23, marginTop: 8 },
+  channelCard: { backgroundColor: colors.white, borderRadius: 28, padding: 18, borderWidth: 1, borderColor: '#D7F4E4' },
+  channelTitle: { color: colors.navy, fontSize: 18, fontWeight: '900' },
+  channelText: { color: colors.muted, lineHeight: 22, marginTop: 6, marginBottom: 14 },
+  channelActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  whatsappButton: { flexGrow: 1, borderRadius: 18, backgroundColor: '#25D366', paddingVertical: 13, paddingHorizontal: 14, alignItems: 'center' },
+  whatsappText: { color: colors.white, fontWeight: '900' },
+  emailButton: { flexGrow: 1, borderRadius: 18, backgroundColor: '#F0F6FC', paddingVertical: 13, paddingHorizontal: 14, alignItems: 'center' },
+  emailText: { color: colors.navy, fontWeight: '900' },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   reverseWrap: { flexDirection: 'row-reverse', flexWrap: 'wrap' },
   chip: { paddingVertical: 11, paddingHorizontal: 15, borderRadius: 999, backgroundColor: '#E7EEF5' },
