@@ -245,6 +245,66 @@
   gap: 8px;
 }
 
+.financeControls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.financeList {
+  display: grid;
+  gap: 10px;
+}
+
+.financeCard {
+  display: grid;
+  grid-template-columns: minmax(160px, 1.3fr) minmax(130px, 1fr) minmax(130px, 1fr) minmax(150px, auto);
+  gap: 12px;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--admin-line);
+  border-radius: 18px;
+  padding: 14px 16px;
+  box-shadow: 0 8px 24px rgba(3,30,53,0.06);
+}
+
+.financeCard:hover {
+  border-color: rgba(14,143,179,0.28);
+  background: #fbfdff;
+}
+
+.financeAmount {
+  color: var(--navy);
+  font-weight: 900;
+  font-size: 16px;
+}
+
+.financeAmountDanger {
+  color: #b91c1c;
+}
+
+.financeConfirmBox {
+  display: grid;
+  gap: 10px;
+  border-radius: 16px;
+  padding: 14px;
+  margin-top: 8px;
+  background: #f8fbfd;
+  border: 1px dashed rgba(14,143,179,0.32);
+}
+
+.financeConfirmDanger {
+  background: #fef2f2;
+  border-color: rgba(239,68,68,0.32);
+}
+
+.financeFilterBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
 @media (max-width: 1100px) {
   .adminReviewCard,
   .pricingCard,
@@ -252,7 +312,9 @@
   .zoneCard,
   .zoneEditGrid,
   .zoneAddGrid,
-  .zoneToolbar {
+  .zoneToolbar,
+  .financeCard,
+  .financeControls {
     grid-template-columns: 1fr 1fr;
   }
 }
@@ -264,7 +326,9 @@
   .zoneCard,
   .zoneEditGrid,
   .zoneAddGrid,
-  .zoneToolbar {
+  .zoneToolbar,
+  .financeCard,
+  .financeControls {
     grid-template-columns: 1fr;
     padding: 12px;
   }
