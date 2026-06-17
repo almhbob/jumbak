@@ -1,6 +1,18 @@
 'use client';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const PRODUCTION_API_URL = 'https://jumbakserver-production.up.railway.app';
+const RAW_API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+
+function normalizeApiUrl(value: string): string {
+  const trimmed = value.trim().replace(/\/$/, '');
+  if (!trimmed) return PRODUCTION_API_URL;
+  if (trimmed.includes('localhost') || trimmed.includes('127.0.0.1') || trimmed.includes('0.0.0.0')) {
+    return PRODUCTION_API_URL;
+  }
+  return trimmed;
+}
+
+const API_URL = normalizeApiUrl(RAW_API_URL);
 
 function getToken(): string | null {
   if (typeof window === 'undefined') return null;
@@ -27,10 +39,6 @@ export async function checkApiHealth(): Promise<{
   message: string;
   data?: unknown;
 }> {
-  if (!API_URL) {
-    return { configured: false, ok: false, source: 'preview', message: 'NEXT_PUBLIC_API_URL is not configured' };
-  }
-
   try {
     const res = await fetch(`${API_URL}/health`, { cache: 'no-store' });
     const data = await res.json().catch(() => null);
@@ -52,7 +60,6 @@ export async function checkApiHealth(): Promise<{
 }
 
 export async function apiGet<T>(path: string, fallback: T): Promise<T> {
-  if (!API_URL) return fallback;
   try {
     const res = await fetch(`${API_URL}${path}`, { headers: authHeaders(), cache: 'no-store' });
     return res.ok ? res.json() : fallback;
@@ -62,7 +69,6 @@ export async function apiGet<T>(path: string, fallback: T): Promise<T> {
 }
 
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
-  if (!API_URL) throw new Error('API not configured');
   const res = await fetch(`${API_URL}${path}`, {
     method: 'POST',
     headers: authHeaders(),
@@ -76,7 +82,6 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
 }
 
 export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
-  if (!API_URL) throw new Error('API not configured');
   const res = await fetch(`${API_URL}${path}`, {
     method: 'PATCH',
     headers: authHeaders(),
@@ -90,7 +95,6 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
 }
 
 export async function apiDelete(path: string): Promise<void> {
-  if (!API_URL) throw new Error('API not configured');
   const res = await fetch(`${API_URL}${path}`, {
     method: 'DELETE',
     headers: authHeaders(),
@@ -102,7 +106,6 @@ export async function apiDelete(path: string): Promise<void> {
 }
 
 export async function staffLogin(username: string, password: string, role: string): Promise<{ staff: Record<string, unknown>; token: string }> {
-  if (!API_URL) throw new Error('API not configured');
   const res = await fetch(`${API_URL}/api/staff/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -116,7 +119,6 @@ export async function staffLogin(username: string, password: string, role: strin
 }
 
 export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
-  if (!API_URL) throw new Error('API not configured');
   const res = await fetch(`${API_URL}/api/staff/change-password`, {
     method: 'PATCH',
     headers: authHeaders(),
