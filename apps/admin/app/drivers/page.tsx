@@ -20,6 +20,8 @@ const fallback: DriverApplication[] = [{
   status: 'pending_review', complianceStatus: 'needs_admin_review', freeMonth: true,
 }];
 
+const DRIVER_REVIEW_ROLES = ['operations', 'supervisor', 'business', 'developer'];
+
 const copy = {
   ar: {
     title: 'مراجعة ملفات الجوكية',
@@ -28,7 +30,7 @@ const copy = {
     total: 'إجمالي الطلبات', pending: 'قيد المراجعة', approved: 'معتمد', rejected: 'مرفوض', free: 'شهر مجاني',
     driver: 'الجوكي', vehicle: 'المركبة', guarantor: 'الضامن', compliance: 'الامتثال', decision: 'القرار',
     approve: 'اعتماد', reject: 'رفض', missing: 'غير مكتمل', source: 'مصدر البيانات',
-    denied: 'هذه الصفحة مخصصة للإدارة والتشغيل فقط. سجّل الدخول من البوابة الموحدة.',
+    denied: 'هذه الصفحة مخصصة للإدارة ومدير التشغيل والمشرف فقط. حساب الدعم لا يعتمد الجوكية.',
     openPortal: 'فتح بوابة الدخول', saved: 'تم حفظ القرار بنجاح ✓', local: 'تم تحديث الواجهة محليًا للمعاينة',
     failed: 'تعذر الحفظ — تحقق من الاتصال', processing: 'جارٍ الحفظ...', notes: 'سبب الرفض (اختياري)',
     confirmApprove: 'هل تريد اعتماد هذا الجوكي؟', confirmReject: 'هل تريد رفض هذا الطلب؟',
@@ -43,7 +45,7 @@ const copy = {
     total: 'Total applications', pending: 'Pending', approved: 'Approved', rejected: 'Rejected', free: 'Free month',
     driver: 'Driver', vehicle: 'Vehicle', guarantor: 'Guarantor', compliance: 'Compliance', decision: 'Decision',
     approve: 'Approve', reject: 'Reject', missing: 'Missing', source: 'Data source',
-    denied: 'This page is only for management and operations accounts. Log in from the unified portal.',
+    denied: 'This page is only for management, operations manager, and supervisor. Support cannot approve drivers.',
     openPortal: 'Open portal', saved: 'Decision saved successfully ✓', local: 'UI updated locally for preview',
     failed: 'Could not save — check connection', processing: 'Saving...', notes: 'Rejection reason (optional)',
     confirmApprove: 'Approve this driver application?', confirmReject: 'Reject this application?',
@@ -83,8 +85,7 @@ export default function DriversReview() {
 
   useEffect(() => {
     const role = sessionStorage.getItem('jnbk_active_role') || '';
-    const ok = ['operations', 'supervisor', 'business', 'developer'].includes(role) ||
-      sessionStorage.getItem('jnbk_operations_auth') === 'true';
+    const ok = DRIVER_REVIEW_ROLES.includes(role);
     setAllowed(ok);
     if (!ok) return;
 
