@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getClientFirebaseCollection, isClientFirebaseConfigured, updateClientFirebaseDocument } from '../lib/firebaseClient';
-import { apiPatch } from '../lib/apiClient';
+import { apiGet, apiPatch, isApiConfigured } from '../lib/apiClient';
 
 type Lang = 'ar' | 'en';
 type DriverApplication = {
@@ -12,8 +12,6 @@ type DriverApplication = {
   status?: string; complianceStatus?: string; freeMonth?: boolean;
   approvedAt?: string; rejectedAt?: string; reviewedBy?: string;
 };
-
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
 
 const fallback: DriverApplication[] = [{
   id: 'preview_1', name: 'Preview Driver', phone: '+249900000000',
@@ -39,6 +37,9 @@ const copy = {
     notes: 'سبب الرفض (اختياري)',
     confirmApprove: 'هل تريد اعتماد هذا الجوكي؟',
     confirmReject: 'هل تريد رفض هذا الطلب؟',
+    backend: 'Backend API متصل بالتوكن',
+    firebase: 'Firebase Firestore',
+    preview: 'وضع المعاينة',
   },
   en: {
     title: 'Driver Application Review',
@@ -56,13 +57,11 @@ const copy = {
     notes: 'Rejection reason (optional)',
     confirmApprove: 'Approve this driver application?',
     confirmReject: 'Reject this application?',
+    backend: 'Backend API with auth token',
+    firebase: 'Firebase Firestore',
+    preview: 'Preview mode',
   },
 };
-
-async function apiGet<T>(path: string, fb: T): Promise<T> {
-  if (!apiUrl) return fb;
-  try { const r = await fetch(`${apiUrl}${path}`); return r.ok ? r.json() : fb; } catch { return fb; }
-}
 
 function goPortal(lang: Lang) { window.location.assign(`/portal?lang=${lang}`); }
 function logout(lang: Lang) { sessionStorage.clear(); goPortal(lang); }
@@ -81,6 +80,7 @@ export default function DriversReview() {
 
   const [allowed, setAllowed] = useState(false);
   const [items, setItems] = useState<DriverApplication[]>(fallback);
+  const [source, setSource] = useState(t.preview);
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
@@ -94,12 +94,21 @@ export default function DriversReview() {
     if (!ok) return;
 
     getClientFirebaseCollection<DriverApplication>('driverApplications', fallback).then(async (data) => {
-      if (data === fallback && apiUrl) {
+      if (isClientFirebaseConfigured()) {
+        setSource(t.firebase);
+        setItems(data.length ? data : fallback);
+        return;
+      }
+
+      if (isApiConfigured()) {
+        setSource(t.backend);
         const apiData = await apiGet<DriverApplication[]>('/api/drivers/applications', fallback);
         setItems(apiData.length ? apiData : fallback);
-      } else {
-        setItems(data.length ? data : fallback);
+        return;
       }
+
+      setSource(t.preview);
+      setItems(fallback);
     });
   }, []);
 
@@ -117,7 +126,6 @@ export default function DriversReview() {
     setRejectingId(null);
     setNotice(null);
 
-    // Optimistic UI update
     setItems((prev) => prev.map((x) => x.id === item.id
       ? { ...x, status, complianceStatus: status === 'approved' ? 'approved' : 'rejected' }
       : x
@@ -134,15 +142,17 @@ export default function DriversReview() {
 
     let serverOk = false;
 
-    if (apiUrl && !item.id.startsWith('preview_')) {
+    if (isApiConfigured() && !item.id.startsWith('preview_')) {
       try {
-        await apiPatch(`/api/drivers/${encodeURIComponent(item.id)}/verify`, { status, reviewedBy, notes: note || '' });
+        await apiPatch(`/api/drivers/applications/${encodeURIComponent(item.id)}/review`, { status, reviewedBy, notes: note || '' });
         serverOk = true;
       } catch {
-        try {
-          await apiPatch(`/api/drivers/applications/${encodeURIComponent(item.id)}/review`, { status, reviewedBy, notes: note || '' });
-          serverOk = true;
-        } catch { /* Firebase only */ }
+        if (item.id) {
+          try {
+            await apiPatch(`/api/drivers/${encodeURIComponent(item.id)}/verify`, { status, reviewedBy, notes: note || '' });
+            serverOk = true;
+          } catch { /* Firebase only */ }
+        }
       }
     }
 
@@ -195,7 +205,6 @@ export default function DriversReview() {
         </div>
       </section>
 
-      {/* Stats */}
       <section className="grid settingsGrid">
         <div className="card"><p>{t.total}</p><strong>{stats.total}</strong></div>
         <div className="card"><p>{t.pending}</p><strong style={{ color: '#f59e0b' }}>{stats.pending}</strong></div>
@@ -203,11 +212,15 @@ export default function DriversReview() {
         <div className="card"><p>{t.rejected}</p><strong style={{ color: '#ef4444' }}>{stats.rejected}</strong></div>
       </section>
 
+      <section className="panel">
+        <h2>{t.source}</h2>
+        <p className="muted">{source}</p>
+      </section>
+
       {notice && (
         <div className={`notice ${notice.type}`} style={{ margin: '0 24px 8px' }}>{notice.text}</div>
       )}
 
-      {/* Applications table */}
       <section className="panel">
         <h2>{t.title}</h2>
         <div className="table">
@@ -218,7 +231,6 @@ export default function DriversReview() {
 
             return (
               <div key={item.id} className="row" style={{ alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
-                {/* Driver info */}
                 <span>
                   <b>{t.driver}</b><br />
                   {item.name || item.phone || item.id}<br />
@@ -226,7 +238,6 @@ export default function DriversReview() {
                   <small style={{ color: '#94a3b8' }}>{item.nationalId || t.missing}</small>
                 </span>
 
-                {/* Vehicle info */}
                 <span>
                   <b>{t.vehicle}</b><br />
                   {item.vehicleTypeId || 'rickshaw'} / {item.plateNo || t.missing}<br />
@@ -234,7 +245,6 @@ export default function DriversReview() {
                   <small style={{ color: '#94a3b8' }}>{item.chassisNo ? `شاسي: ${item.chassisNo}` : ''}</small>
                 </span>
 
-                {/* Guarantor info */}
                 <span>
                   <b>{t.guarantor}</b><br />
                   {item.guarantorName || t.missing}<br />
@@ -242,14 +252,12 @@ export default function DriversReview() {
                   <small style={{ color: '#94a3b8' }}>{item.guarantorAddress || ''}</small>
                 </span>
 
-                {/* Status + actions */}
                 <span style={{ minWidth: 120 }}>
                   <b style={{ color: badge.color }}>{badge.label} {item.status || t.pending}</b>
                   {item.freeMonth && <><br /><small style={{ color: '#f59e0b' }}>{t.free}</small></>}
                   {item.cityId && <><br /><small style={{ color: '#94a3b8' }}>{item.cityId}</small></>}
                 </span>
 
-                {/* Action buttons — only for pending */}
                 {isPending && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {rejectingId !== item.id && (
