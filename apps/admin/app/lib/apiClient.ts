@@ -16,6 +16,41 @@ export function isApiConfigured(): boolean {
   return Boolean(API_URL);
 }
 
+export function getApiUrl(): string {
+  return API_URL;
+}
+
+export async function checkApiHealth(): Promise<{
+  configured: boolean;
+  ok: boolean;
+  source: 'preview' | 'backend';
+  message: string;
+  data?: unknown;
+}> {
+  if (!API_URL) {
+    return { configured: false, ok: false, source: 'preview', message: 'NEXT_PUBLIC_API_URL is not configured' };
+  }
+
+  try {
+    const res = await fetch(`${API_URL}/health`, { cache: 'no-store' });
+    const data = await res.json().catch(() => null);
+    return {
+      configured: true,
+      ok: res.ok && Boolean((data as { ok?: boolean } | null)?.ok),
+      source: 'backend',
+      message: res.ok ? 'Backend is reachable' : `Backend returned ${res.status}`,
+      data,
+    };
+  } catch (error) {
+    return {
+      configured: true,
+      ok: false,
+      source: 'backend',
+      message: error instanceof Error ? error.message : 'Backend is unreachable',
+    };
+  }
+}
+
 export async function apiGet<T>(path: string, fallback: T): Promise<T> {
   if (!API_URL) return fallback;
   try {
