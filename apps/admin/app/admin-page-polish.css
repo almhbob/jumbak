@@ -174,10 +174,85 @@
   justify-content: flex-end;
 }
 
+.zoneToolbar {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(220px, 2fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.zoneList {
+  display: grid;
+  gap: 10px;
+}
+
+.zoneCard {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.4fr) minmax(170px, 1fr) minmax(130px, auto) minmax(160px, auto);
+  gap: 12px;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--admin-line);
+  border-radius: 18px;
+  padding: 14px 16px;
+  box-shadow: 0 8px 24px rgba(3,30,53,0.06);
+}
+
+.zoneCard:hover {
+  border-color: rgba(14,143,179,0.28);
+  background: #fbfdff;
+}
+
+.zoneName strong {
+  display: block;
+  color: var(--navy);
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.zoneFare {
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  border-radius: 999px;
+  padding: 7px 12px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.zoneFareEmpty {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.zoneEditGrid,
+.zoneAddGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr)) minmax(160px, auto);
+  gap: 10px;
+  align-items: end;
+  background: #f8fbfd;
+  border: 1px dashed rgba(14,143,179,0.32);
+  border-radius: 18px;
+  padding: 14px;
+}
+
+.zoneCategoryGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 @media (max-width: 1100px) {
   .adminReviewCard,
   .pricingCard,
-  .pricingEditGrid {
+  .pricingEditGrid,
+  .zoneCard,
+  .zoneEditGrid,
+  .zoneAddGrid,
+  .zoneToolbar {
     grid-template-columns: 1fr 1fr;
   }
 }
@@ -185,7 +260,11 @@
 @media (max-width: 680px) {
   .adminReviewCard,
   .pricingCard,
-  .pricingEditGrid {
+  .pricingEditGrid,
+  .zoneCard,
+  .zoneEditGrid,
+  .zoneAddGrid,
+  .zoneToolbar {
     grid-template-columns: 1fr;
     padding: 12px;
   }
