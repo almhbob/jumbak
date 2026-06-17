@@ -90,7 +90,8 @@
   box-shadow: 0 0 0 3px rgba(239,68,68,0.12);
 }
 
-.adminHeroActions {
+.adminHeroActions,
+.topActions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
@@ -333,6 +334,12 @@
   resize: vertical;
 }
 
+.panel .table .row {
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid var(--admin-line);
+}
+
 .panel .table .row span:first-child {
   font-weight: 900;
   color: var(--navy);
@@ -346,6 +353,22 @@
   background: #f1f5f9;
   color: #64748b;
   cursor: not-allowed;
+}
+
+.panel form[style*='grid-template-columns'] {
+  background: #f8fbfd;
+  border: 1px dashed rgba(14,143,179,0.28);
+  border-radius: 18px;
+  padding: 14px;
+}
+
+.panel form[style*='grid-template-columns'] input,
+.panel form[style*='grid-template-columns'] textarea,
+.panel form[style*='grid-template-columns'] select {
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(6,59,99,0.16);
+  background: #fff;
 }
 
 @media (max-width: 1100px) {
@@ -375,10 +398,12 @@
     grid-template-columns: 1fr;
     padding: 12px;
   }
-  .adminHeroActions {
+  .adminHeroActions,
+  .topActions {
     justify-content: stretch;
   }
-  .adminHeroActions > * {
+  .adminHeroActions > *,
+  .topActions > * {
     flex: 1;
   }
   .pricingActions {
@@ -386,5 +411,8 @@
   }
   .pricingActions > * {
     flex: 1;
+  }
+  .panel form[style*='grid-template-columns'] {
+    grid-template-columns: 1fr !important;
   }
 }
