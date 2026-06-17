@@ -25,4 +25,4 @@ jobs:
       - name: Install EAS CLI
         run: npm install -g eas-cli
       - name: Build Android APK
-        run: pnpm --filter @jumbak/mobile build:android:preview -- --non-interactive
+        run: cd apps/mobile && eas build --platform android --profile preview --non-interactive
