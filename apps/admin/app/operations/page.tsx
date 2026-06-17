@@ -27,7 +27,8 @@ const copy = {
     closeTicket: 'إغلاق', inReview: 'قيد المراجعة', closedLabel: 'مغلق', resolvedLabel: 'محلول',
     connection: 'حالة الربط', apiOnline: 'الخادم متصل ويعمل', apiOffline: 'الخادم غير متصل أو رابط API غير صحيح',
     preview: 'وضع المعاينة — اربط NEXT_PUBLIC_API_URL حتى تعمل اللوحة مع التطبيق مباشرة',
-    refresh: 'تحديث', reviewApps: 'مراجعة الطلبات ←',
+    refresh: 'تحديث', reviewApps: 'مراجعة الطلبات ←', category: 'الفئة', message: 'الرسالة', status: 'الحالة', actions: 'الإجراء',
+    driver: 'السائق', city: 'المدينة', approval: 'الاعتماد', task: 'المهمة', cadence: 'الدورية', result: 'المؤشر',
   },
   en: {
     title: 'Operations Dashboard',
@@ -39,18 +40,26 @@ const copy = {
     closeTicket: 'Close', inReview: 'In review', closedLabel: 'Closed', resolvedLabel: 'Resolved',
     connection: 'Connection status', apiOnline: 'Backend is online and reachable', apiOffline: 'Backend is offline or API URL is incorrect',
     preview: 'Preview mode — connect NEXT_PUBLIC_API_URL so the dashboard works live with the app',
-    refresh: 'Refresh', reviewApps: 'Review applications →',
+    refresh: 'Refresh', reviewApps: 'Review applications →', category: 'Category', message: 'Message', status: 'Status', actions: 'Actions',
+    driver: 'Driver', city: 'City', approval: 'Approval', task: 'Task', cadence: 'Cadence', result: 'Result',
   },
 };
 
 function truncate(message?: string) {
   const text = message || '';
-  return text.length > 70 ? `${text.slice(0, 70)}...` : text;
+  return text.length > 96 ? `${text.slice(0, 96)}...` : text;
 }
 
 function logout(lang: Lang) {
   sessionStorage.clear();
   window.location.href = `/portal?lang=${lang}`;
+}
+
+function badgeClass(status?: string) {
+  if (!status || status === 'OPEN' || status === 'open') return 'adminBadge adminBadgeDanger';
+  if (status === 'IN_REVIEW') return 'adminBadge adminBadgeWarn';
+  if (status === 'CLOSED' || status === 'RESOLVED') return 'adminBadge adminBadgeSuccess';
+  return 'adminBadge adminBadgeMuted';
 }
 
 export default function Operations() {
@@ -161,13 +170,13 @@ export default function Operations() {
     <main dir={rtl ? 'rtl' : 'ltr'} style={{ textAlign: rtl ? 'right' : 'left' }}>
       <header className="site-header">
         <Image src="/logo.png" alt="Jnbk جنبك" width={120} height={52} className="site-logo" />
-        <div style={{ marginInlineStart: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div className="adminToolbar" style={{ marginInlineStart: 'auto' }}>
           {lastRefresh && (
-            <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700 }}>
+            <span className="adminBadge adminBadgeMuted">
               {lang === 'ar' ? 'آخر تحديث' : 'Updated'} {lastRefresh.toLocaleTimeString(lang === 'ar' ? 'ar' : 'en', { hour: '2-digit', minute: '2-digit' })}
             </span>
           )}
-          <button className="languageSwitch buttonReset" onClick={refresh} title={t.refresh}>↻</button>
+          <button className="languageSwitch buttonReset" onClick={refresh} title={t.refresh}>↻ {t.refresh}</button>
           <a className="languageSwitch" href={`/drivers?lang=${lang}`}>{lang === 'ar' ? 'الجوكية' : 'Drivers'}</a>
           <a className="languageSwitch" href={`/pricing?lang=${lang}`}>{lang === 'ar' ? 'التسعير' : 'Pricing'}</a>
           <button className="languageSwitch buttonReset" onClick={() => logout(lang)}>{t.back}</button>
@@ -188,60 +197,69 @@ export default function Operations() {
         </div>
       </section>
 
-      <section className="grid settingsGrid">
+      <section className="adminStatGrid">
         <div className="card"><p>{t.rides}</p><strong>{rides.length}</strong></div>
         <div className="card"><p>{t.drivers}</p><strong>{drivers.length}</strong></div>
-        <div className="card"><p>{t.support}</p><strong>{openCount}</strong></div>
-        <div className="card"><p>{t.online}</p><strong>{activeCount}</strong></div>
+        <div className="card"><p>{t.support}</p><strong style={{ background: 'none', WebkitTextFillColor: openCount > 0 ? '#f59e0b' : '#10b981', color: openCount > 0 ? '#f59e0b' : '#10b981' }}>{openCount}</strong></div>
+        <div className="card"><p>{t.online}</p><strong style={{ background: 'none', WebkitTextFillColor: '#10b981', color: '#10b981' }}>{activeCount}</strong></div>
       </section>
 
       <section className="panel">
-        <h2>{t.connection}</h2>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-          <span style={{ width: 12, height: 12, borderRadius: '50%', background: sourceColor, display: 'inline-block', marginTop: 5, boxShadow: `0 0 9px ${sourceColor}` }} />
+        <div className="adminSectionHeader" style={{ marginTop: 0 }}>
           <div>
-            <p style={{ margin: 0, fontWeight: 900, color: sourceColor }}>{connection.label}</p>
-            <p className="muted" style={{ margin: '4px 0 0', wordBreak: 'break-word' }}>{connection.detail}</p>
-            <p className="muted" style={{ margin: '4px 0 0' }}>{t.source}: {source}</p>
+            <h2>{t.connection}</h2>
+            <p className="muted" style={{ margin: 0 }}>{t.source}: {source}</p>
           </div>
+          <span className={`adminBadge ${connection.ok ? 'adminBadgeSuccess' : connection.configured ? 'adminBadgeDanger' : 'adminBadgeWarn'}`}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: sourceColor, display: 'inline-block', boxShadow: `0 0 9px ${sourceColor}` }} />
+            {connection.label}
+          </span>
+        </div>
+        <p className="muted" style={{ margin: 0, wordBreak: 'break-word' }}>{connection.detail}</p>
+      </section>
+
+      <section className="panel">
+        <div className="adminSectionHeader" style={{ marginTop: 0 }}>
+          <h2>{t.tasks}</h2>
+        </div>
+        <div className="adminTable">
+          <div className="adminTableHead opsTasksGrid"><span>{t.task}</span><span>{t.message}</span><span>{t.cadence}</span><span>{t.result}</span></div>
+          <div className="adminTableRow opsTasksGrid"><strong>{t.shift}</strong><span>{lang === 'ar' ? 'متابعة الرحلات والسائقين والبلاغات العاجلة' : 'Track rides, drivers, urgent issues'}</span><span className="adminBadge">Daily</span><b>Active</b></div>
+          <div className="adminTableRow opsTasksGrid"><strong>{t.supportRole}</strong><span>{lang === 'ar' ? 'إغلاق طلبات الدعم وتوثيق الشكاوى' : 'Close support tickets and document complaints'}</span><span className="adminBadge">Daily</span><b>Active</b></div>
+          <div className="adminTableRow opsTasksGrid"><strong>{t.finance}</strong><span>{lang === 'ar' ? 'مراجعة الإيرادات والمصروفات ونسب الأرباح' : 'Review revenue, costs, and profit shares'}</span><span className="adminBadge">Monthly</span><b>{completedCount}</b></div>
         </div>
       </section>
 
       <section className="panel">
-        <h2>{t.tasks}</h2>
-        <div className="table">
-          <div className="row"><span>{t.shift}</span><span>{lang === 'ar' ? 'متابعة الرحلات والسائقين والبلاغات العاجلة' : 'Track rides, drivers, urgent issues'}</span><span>Daily</span><b>Active</b></div>
-          <div className="row"><span>{t.supportRole}</span><span>{lang === 'ar' ? 'إغلاق طلبات الدعم وتوثيق الشكاوى' : 'Close support tickets and document complaints'}</span><span>Daily</span><b>Active</b></div>
-          <div className="row"><span>{t.finance}</span><span>{lang === 'ar' ? 'مراجعة الإيرادات والمصروفات ونسب الأرباح' : 'Review revenue, costs, and profit shares'}</span><span>Monthly</span><b>{completedCount}</b></div>
+        <div className="adminSectionHeader" style={{ marginTop: 0 }}>
+          <h2>{t.support}</h2>
+          <span className="adminBadge adminBadgeWarn">{openCount}</span>
         </div>
-      </section>
-
-      <section className="panel">
-        <h2>{t.support}</h2>
-        <div className="table">
+        <div className="adminTable">
+          <div className="adminTableHead opsSupportGrid"><span>{t.category}</span><span>{t.message}</span><span>{t.status}</span><span>{t.actions}</span></div>
           {support.slice(0, 10).map((x) => {
             const isOpen = !x.status || x.status === 'OPEN';
             const isInReview = x.status === 'IN_REVIEW';
             const isClosed = x.status === 'CLOSED' || x.status === 'RESOLVED';
             const isUpdating = updatingTicket === x.id;
-            const statusColor = isClosed ? '#10b981' : isInReview ? '#f59e0b' : '#ef4444';
             return (
-              <div key={x.id} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto auto', gap: 12, alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                <span style={{ fontWeight: 700, fontSize: 13 }}>{x.category || 'Support'}</span>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{truncate(x.message)}</span>
-                <b style={{ fontSize: 11, color: statusColor, whiteSpace: 'nowrap' }}>{x.status || 'OPEN'}</b>
-                {!isClosed && (
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    {isOpen && (
-                      <button disabled={isUpdating} onClick={() => updateTicketStatus(x.id, 'IN_REVIEW')} style={{ background: '#f59e0b', color: 'white', border: 'none', borderRadius: 6, padding: '4px 9px', fontSize: 11, fontWeight: 700, cursor: 'pointer', opacity: isUpdating ? 0.5 : 1 }}>
-                        {t.inReview}
-                      </button>
-                    )}
-                    <button disabled={isUpdating} onClick={() => updateTicketStatus(x.id, 'CLOSED')} style={{ background: '#10b981', color: 'white', border: 'none', borderRadius: 6, padding: '4px 9px', fontSize: 11, fontWeight: 700, cursor: 'pointer', opacity: isUpdating ? 0.5 : 1 }}>
+              <div key={x.id} className="adminTableRow opsSupportGrid">
+                <strong>{x.category || 'Support'}</strong>
+                <span className="adminTableSub" style={{ marginTop: 0 }}>{truncate(x.message)}</span>
+                <span className={badgeClass(x.status)}>{x.status || 'OPEN'}</span>
+                <div className="adminToolbar">
+                  {!isClosed && isOpen && (
+                    <button disabled={isUpdating} onClick={() => updateTicketStatus(x.id, 'IN_REVIEW')} className="adminMiniButton adminMiniButtonWarn">
+                      {t.inReview}
+                    </button>
+                  )}
+                  {!isClosed && (
+                    <button disabled={isUpdating} onClick={() => updateTicketStatus(x.id, 'CLOSED')} className="adminMiniButton adminMiniButtonSuccess">
                       {t.closeTicket}
                     </button>
-                  </div>
-                )}
+                  )}
+                  {isClosed && <span className="adminBadge adminBadgeSuccess">{x.status}</span>}
+                </div>
               </div>
             );
           })}
@@ -249,28 +267,23 @@ export default function Operations() {
       </section>
 
       <section className="panel">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <h2 style={{ margin: 0 }}>{t.drivers}</h2>
-          <a className="languageSwitch" href={`/drivers?lang=${lang}`} style={{ fontSize: 12 }}>{t.reviewApps}</a>
+        <div className="adminSectionHeader" style={{ marginTop: 0 }}>
+          <h2>{t.drivers}</h2>
+          <a className="languageSwitch" href={`/drivers?lang=${lang}`}>{t.reviewApps}</a>
         </div>
-        <div className="table">
+        <div className="adminTable">
+          <div className="adminTableHead opsDriversGrid"><span>{t.driver}</span><span>{t.city}</span><span>{t.approval}</span><span>{t.status}</span></div>
           {drivers.slice(0, 10).map((d) => {
             const isToggling = togglingDriver === d.id;
             return (
-              <div key={d.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 12, alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                <span style={{ fontWeight: 700 }}>{d.name || d.phone || d.id}</span>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{d.cityId || 'rufaa'}</span>
-                <b style={{ fontSize: 11, color: d.verified ? '#10b981' : '#f59e0b' }}>{d.verified ? t.verified : t.pending}</b>
+              <div key={d.id} className="adminTableRow opsDriversGrid">
+                <strong>{d.name || d.phone || d.id}<span className="adminTableSub">{d.phone || d.id}</span></strong>
+                <span className="adminBadge">{d.cityId || 'rufaa'}</span>
+                <span className={d.verified ? 'adminBadge adminBadgeSuccess' : 'adminBadge adminBadgeWarn'}>{d.verified ? t.verified : t.pending}</span>
                 <button
                   disabled={isToggling || d.id.startsWith('driver_1')}
                   onClick={() => toggleDriverOnline(d)}
-                  style={{
-                    padding: '4px 12px', borderRadius: 20, border: 'none',
-                    background: d.online ? '#10b981' : '#94a3b8',
-                    color: 'white', fontWeight: 700, fontSize: 11,
-                    cursor: (isToggling || d.id.startsWith('driver_1')) ? 'not-allowed' : 'pointer',
-                    opacity: isToggling ? 0.5 : 1, transition: 'all 0.18s', whiteSpace: 'nowrap',
-                  }}
+                  className={`adminMiniButton ${d.online ? 'adminMiniButtonSuccess' : 'adminMiniButtonMuted'}`}
                 >
                   {isToggling ? '...' : (d.online ? t.online : t.offline)}
                 </button>
