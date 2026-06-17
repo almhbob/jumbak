@@ -7,6 +7,7 @@ import { colors } from '../src/constants/theme';
 import { dict, Lang } from '../src/i18n';
 import { getRides, updateRideStatus, getWallet, toggleDriverOnline } from '../src/api';
 import { getSocket, onRideUpdate, disconnectSocket } from '../src/socketClient';
+import { getCurrentDriverProfile } from '../src/driverProfile';
 
 type Ride = { id: string; pickupLabel?: string; destinationLabel?: string; estimatedFare?: number; distanceKm?: number; status?: string };
 
@@ -33,9 +34,17 @@ export default function Driver() {
       if (did) setDriverId(did);
       setIsVerified(verified === 'true');
       getWallet(uid).then((w) => setWalletBalance(w.balance)).catch(() => null);
+
+      getCurrentDriverProfile()
+        .then((profile) => {
+          if (!profile) return;
+          setDriverId(profile.id);
+          setIsVerified(profile.verified === true);
+          setOnline(profile.online === true);
+        })
+        .catch(() => null);
     });
 
-    // Listen for real-time ride updates via Socket.io
     const unsub = onRideUpdate((data) => {
       if (data.type === 'new_ride') {
         getRides().then((res) => {
@@ -66,7 +75,7 @@ export default function Driver() {
         const pending = (Array.isArray(data) ? data : data.rides ?? []) as Ride[];
         setRides(pending.filter((r) => ['REQUESTED', 'ACCEPTED', 'ARRIVING', 'ACTIVE'].includes(r.status ?? '')));
       } catch {
-        // network error — keep existing list
+        // keep existing list on transient network errors
       }
     }
 
@@ -76,13 +85,19 @@ export default function Driver() {
   }, [online]);
 
   async function toggle(val: boolean) {
+    if (!driverId) {
+      Alert.alert('Jnbk', lang === 'ar' ? 'لم يتم العثور على ملف السائق — افتح الشاشة مرة أخرى' : 'Driver profile was not found — reopen the screen');
+      return;
+    }
+
     setOnline(val);
     if (!val) {
       setRides([]);
       setActiveRide(null);
       if (pollRef.current) clearInterval(pollRef.current);
     }
-    if (driverId && !toggleLoading) {
+
+    if (!toggleLoading) {
       setToggleLoading(true);
       toggleDriverOnline(driverId, val)
         .catch(() => {
@@ -102,7 +117,6 @@ export default function Driver() {
     }
     if (status === 'COMPLETED') {
       setActiveRide(null);
-      // Server auto-credits earnings — just refresh the wallet balance
       if (userId) getWallet(userId).then((w) => setWalletBalance(w.balance)).catch(() => null);
     } else {
       setActiveRide({ ...ride, status });
@@ -136,7 +150,7 @@ export default function Driver() {
 
       <View style={styles.card}>
         <Text style={styles.status}>{online ? t.online : t.offline}</Text>
-        <Switch value={online} onValueChange={toggle} disabled={isVerified === false} />
+        <Switch value={online} onValueChange={toggle} disabled={isVerified === false || toggleLoading} />
       </View>
 
       <Pressable style={[styles.earningsCard, rtl && styles.reverse]} onPress={() => router.push({ pathname: '/wallet', params: { lang, role: 'DRIVER' } })}>
