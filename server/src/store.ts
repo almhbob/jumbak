@@ -32,6 +32,7 @@ export type MemRide = {
   driverName: string | null;
   pickupLabel: string;
   destinationLabel: string;
+  stops?: string | null;
   distanceKm: number;
   estimatedFare: number;
   status: string;
