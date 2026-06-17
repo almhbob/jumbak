@@ -24,42 +24,32 @@ const copy = {
   ar: {
     title: 'مراجعة ملفات الجوكية',
     sub: 'اعتماد ومتابعة طلبات السائقين، بيانات الضامن، المركبة، والشهر المجاني.',
-    portal: 'بوابة الدخول', home: 'الرئيسية', toggle: 'English',
+    portal: 'بوابة الدخول', home: 'الرئيسية', toggle: 'English', logout: 'خروج',
     total: 'إجمالي الطلبات', pending: 'قيد المراجعة', approved: 'معتمد', rejected: 'مرفوض', free: 'شهر مجاني',
-    driver: 'الجوكي', vehicle: 'المركبة', guarantor: 'الضامن', compliance: 'الامتثال',
+    driver: 'الجوكي', vehicle: 'المركبة', guarantor: 'الضامن', compliance: 'الامتثال', decision: 'القرار',
     approve: 'اعتماد', reject: 'رفض', missing: 'غير مكتمل', source: 'مصدر البيانات',
     denied: 'هذه الصفحة مخصصة للإدارة والتشغيل فقط. سجّل الدخول من البوابة الموحدة.',
-    openPortal: 'فتح بوابة الدخول',
-    saved: 'تم حفظ القرار بنجاح ✓',
-    local: 'تم تحديث الواجهة محليًا للمعاينة',
-    failed: 'تعذر الحفظ — تحقق من الاتصال',
-    processing: 'جارٍ الحفظ...',
-    notes: 'سبب الرفض (اختياري)',
-    confirmApprove: 'هل تريد اعتماد هذا الجوكي؟',
-    confirmReject: 'هل تريد رفض هذا الطلب؟',
-    backend: 'Backend API متصل بالتوكن',
-    firebase: 'Firebase Firestore',
-    preview: 'وضع المعاينة',
+    openPortal: 'فتح بوابة الدخول', saved: 'تم حفظ القرار بنجاح ✓', local: 'تم تحديث الواجهة محليًا للمعاينة',
+    failed: 'تعذر الحفظ — تحقق من الاتصال', processing: 'جارٍ الحفظ...', notes: 'سبب الرفض (اختياري)',
+    confirmApprove: 'هل تريد اعتماد هذا الجوكي؟', confirmReject: 'هل تريد رفض هذا الطلب؟',
+    backend: 'Backend API متصل بالتوكن', firebase: 'Firebase Firestore', preview: 'وضع المعاينة',
+    phone: 'الهاتف', nationalId: 'الرقم الوطني', city: 'المدينة', plate: 'اللوحة', model: 'الموديل', chassis: 'الشاسي',
+    bank: 'الحساب البنكي', confirmRejectButton: 'تأكيد الرفض', cancel: 'إلغاء',
   },
   en: {
     title: 'Driver Application Review',
     sub: 'Approve and track driver files, guarantor details, vehicles, and free month status.',
-    portal: 'Portal', home: 'Home', toggle: 'العربية',
+    portal: 'Portal', home: 'Home', toggle: 'العربية', logout: 'Logout',
     total: 'Total applications', pending: 'Pending', approved: 'Approved', rejected: 'Rejected', free: 'Free month',
-    driver: 'Driver', vehicle: 'Vehicle', guarantor: 'Guarantor', compliance: 'Compliance',
+    driver: 'Driver', vehicle: 'Vehicle', guarantor: 'Guarantor', compliance: 'Compliance', decision: 'Decision',
     approve: 'Approve', reject: 'Reject', missing: 'Missing', source: 'Data source',
     denied: 'This page is only for management and operations accounts. Log in from the unified portal.',
-    openPortal: 'Open portal',
-    saved: 'Decision saved successfully ✓',
-    local: 'UI updated locally for preview',
-    failed: 'Could not save — check connection',
-    processing: 'Saving...',
-    notes: 'Rejection reason (optional)',
-    confirmApprove: 'Approve this driver application?',
-    confirmReject: 'Reject this application?',
-    backend: 'Backend API with auth token',
-    firebase: 'Firebase Firestore',
-    preview: 'Preview mode',
+    openPortal: 'Open portal', saved: 'Decision saved successfully ✓', local: 'UI updated locally for preview',
+    failed: 'Could not save — check connection', processing: 'Saving...', notes: 'Rejection reason (optional)',
+    confirmApprove: 'Approve this driver application?', confirmReject: 'Reject this application?',
+    backend: 'Backend API with auth token', firebase: 'Firebase Firestore', preview: 'Preview mode',
+    phone: 'Phone', nationalId: 'National ID', city: 'City', plate: 'Plate', model: 'Model', chassis: 'Chassis',
+    bank: 'Bank account', confirmRejectButton: 'Confirm reject', cancel: 'Cancel',
   },
 };
 
@@ -67,9 +57,14 @@ function goPortal(lang: Lang) { window.location.assign(`/portal?lang=${lang}`); 
 function logout(lang: Lang) { sessionStorage.clear(); goPortal(lang); }
 
 function statusBadge(status?: string) {
-  if (!status || status === 'pending_review' || status === 'needs_admin_review') return { color: '#f59e0b', label: '⏳' };
-  if (status === 'approved') return { color: '#10b981', label: '✓' };
-  return { color: '#ef4444', label: '✗' };
+  if (!status || status === 'pending_review' || status === 'needs_admin_review') return { cls: 'adminBadge adminBadgeWarn', label: '⏳ Pending' };
+  if (status === 'approved') return { cls: 'adminBadge adminBadgeSuccess', label: '✓ Approved' };
+  return { cls: 'adminBadge adminBadgeDanger', label: '✗ Rejected' };
+}
+
+function valueOrMissing(value: unknown, missing: string) {
+  const text = String(value || '').trim();
+  return text || missing;
 }
 
 export default function DriversReview() {
@@ -121,6 +116,7 @@ export default function DriversReview() {
 
   async function review(item: DriverApplication, status: 'approved' | 'rejected', note?: string) {
     if (status === 'approved' && !window.confirm(t.confirmApprove)) return;
+    if (status === 'rejected' && !window.confirm(t.confirmReject)) return;
 
     setProcessingId(item.id);
     setRejectingId(null);
@@ -176,7 +172,7 @@ export default function DriversReview() {
         <section className="hero">
           <div className="heroTop">
             <div><p className="kicker">Jnbk جنبك</p><h1>{t.title}</h1><p>{t.denied}</p></div>
-            <div className="topActions">
+            <div className="adminHeroActions">
               <button type="button" className="primaryAction buttonReset" onClick={() => goPortal(lang)}>{t.openPortal}</button>
               <a className="languageSwitch" href={`/portal?lang=${lang}`}>{t.portal}</a>
               <a className="languageSwitch" href="/">{t.home}</a>
@@ -196,118 +192,112 @@ export default function DriversReview() {
             <h1>{t.title}</h1>
             <p>{t.sub}</p>
           </div>
-          <div className="topActions">
+          <div className="adminHeroActions">
             <a className="languageSwitch" href="/">{t.home}</a>
+            <a className="languageSwitch" href={`/operations?lang=${lang}`}>{ar ? 'التشغيل' : 'Operations'}</a>
             <a className="languageSwitch" href={`/portal?lang=${lang}`}>{t.portal}</a>
             <a className="languageSwitch" href={`/drivers?lang=${ar ? 'en' : 'ar'}`}>{t.toggle}</a>
-            <button className="languageSwitch buttonReset" onClick={() => logout(lang)}>Logout</button>
+            <button className="languageSwitch buttonReset" onClick={() => logout(lang)}>{t.logout}</button>
           </div>
         </div>
       </section>
 
-      <section className="grid settingsGrid">
+      <section className="adminStatGrid">
         <div className="card"><p>{t.total}</p><strong>{stats.total}</strong></div>
-        <div className="card"><p>{t.pending}</p><strong style={{ color: '#f59e0b' }}>{stats.pending}</strong></div>
-        <div className="card"><p>{t.approved}</p><strong style={{ color: '#10b981' }}>{stats.approved}</strong></div>
-        <div className="card"><p>{t.rejected}</p><strong style={{ color: '#ef4444' }}>{stats.rejected}</strong></div>
+        <div className="card"><p>{t.pending}</p><strong style={{ background: 'none', WebkitTextFillColor: '#f59e0b', color: '#f59e0b' }}>{stats.pending}</strong></div>
+        <div className="card"><p>{t.approved}</p><strong style={{ background: 'none', WebkitTextFillColor: '#10b981', color: '#10b981' }}>{stats.approved}</strong></div>
+        <div className="card"><p>{t.rejected}</p><strong style={{ background: 'none', WebkitTextFillColor: '#ef4444', color: '#ef4444' }}>{stats.rejected}</strong></div>
       </section>
 
       <section className="panel">
-        <h2>{t.source}</h2>
-        <p className="muted">{source}</p>
+        <div className="adminSectionHeader" style={{ marginTop: 0 }}>
+          <div>
+            <h2>{t.source}</h2>
+            <p className="muted" style={{ margin: 0 }}>{source}</p>
+          </div>
+          <span className="adminBadge adminBadgeMuted">{items.length} {ar ? 'ملف' : 'files'}</span>
+        </div>
       </section>
 
       {notice && (
-        <div className={`notice ${notice.type}`} style={{ margin: '0 24px 8px' }}>{notice.text}</div>
+        <div className={`notice ${notice.type}`} style={{ margin: '12px 0' }}>{notice.text}</div>
       )}
 
       <section className="panel">
-        <h2>{t.title}</h2>
-        <div className="table">
+        <div className="adminSectionHeader" style={{ marginTop: 0 }}>
+          <h2>{t.title}</h2>
+          <span className="adminBadge adminBadgeWarn">{stats.pending} {t.pending}</span>
+        </div>
+
+        <div className="adminReviewList">
           {items.map((item) => {
             const badge = statusBadge(item.status);
             const isProcessing = processingId === item.id;
             const isPending = !item.status || item.status === 'pending_review' || item.status === 'needs_admin_review';
 
             return (
-              <div key={item.id} className="row" style={{ alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
-                <span>
-                  <b>{t.driver}</b><br />
-                  {item.name || item.phone || item.id}<br />
-                  <small style={{ color: '#94a3b8' }}>{item.phone || ''}</small><br />
-                  <small style={{ color: '#94a3b8' }}>{item.nationalId || t.missing}</small>
-                </span>
+              <div key={item.id} className="adminReviewCard">
+                <div className="adminInfoBlock">
+                  <strong>{t.driver}</strong>
+                  <span className="adminInfoLine">{valueOrMissing(item.name || item.phone || item.id, t.missing)}</span>
+                  <span className="adminInfoMuted">{t.phone}: {valueOrMissing(item.phone, t.missing)}</span>
+                  <span className="adminInfoMuted">{t.nationalId}: {valueOrMissing(item.nationalId, t.missing)}</span>
+                  <span className="adminInfoMuted">{t.city}: {valueOrMissing(item.cityId, 'rufaa')}</span>
+                </div>
 
-                <span>
-                  <b>{t.vehicle}</b><br />
-                  {item.vehicleTypeId || 'rickshaw'} / {item.plateNo || t.missing}<br />
-                  <small style={{ color: '#94a3b8' }}>{[item.color, item.model].filter(Boolean).join(' — ') || ''}</small><br />
-                  <small style={{ color: '#94a3b8' }}>{item.chassisNo ? `شاسي: ${item.chassisNo}` : ''}</small>
-                </span>
+                <div className="adminInfoBlock">
+                  <strong>{t.vehicle}</strong>
+                  <span className="adminInfoLine">{valueOrMissing(item.vehicleTypeId, 'rickshaw')}</span>
+                  <span className="adminInfoMuted">{t.plate}: {valueOrMissing(item.plateNo, t.missing)}</span>
+                  <span className="adminInfoMuted">{t.model}: {[item.color, item.model].filter(Boolean).join(' — ') || t.missing}</span>
+                  <span className="adminInfoMuted">{t.chassis}: {valueOrMissing(item.chassisNo, t.missing)}</span>
+                </div>
 
-                <span>
-                  <b>{t.guarantor}</b><br />
-                  {item.guarantorName || t.missing}<br />
-                  <small style={{ color: '#94a3b8' }}>{item.guarantorPhone || ''}</small><br />
-                  <small style={{ color: '#94a3b8' }}>{item.guarantorAddress || ''}</small>
-                </span>
+                <div className="adminInfoBlock">
+                  <strong>{t.guarantor}</strong>
+                  <span className="adminInfoLine">{valueOrMissing(item.guarantorName, t.missing)}</span>
+                  <span className="adminInfoMuted">{t.phone}: {valueOrMissing(item.guarantorPhone, t.missing)}</span>
+                  <span className="adminInfoMuted">{valueOrMissing(item.guarantorAddress, t.missing)}</span>
+                  <span className="adminInfoMuted">{t.bank}: {valueOrMissing(item.bankAccount, t.missing)}</span>
+                </div>
 
-                <span style={{ minWidth: 120 }}>
-                  <b style={{ color: badge.color }}>{badge.label} {item.status || t.pending}</b>
-                  {item.freeMonth && <><br /><small style={{ color: '#f59e0b' }}>{t.free}</small></>}
-                  {item.cityId && <><br /><small style={{ color: '#94a3b8' }}>{item.cityId}</small></>}
-                </span>
+                <div className="adminInfoBlock">
+                  <strong>{t.compliance}</strong>
+                  <span className={badge.cls}>{badge.label}</span>
+                  {item.freeMonth && <span className="adminInfoMuted" style={{ marginTop: 8, color: '#a16207' }}>{t.free}</span>}
+                  <span className="adminInfoMuted">{item.complianceStatus || t.pending}</span>
+                </div>
 
-                {isPending && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {rejectingId !== item.id && (
-                      <>
-                        <button
-                          className="primaryAction buttonReset"
-                          disabled={isProcessing}
-                          onClick={() => review(item, 'approved')}
-                          style={{ opacity: isProcessing ? 0.5 : 1 }}
-                        >
-                          {isProcessing ? t.processing : t.approve}
-                        </button>
-                        <button
-                          className="languageSwitch buttonReset"
-                          disabled={isProcessing}
-                          onClick={() => setRejectingId(item.id)}
-                          style={{ color: '#ef4444', border: '1px solid #fee2e2', opacity: isProcessing ? 0.5 : 1 }}
-                        >
-                          {t.reject}
-                        </button>
-                      </>
-                    )}
-                    {rejectingId === item.id && (
-                      <div style={{ background: 'rgba(239,68,68,.06)', border: '1.5px solid #ef4444', borderRadius: 10, padding: 12, display: 'grid', gap: 8, minWidth: 200 }}>
-                        <label style={{ fontSize: 11, fontWeight: 700, color: '#ef4444' }}>{t.notes}</label>
-                        <input
-                          ref={rejectNoteRef}
-                          placeholder={ar ? 'سبب الرفض...' : 'Reason...'}
-                          autoFocus
-                          style={{ border: '1.5px solid #ef4444', borderRadius: 7, padding: '6px 10px', fontSize: 13, width: '100%' }}
-                        />
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button
-                            disabled={isProcessing}
-                            onClick={() => review(item, 'rejected', rejectNoteRef.current?.value || '')}
-                            style={{ flex: 1, background: '#ef4444', color: 'white', border: 'none', borderRadius: 7, padding: '7px 0', fontWeight: 900, fontSize: 12, cursor: 'pointer', opacity: isProcessing ? 0.5 : 1 }}
-                          >
-                            {isProcessing ? t.processing : (ar ? 'تأكيد الرفض' : 'Confirm')}
+                <div className="adminDecisionPanel">
+                  <strong style={{ color: 'var(--navy)' }}>{t.decision}</strong>
+                  {isPending ? (
+                    rejectingId === item.id ? (
+                      <div className="adminRejectBox">
+                        <label>{t.notes}</label>
+                        <input ref={rejectNoteRef} placeholder={ar ? 'سبب الرفض...' : 'Reason...'} autoFocus className="adminRejectInput" />
+                        <div className="adminToolbar">
+                          <button disabled={isProcessing} onClick={() => review(item, 'rejected', rejectNoteRef.current?.value || '')} className="adminMiniButton adminMiniButtonWarn">
+                            {isProcessing ? t.processing : t.confirmRejectButton}
                           </button>
-                          <button
-                            onClick={() => setRejectingId(null)}
-                            style={{ background: 'none', border: '1px solid #cbd5e1', borderRadius: 7, padding: '7px 10px', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
-                          >
-                            {ar ? 'إلغاء' : 'Cancel'}
+                          <button onClick={() => setRejectingId(null)} className="adminMiniButton adminMiniButtonMuted">
+                            {t.cancel}
                           </button>
                         </div>
                       </div>
-                    )}
-                  </div>
-                )}
+                    ) : (
+                      <>
+                        <button className="adminMiniButton adminMiniButtonSuccess" disabled={isProcessing} onClick={() => review(item, 'approved')}>
+                          {isProcessing ? t.processing : t.approve}
+                        </button>
+                        <button className="adminMiniButton adminMiniButtonWarn" disabled={isProcessing} onClick={() => setRejectingId(item.id)}>
+                          {t.reject}
+                        </button>
+                      </>
+                    )
+                  ) : (
+                    <span className={badge.cls}>{item.status || t.pending}</span>
+                  )}
+                </div>
               </div>
             );
           })}
