@@ -305,6 +305,49 @@
   margin-bottom: 14px;
 }
 
+.settingsGrid {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.devGrid {
+  align-items: start;
+}
+
+.panel code {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  margin: 7px 0;
+  padding: 9px 11px;
+  overflow-x: auto;
+  border-radius: 10px;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-size: 12px;
+  direction: ltr;
+  text-align: left;
+}
+
+.panel textarea {
+  min-height: 86px;
+  resize: vertical;
+}
+
+.panel .table .row span:first-child {
+  font-weight: 900;
+  color: var(--navy);
+}
+
+.panel .table .row b {
+  color: var(--navy);
+}
+
+.panel input[readonly] {
+  background: #f1f5f9;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
 @media (max-width: 1100px) {
   .adminReviewCard,
   .pricingCard,
