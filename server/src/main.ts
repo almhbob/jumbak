@@ -71,9 +71,18 @@ const httpServer = createServer(app);
 app.set('trust proxy', 1);
 
 // ─── CORS ──────────────────────────────────────────────────────────────────
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
-  : ['http://localhost:3001', 'http://localhost:3000', 'https://jnbk-admin.pages.dev'];
+const configuredOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
+  : [];
+
+const allowedOrigins = Array.from(new Set([
+  'http://localhost:3001',
+  'http://localhost:3000',
+  'https://jnbk-admin.pages.dev',
+  'https://jumbak-admin.vercel.app',
+  'https://jumbak-admin-git-main-asim-abdulrahman-mohammed.vercel.app',
+  ...configuredOrigins,
+]));
 
 app.use(
   cors({
