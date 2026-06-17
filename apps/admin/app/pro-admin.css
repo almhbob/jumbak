@@ -219,7 +219,7 @@ article h2::before {
   color: #5f7388;
 }
 
-/* Reusable professional admin utilities for upcoming pages */
+/* Reusable professional admin utilities for pages */
 .adminSectionHeader {
   display: flex;
   justify-content: space-between;
@@ -281,6 +281,79 @@ article h2::before {
   font-weight: 900;
 }
 
+.adminBadgeSuccess { background: #ecfdf5; color: #047857; }
+.adminBadgeWarn { background: #fffbeb; color: #a16207; }
+.adminBadgeDanger { background: #fef2f2; color: #b91c1c; }
+.adminBadgeMuted { background: #f1f5f9; color: #475569; }
+
+.adminTable {
+  display: grid;
+  gap: 8px;
+}
+
+.adminTableHead,
+.adminTableRow {
+  display: grid;
+  gap: 12px;
+  align-items: center;
+}
+
+.adminTableHead {
+  padding: 0 14px 4px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.adminTableRow {
+  background: #ffffff;
+  border: 1px solid var(--admin-line);
+  border-radius: 16px;
+  padding: 13px 14px;
+  transition: border-color 0.16s, background 0.16s;
+}
+
+.adminTableRow:hover {
+  background: #f8fbfd;
+  border-color: rgba(14,143,179,0.26);
+}
+
+.adminTableRow strong {
+  color: var(--navy);
+  font-weight: 900;
+}
+
+.adminTableSub {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.opsSupportGrid { grid-template-columns: minmax(120px, 1fr) minmax(240px, 2fr) minmax(105px, auto) minmax(160px, auto); }
+.opsDriversGrid { grid-template-columns: minmax(170px, 2fr) minmax(120px, 1fr) minmax(115px, auto) minmax(120px, auto); }
+.opsTasksGrid { grid-template-columns: minmax(160px, 1fr) minmax(260px, 2fr) minmax(90px, auto) minmax(90px, auto); }
+
+.adminMiniButton {
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  min-height: 34px;
+}
+
+.adminMiniButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.adminMiniButtonWarn { background: #f59e0b; color: #ffffff; }
+.adminMiniButtonSuccess { background: #10b981; color: #ffffff; }
+.adminMiniButtonMuted { background: #94a3b8; color: #ffffff; }
+
 @media (max-width: 760px) {
   main { padding: 14px 12px 48px; }
   .site-header {
@@ -294,4 +367,9 @@ article h2::before {
   .row { min-width: 100%; grid-template-columns: 1fr; }
   .adminSectionHeader { flex-direction: column; align-items: stretch; }
   .adminToolbar { width: 100%; }
+  .adminTableHead { display: none; }
+  .adminTableRow,
+  .opsSupportGrid,
+  .opsDriversGrid,
+  .opsTasksGrid { grid-template-columns: 1fr; }
 }
