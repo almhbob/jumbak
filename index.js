@@ -1,1 +1,1 @@
-console.log('Jnbk mobile bundle entry');
+import './apps/mobile/index';
