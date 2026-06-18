@@ -43,8 +43,7 @@
           "defaultChannel": "default",
           "sounds": []
         }
-      ],
-      "@sentry/react-native/expo"
+      ]
     ],
     "extra": {
       "brandName": "جنبك",
