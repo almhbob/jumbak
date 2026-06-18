@@ -105,7 +105,7 @@ export default function Welcome() {
       </View>
 
       <View style={styles.sloganCard}>
-        <Text style={[styles.brandWord, rtl && styles.rtl]}>{rtl ? 'جمبك' : 'Jnbk'}</Text>
+        <Text style={[styles.brandWord, rtl && styles.rtl]}>{rtl ? 'جنبك' : 'Jnbk'}</Text>
         <View style={[styles.sloganLine, rtl && styles.reverse]}>
           <Text style={styles.sloganWhite}>{rtl ? 'جنبك' : 'Always'}</Text>
           <Text style={styles.sloganGold}>{rtl ? 'دايمًا' : 'beside you'}</Text>
