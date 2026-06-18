@@ -67,7 +67,6 @@ export default function Welcome() {
         return;
       }
 
-      // Access token expired — try refresh token (valid 7 days)
       if (refreshToken) {
         const result = await tryRefresh(refreshToken);
         if (result.status === 'ok') {
@@ -76,16 +75,13 @@ export default function Welcome() {
           return;
         }
         if (result.status === 'network') {
-          // Network unavailable — keep session, navigate with saved role
           const role = savedRole || 'passenger';
           if (token) setTokenCache(token);
           router.replace(role === 'driver' ? '/driver' : '/home');
           return;
         }
-        // status === 'expired' — server rejected token, clear session
       }
 
-      // No valid session — clear and show welcome screen
       await AsyncStorage.multiRemove(['jnbk_auth_token', 'jnbk_refresh_token', 'jnbk_user_id', 'jnbk_user_role']);
       setReady(true);
     })();
@@ -108,7 +104,15 @@ export default function Welcome() {
         </View>
       </View>
 
-      <Text style={[styles.tagline, rtl && styles.rtl]}>{rtl ? 'أقرب إليك دائمًا' : 'Always near you'}</Text>
+      <View style={styles.sloganCard}>
+        <Text style={[styles.brandWord, rtl && styles.rtl]}>{rtl ? 'جمبك' : 'Jnbk'}</Text>
+        <View style={[styles.sloganLine, rtl && styles.reverse]}>
+          <Text style={styles.sloganWhite}>{rtl ? 'جنبك' : 'Always'}</Text>
+          <Text style={styles.sloganGold}>{rtl ? 'دايمًا' : 'beside you'}</Text>
+        </View>
+        <View style={styles.goldStroke} />
+      </View>
+
       <Text style={[styles.copy, rtl && styles.rtl]}>
         {rtl
           ? 'رحلات محلية سريعة بتسعير واضح وسائقين موثوقين.'
@@ -145,7 +149,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(255,255,255,.22)',
   },
   langText: { color: colors.white, fontWeight: '900' },
-  logoBox: { alignItems: 'center', marginBottom: 8 },
+  logoBox: { alignItems: 'center', marginBottom: 4 },
   logoCard: {
     backgroundColor: '#ffffff',
     borderRadius: 24,
@@ -157,10 +161,40 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
-  logoImg: { width: 240, height: 130 },
-  tagline: { color: colors.gold, fontSize: 22, fontWeight: '900', textAlign: 'center' },
-  copy: { color: 'rgba(255,255,255,.88)', fontSize: 17, lineHeight: 28, textAlign: 'center', marginBottom: 8 },
-  features: { flexDirection: 'row', gap: 10, marginVertical: 8 },
+  logoImg: { width: 220, height: 118 },
+  sloganCard: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,.10)',
+    borderColor: 'rgba(255,255,255,.18)',
+    borderWidth: 1,
+    borderRadius: 30,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    marginTop: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.16,
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 20,
+    elevation: 6,
+  },
+  brandWord: {
+    color: colors.white,
+    fontSize: 46,
+    lineHeight: 58,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,.22)',
+    textShadowOffset: { width: 0, height: 3 },
+    textShadowRadius: 8,
+  },
+  sloganLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: -2 },
+  reverse: { flexDirection: 'row-reverse' },
+  sloganWhite: { color: colors.white, fontSize: 26, fontWeight: '900' },
+  sloganGold: { color: colors.gold, fontSize: 28, fontWeight: '900' },
+  goldStroke: { width: 150, height: 4, borderRadius: 999, backgroundColor: colors.gold, marginTop: 8, transform: [{ rotate: '-3deg' }] },
+  copy: { color: 'rgba(255,255,255,.88)', fontSize: 17, lineHeight: 28, textAlign: 'center', marginBottom: 4 },
+  features: { flexDirection: 'row', gap: 10, marginVertical: 6 },
   feature: {
     flex: 1, backgroundColor: 'rgba(255,255,255,.12)', borderRadius: 20,
     padding: 12, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,.16)',
