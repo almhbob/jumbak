@@ -42,7 +42,7 @@ jobs:
 
       - name: Embed JavaScript bundle
         working-directory: apps/mobile
-        run: npx expo export:embed --platform android --dev false --entry-file node_modules/expo-router/entry.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
+        run: npx expo export:embed --platform android --dev false --entry-file expo-router/entry --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
 
       - name: Build debug APK
         working-directory: apps/mobile/android
