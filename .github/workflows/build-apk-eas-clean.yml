@@ -1,0 +1,34 @@
+name: Build APK EAS Clean
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EXPO_PUBLIC_API_URL: https://jumbakserver-production.up.railway.app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - name: Install dependencies from workspace root
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+
+      - name: Start EAS APK build
+        working-directory: apps/mobile
+        run: eas build --platform android --profile preview --non-interactive
