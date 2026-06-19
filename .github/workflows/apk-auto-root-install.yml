@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/apk-auto-root-install.yml'
       - 'apps/mobile/**'
+      - 'babel.config.js'
       - 'package.json'
       - 'package-lock.json'
   workflow_dispatch:
