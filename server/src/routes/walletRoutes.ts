@@ -227,9 +227,7 @@ router.get('/admin/withdrawals', requireAuth, requireRole('developer', 'business
   }
   // In-memory: collect all WITHDRAWAL transactions
   const all: unknown[] = [];
-  for (const [userId, wallet] of Object.entries(
-    {} as Record<string, { balance: number; currency: string; transactions: unknown[] }>
-  )) {
+  for (const [userId, wallet] of Object.entries(memoryWallets)) {
     const txs = (wallet.transactions as Array<{ type: string; [k: string]: unknown }>)
       .filter((t) => t.type === 'WITHDRAWAL')
       .map((t) => ({ ...t, userId }));

@@ -19,6 +19,16 @@ export type MemDriver = {
   cityId: string;
   plateNo?: string;
   verified?: boolean;
+  nationalId?: string | null;
+  chassisNo?: string | null;
+  trafficId?: string | null;
+  bankAccount?: string | null;
+  guarantorName?: string | null;
+  guarantorPhone?: string | null;
+  guarantorAddress?: string | null;
+  status?: string;
+  complianceStatus?: string;
+  freeMonth?: boolean;
 };
 
 export type MemRide = {
