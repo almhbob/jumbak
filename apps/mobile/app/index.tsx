@@ -8,7 +8,7 @@ import { brand, colors } from '../src/constants/theme';
 import { dict, Lang } from '../src/i18n';
 import { setTokenCache } from '../src/api';
 
-const logoSource = require('../assets/icon.png');
+const logoSource = require('../assets/logo-mark.png');
 const API_URL = process.env.EXPO_PUBLIC_API_URL || '';
 
 function decodeToken(token: string): { exp?: number; role?: string } {
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
-  logoImg: { width: 220, height: 118 },
+  logoImg: { width: 200, height: 210 },
   sloganCard: {
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,.10)',

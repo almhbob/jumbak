@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, View, Text, StyleSheet, Pressable, Image } from 'react-native';
 
-const logoSource = require('../assets/icon.png');
+const logoSource = require('../assets/logo-mark.png');
 import { useLocalSearchParams, router } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { colors } from '../src/constants/theme';
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
   header: { gap: 2 }, topLine: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, reverse: { flexDirection: 'row-reverse' },
   kicker: { color: colors.gold, fontWeight: '900', letterSpacing: 2 }, title: { fontSize: sw(26), fontWeight: '900', color: colors.navy }, rideId: { color: colors.muted, fontWeight: '800' },
   refreshButton: { backgroundColor: colors.navy, borderRadius: 16, paddingVertical: 10, paddingHorizontal: 12 }, refreshText: { color: colors.white, fontWeight: '900', fontSize: sw(13) },
-  mapCard: { height: sw(220), borderRadius: 32, padding: sw(18), alignItems: 'center', justifyContent: 'center', backgroundColor: '#DDF3FA' }, logo: { width: sw(160), height: sw(88) }, progressRow: { flexDirection: 'row', gap: 8, marginVertical: sw(14) }, dot: { width: sw(36), height: 7, borderRadius: 999, backgroundColor: colors.white }, dotActive: { backgroundColor: colors.navy }, route: { color: colors.navy, fontSize: sw(17), fontWeight: '900', textAlign: 'center' },
+  mapCard: { height: sw(220), borderRadius: 32, padding: sw(18), alignItems: 'center', justifyContent: 'center', backgroundColor: '#DDF3FA' }, logo: { width: sw(120), height: sw(126) }, progressRow: { flexDirection: 'row', gap: 8, marginVertical: sw(14) }, dot: { width: sw(36), height: 7, borderRadius: 999, backgroundColor: colors.white }, dotActive: { backgroundColor: colors.navy }, route: { color: colors.navy, fontSize: sw(17), fontWeight: '900', textAlign: 'center' },
   driverCard: { backgroundColor: colors.white, borderRadius: 28, padding: sw(16), flexDirection: 'row', gap: 12, alignItems: 'center' }, driverCardRtl: { flexDirection: 'row-reverse' }, driverAvatar: { width: sw(48), height: sw(48), borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.navy }, driverInitial: { color: colors.gold, fontSize: sw(22), fontWeight: '900' }, driverInfo: { flex: 1 },
   fareCard: { backgroundColor: colors.white, borderRadius: 28, padding: sw(16), gap: sw(6) }, section: { color: colors.muted, fontWeight: '800' }, name: { color: colors.text, fontSize: sw(20), fontWeight: '900' }, muted: { color: colors.muted, marginTop: 4 }, fare: { color: colors.gold, fontSize: sw(32), fontWeight: '900' }, autoToggle: { alignItems: 'center', padding: 10 }, autoText: { color: colors.teal, fontWeight: '900' }, rtl: { textAlign: 'right', writingDirection: 'rtl' },
   payCard: { backgroundColor: '#F0F9FF', borderRadius: 16, padding: sw(13), borderWidth: 1.5, borderColor: '#BAE6FD', gap: 8, marginTop: 6 },
