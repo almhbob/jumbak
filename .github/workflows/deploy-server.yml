@@ -6,8 +6,8 @@ on:
     paths:
       - 'server/**'
       - 'pnpm-lock.yaml'
-      - 'railway.toml'
-      - 'server/Dockerfile'
+      - 'railway.json'
+      - 'nixpacks.toml'
   workflow_dispatch:
 
 jobs:

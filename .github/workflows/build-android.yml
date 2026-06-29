@@ -2,7 +2,7 @@ name: Build Android APK
 
 on:
   push:
-    branches: [claude/app-admin-portal-review-QSQSt, main]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
