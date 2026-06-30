@@ -18,6 +18,8 @@ export function getSocket(): Socket {
   return socket;
 }
 
+// ─── Passenger / Admin: ride status room ─────────────────────────────────────
+
 export function joinRide(rideId: string): void {
   getSocket().emit('join_ride', rideId);
 }
@@ -30,6 +32,50 @@ export function onRideUpdate(callback: (data: Record<string, unknown>) => void):
   const s = getSocket();
   s.on('ride_update', callback);
   return () => s.off('ride_update', callback);
+}
+
+// ─── Driver: personal room for incoming offers and account events ─────────────
+
+export function joinDriverRoom(driverId: string): void {
+  getSocket().emit('join_driver', driverId);
+}
+
+export function leaveDriverRoom(driverId: string): void {
+  getSocket().emit('leave_driver', driverId);
+}
+
+export type RideOfferPayload = {
+  rideId: string;
+  pickupLabel: string;
+  destinationLabel: string;
+  estimatedFare: number;
+  distanceKm: number;
+  expiresIn: number; // seconds
+};
+
+export function onRideOffer(callback: (data: RideOfferPayload) => void): () => void {
+  const s = getSocket();
+  s.on('ride:offer', callback);
+  return () => s.off('ride:offer', callback);
+}
+
+export function onRideTaken(callback: (data: { rideId: string }) => void): () => void {
+  const s = getSocket();
+  s.on('ride:taken', callback);
+  return () => s.off('ride:taken', callback);
+}
+
+export type SuspensionPayload = {
+  suspendedUntil: string;
+  hours: number;
+  deducted: boolean;
+  deductedAmount: number;
+};
+
+export function onDriverSuspended(callback: (data: SuspensionPayload) => void): () => void {
+  const s = getSocket();
+  s.on('driver:suspended', callback);
+  return () => s.off('driver:suspended', callback);
 }
 
 export function disconnectSocket(): void {

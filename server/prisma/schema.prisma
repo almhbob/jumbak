@@ -52,6 +52,13 @@ enum StaffStatus {
   PAUSED
 }
 
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
 model Country {
   id        String   @id
   nameAr    String
@@ -99,18 +106,21 @@ model VehicleType {
 }
 
 model User {
-  id           String        @id @default(cuid())
-  phone        String        @unique
-  name         String?
-  role         UserRole      @default(PASSENGER)
-  otpCode      String?
-  otpExpiresAt DateTime?
-  otpAttempts  Int           @default(0)
-  createdAt    DateTime      @default(now())
-  rides        Ride[]        @relation("PassengerRides")
-  driver       Driver?
-  deviceTokens DeviceToken[]
-  wallet       Wallet?
+  id                   String        @id @default(cuid())
+  phone                String        @unique
+  name                 String?
+  role                 UserRole      @default(PASSENGER)
+  otpCode              String?
+  otpExpiresAt         DateTime?
+  otpAttempts          Int           @default(0)
+  dailyCancellations   Int           @default(0)
+  lastCancellationDate DateTime?
+  suspendedUntil       DateTime?
+  createdAt            DateTime      @default(now())
+  rides                Ride[]        @relation("PassengerRides")
+  driver               Driver?
+  deviceTokens         DeviceToken[]
+  wallet               Wallet?
 }
 
 model Wallet {
@@ -174,18 +184,23 @@ model LegalDocument {
 }
 
 model Driver {
-  id          String             @id @default(cuid())
-  userId      String             @unique
-  user        User               @relation(fields: [userId], references: [id])
-  cityId      String
-  city        City               @relation(fields: [cityId], references: [id])
-  isOnline    Boolean            @default(false)
-  isVerified  Boolean            @default(false)
-  vehicle     Vehicle?
-  rides       Ride[]             @relation("DriverRides")
-  application DriverApplication?
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
+  id                String             @id @default(cuid())
+  userId            String             @unique
+  user              User               @relation(fields: [userId], references: [id])
+  cityId            String
+  city              City               @relation(fields: [cityId], references: [id])
+  isOnline          Boolean            @default(false)
+  isVerified        Boolean            @default(false)
+  dailyRejections   Int                @default(0)
+  lastRejectionDate DateTime?
+  suspendedUntil    DateTime?
+  violationCount    Int                @default(0)
+  vehicle           Vehicle?
+  rides             Ride[]             @relation("DriverRides")
+  offers            RideOffer[]
+  application       DriverApplication?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 }
 
 model Vehicle {
@@ -217,8 +232,22 @@ model Ride {
   finalFare        Int?
   status           RideStatus  @default(REQUESTED)
   rating           Int?
+  offers           RideOffer[]
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
+}
+
+model RideOffer {
+  id          String      @id @default(cuid())
+  rideId      String
+  ride        Ride        @relation(fields: [rideId], references: [id])
+  driverId    String
+  driver      Driver      @relation(fields: [driverId], references: [id])
+  status      OfferStatus @default(PENDING)
+  offeredAt   DateTime    @default(now())
+  respondedAt DateTime?
+
+  @@unique([rideId, driverId])
 }
 
 model SupportRequest {

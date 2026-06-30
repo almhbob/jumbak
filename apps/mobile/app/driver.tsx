@@ -1,29 +1,52 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Switch, Pressable, ScrollView, Alert, BackHandler } from 'react-native';
+import {
+  View, Text, StyleSheet, Switch, Pressable, ScrollView,
+  Alert, BackHandler, Modal, Animated,
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { colors } from '../src/constants/theme';
 import { dict, Lang } from '../src/i18n';
-import { getRides, updateRideStatus, getWallet, toggleDriverOnline } from '../src/api';
-import { getSocket, onRideUpdate, disconnectSocket } from '../src/socketClient';
+import { getRides, updateRideStatus, rejectRide, getWallet, toggleDriverOnline } from '../src/api';
+import {
+  getSocket, onRideUpdate, onRideOffer, onRideTaken, onDriverSuspended,
+  joinDriverRoom, leaveDriverRoom, disconnectSocket,
+  type RideOfferPayload, type SuspensionPayload,
+} from '../src/socketClient';
 import { getCurrentDriverProfile } from '../src/driverProfile';
 
-type Ride = { id: string; pickupLabel?: string; destinationLabel?: string; estimatedFare?: number; distanceKm?: number; status?: string };
+type ActiveRide = { id: string; pickupLabel?: string; destinationLabel?: string; estimatedFare?: number; distanceKm?: number; status?: string };
+
+const OFFER_TIMEOUT = 60; // seconds
 
 export default function Driver() {
   const params = useLocalSearchParams<{ lang?: Lang }>();
   const [lang, setLang] = useState<Lang>(params.lang === 'en' ? 'en' : 'ar');
   const [online, setOnline] = useState(false);
-  const [rides, setRides] = useState<Ride[]>([]);
-  const [activeRide, setActiveRide] = useState<Ride | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [rides, setRides] = useState<ActiveRide[]>([]);
+  const [activeRide, setActiveRide] = useState<ActiveRide | null>(null);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [driverId, setDriverId] = useState<string | null>(null);
   const [toggleLoading, setToggleLoading] = useState(false);
   const [isVerified, setIsVerified] = useState<boolean | null>(null);
+  const [suspendedUntil, setSuspendedUntil] = useState<Date | null>(null);
 
+  // Incoming ride offer modal state
+  const [offer, setOffer] = useState<RideOfferPayload | null>(null);
+  const [offerCountdown, setOfferCountdown] = useState(OFFER_TIMEOUT);
+  const [offerLoading, setOfferLoading] = useState(false);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const progressAnim = useRef(new Animated.Value(1)).current;
+
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const driverIdRef = useRef<string | null>(null);
+
+  const t = dict[lang];
+  const rtl = lang === 'ar';
+
+  // ─── Boot: load stored profile ──────────────────────────────────────────────
   useEffect(() => {
     AsyncStorage.multiGet(['jnbk_user_id', 'jnbk_driver_id', 'jnbk_driver_verified']).then((pairs) => {
       const uid = pairs[0][1];
@@ -31,88 +54,178 @@ export default function Driver() {
       const verified = pairs[2][1];
       if (!uid) return;
       setUserId(uid);
-      if (did) setDriverId(did);
+      if (did) { setDriverId(did); driverIdRef.current = did; }
       setIsVerified(verified === 'true');
       getWallet(uid).then((w) => setWalletBalance(w.balance)).catch(() => null);
-
-      getCurrentDriverProfile()
-        .then((profile) => {
-          if (!profile) return;
-          setDriverId(profile.id);
-          setIsVerified(profile.verified === true);
-          setOnline(profile.online === true);
-        })
-        .catch(() => null);
     });
 
-    const unsub = onRideUpdate((data) => {
-      if (data.type === 'new_ride') {
-        getRides().then((res) => {
-          const pending = (Array.isArray(res) ? res : res.rides ?? []) as Ride[];
-          setRides(pending.filter((r) => ['REQUESTED', 'ACCEPTED', 'ARRIVING', 'ACTIVE'].includes(r.status ?? '')));
-        }).catch(() => null);
-      }
-    });
+    getCurrentDriverProfile().then((profile) => {
+      if (!profile) return;
+      setDriverId(profile.id);
+      driverIdRef.current = profile.id;
+      setIsVerified(profile.verified === true);
+      setOnline(profile.online === true);
+      // Join personal driver room regardless of online status
+      joinDriverRoom(profile.id);
+    }).catch(() => null);
 
     const backSub = BackHandler.addEventListener('hardwareBackPress', () => true);
-
     return () => {
-      unsub();
-      disconnectSocket();
       backSub.remove();
+      if (driverIdRef.current) leaveDriverRoom(driverIdRef.current);
+      disconnectSocket();
     };
   }, []);
 
-  const t = dict[lang];
-  const rtl = lang === 'ar';
-
+  // ─── Re-join driver room whenever driverId resolves ──────────────────────────
   useEffect(() => {
-    if (!online) return;
+    if (!driverId) return;
+    driverIdRef.current = driverId;
+    joinDriverRoom(driverId);
+  }, [driverId]);
 
-    async function fetchRides() {
-      try {
-        const data = await getRides();
-        const pending = (Array.isArray(data) ? data : data.rides ?? []) as Ride[];
-        setRides(pending.filter((r) => ['REQUESTED', 'ACCEPTED', 'ARRIVING', 'ACTIVE'].includes(r.status ?? '')));
-      } catch {
-        // keep existing list on transient network errors
+  // ─── Socket listeners ────────────────────────────────────────────────────────
+  useEffect(() => {
+    // Generic ride_update: refresh active ride list
+    const unsubUpdate = onRideUpdate((data) => {
+      if (data.type === 'new_ride' || data.type === 'ride_update') {
+        refreshRideList();
       }
-    }
+    });
 
-    fetchRides();
-    pollRef.current = setInterval(fetchRides, 30000);
+    // Incoming dispatch offer
+    const unsubOffer = onRideOffer((incoming) => {
+      if (!online) return; // ignore if driver went offline
+      showOffer(incoming);
+    });
+
+    // Another driver accepted — dismiss our offer for this ride
+    const unsubTaken = onRideTaken(({ rideId }) => {
+      setOffer((prev) => {
+        if (prev?.rideId === rideId) {
+          clearCountdown();
+          return null;
+        }
+        return prev;
+      });
+    });
+
+    // Account suspended event
+    const unsubSuspend = onDriverSuspended((data: SuspensionPayload) => {
+      setSuspendedUntil(new Date(data.suspendedUntil));
+      setOnline(false);
+      setOffer(null);
+      clearCountdown();
+      const msg = data.deducted
+        ? (lang === 'ar'
+          ? `تجاوزت حد الرفض اليومي. تم تعليق حسابك ${data.hours} ساعة وخصم ${data.deductedAmount} SDG من محفظتك.`
+          : `Daily rejection limit reached. Account suspended for ${data.hours}h, ${data.deductedAmount} SDG deducted.`)
+        : (lang === 'ar'
+          ? `تجاوزت حد الرفض اليومي. تم تعليق حسابك لمدة ${data.hours} ساعة.`
+          : `Daily rejection limit reached. Account suspended for ${data.hours}h.`);
+      Alert.alert('Jnbk', msg);
+    });
+
+    return () => {
+      unsubUpdate();
+      unsubOffer();
+      unsubTaken();
+      unsubSuspend();
+    };
+  }, [online, lang]);
+
+  // ─── Polling when online ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!online) {
+      if (pollRef.current) clearInterval(pollRef.current);
+      return;
+    }
+    refreshRideList();
+    pollRef.current = setInterval(refreshRideList, 30_000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [online]);
 
-  async function toggle(val: boolean) {
-    if (!driverId) {
-      Alert.alert('Jnbk', lang === 'ar' ? 'لم يتم العثور على ملف السائق — افتح الشاشة مرة أخرى' : 'Driver profile was not found — reopen the screen');
-      return;
-    }
+  // ─── Offer countdown ─────────────────────────────────────────────────────────
+  function showOffer(incoming: RideOfferPayload) {
+    // Don't stack offers; ignore if already viewing one
+    if (offer) return;
 
-    setOnline(val);
-    if (!val) {
+    setOffer(incoming);
+    setOfferCountdown(incoming.expiresIn ?? OFFER_TIMEOUT);
+    progressAnim.setValue(1);
+
+    Animated.timing(progressAnim, {
+      toValue: 0,
+      duration: (incoming.expiresIn ?? OFFER_TIMEOUT) * 1000,
+      useNativeDriver: false,
+    }).start();
+
+    let remaining = incoming.expiresIn ?? OFFER_TIMEOUT;
+    countdownRef.current = setInterval(() => {
+      remaining -= 1;
+      setOfferCountdown(remaining);
+      if (remaining <= 0) {
+        clearCountdown();
+        setOffer(null);
+        // Auto-reject on timeout (fire-and-forget)
+        if (incoming.rideId) rejectRide(incoming.rideId).catch(() => null);
+      }
+    }, 1000);
+  }
+
+  function clearCountdown() {
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+      countdownRef.current = null;
+    }
+    progressAnim.stopAnimation();
+  }
+
+  // ─── Accept offer ─────────────────────────────────────────────────────────────
+  async function acceptOffer() {
+    if (!offer || offerLoading) return;
+    setOfferLoading(true);
+    clearCountdown();
+    try {
+      await updateRideStatus(offer.rideId, 'ACCEPTED');
+      const accepted = offer;
+      setOffer(null);
+      setActiveRide({ id: accepted.rideId, ...accepted, status: 'ACCEPTED' });
       setRides([]);
-      setActiveRide(null);
-      if (pollRef.current) clearInterval(pollRef.current);
-    }
-
-    if (!toggleLoading) {
-      setToggleLoading(true);
-      toggleDriverOnline(driverId, val)
-        .catch(() => {
-          setOnline(!val);
-          Alert.alert('Jnbk', lang === 'ar' ? 'تعذر تغيير الحالة — يُرجى إعادة المحاولة' : 'Could not update status — please try again');
-        })
-        .finally(() => setToggleLoading(false));
+    } catch {
+      Alert.alert('Jnbk', lang === 'ar' ? 'تعذر قبول الرحلة — ربما قبلها سائق آخر' : 'Could not accept — another driver may have taken it');
+      setOffer(null);
+    } finally {
+      setOfferLoading(false);
     }
   }
 
-  async function handleStatus(ride: Ride, status: string) {
+  // ─── Reject offer ─────────────────────────────────────────────────────────────
+  async function rejectOffer() {
+    if (!offer || offerLoading) return;
+    setOfferLoading(true);
+    clearCountdown();
+    const rideId = offer.rideId;
+    setOffer(null);
+    try {
+      const result = await rejectRide(rideId);
+      if (result?.suspended) {
+        setSuspendedUntil(result.suspendedUntil ? new Date(result.suspendedUntil) : null);
+        setOnline(false);
+      }
+    } catch {
+      // Rejection acknowledged — no action needed on error
+    } finally {
+      setOfferLoading(false);
+    }
+  }
+
+  // ─── Active ride actions ──────────────────────────────────────────────────────
+  async function handleStatus(ride: ActiveRide, status: string) {
     try {
       await updateRideStatus(ride.id, status);
     } catch {
-      Alert.alert('Jnbk', lang === 'ar' ? 'تعذر تحديث حالة الرحلة — يُرجى إعادة المحاولة' : 'Could not update ride status — please try again');
+      Alert.alert('Jnbk', lang === 'ar' ? 'تعذر تحديث حالة الرحلة' : 'Could not update ride status');
       return;
     }
     if (status === 'COMPLETED') {
@@ -121,11 +234,47 @@ export default function Driver() {
     } else {
       setActiveRide({ ...ride, status });
     }
-    setRides((prev) => prev.filter((r) => r.id !== ride.id));
   }
+
+  async function refreshRideList() {
+    try {
+      const data = await getRides();
+      const list = (Array.isArray(data) ? data : data.rides ?? []) as ActiveRide[];
+      setRides(list.filter((r) => ['REQUESTED', 'ACCEPTED', 'ARRIVING', 'ACTIVE'].includes(r.status ?? '')));
+    } catch {
+      // keep existing list on transient errors
+    }
+  }
+
+  // ─── Toggle online ────────────────────────────────────────────────────────────
+  async function toggle(val: boolean) {
+    if (!driverId) {
+      Alert.alert('Jnbk', lang === 'ar' ? 'لم يتم العثور على ملف السائق' : 'Driver profile not found');
+      return;
+    }
+    if (suspendedUntil && suspendedUntil > new Date()) {
+      const until = suspendedUntil.toLocaleTimeString('ar-SD', { hour: '2-digit', minute: '2-digit' });
+      Alert.alert('Jnbk', lang === 'ar' ? `حسابك معلق حتى ${until}` : `Account suspended until ${until}`);
+      return;
+    }
+    setOnline(val);
+    if (!val) { setRides([]); setActiveRide(null); }
+    if (!toggleLoading) {
+      setToggleLoading(true);
+      toggleDriverOnline(driverId, val)
+        .catch(() => {
+          setOnline(!val);
+          Alert.alert('Jnbk', lang === 'ar' ? 'تعذر تغيير الحالة' : 'Could not update status');
+        })
+        .finally(() => setToggleLoading(false));
+    }
+  }
+
+  const isSuspended = suspendedUntil !== null && suspendedUntil > new Date();
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      {/* Header */}
       <View style={[styles.header, rtl && styles.reverse]}>
         <Text style={[styles.title, rtl && styles.rtl]}>{t.driverDashboard}</Text>
         <View style={[styles.headerRight, rtl && styles.reverse]}>
@@ -138,6 +287,7 @@ export default function Driver() {
         </View>
       </View>
 
+      {/* Verification pending */}
       {isVerified === false && (
         <View style={styles.pendingBadge}>
           <Text style={[styles.pendingText, rtl && styles.rtl]}>
@@ -148,12 +298,32 @@ export default function Driver() {
         </View>
       )}
 
+      {/* Suspension badge */}
+      {isSuspended && (
+        <View style={styles.suspendedBadge}>
+          <Text style={[styles.suspendedText, rtl && styles.rtl]}>
+            {lang === 'ar'
+              ? `⛔ حسابك معلق حتى ${suspendedUntil!.toLocaleString('ar-SD')} بسبب تجاوز حد الرفض اليومي`
+              : `⛔ Account suspended until ${suspendedUntil!.toLocaleString('en-US')} due to excessive rejections`}
+          </Text>
+        </View>
+      )}
+
+      {/* Online toggle */}
       <View style={styles.card}>
         <Text style={styles.status}>{online ? t.online : t.offline}</Text>
-        <Switch value={online} onValueChange={toggle} disabled={isVerified === false || toggleLoading} />
+        <Switch
+          value={online}
+          onValueChange={toggle}
+          disabled={isVerified === false || toggleLoading || isSuspended}
+        />
       </View>
 
-      <Pressable style={[styles.earningsCard, rtl && styles.reverse]} onPress={() => router.push({ pathname: '/wallet', params: { lang, role: 'DRIVER' } })}>
+      {/* Wallet earnings */}
+      <Pressable
+        style={[styles.earningsCard, rtl && styles.reverse]}
+        onPress={() => router.push({ pathname: '/wallet', params: { lang, role: 'DRIVER' } })}
+      >
         <View>
           <Text style={[styles.earningsLabel, rtl && styles.rtl]}>{t.walletEarnings}</Text>
           <Text style={styles.earningsAmount}>
@@ -163,24 +333,123 @@ export default function Driver() {
         <Text style={styles.earningsArrow}>{rtl ? '←' : '→'}</Text>
       </Pressable>
 
+      {/* Active ride steps */}
+      {activeRide && (
+        <View style={styles.activeCard}>
+          <Text style={[styles.activeTitle, rtl && styles.rtl]}>
+            {lang === 'ar' ? 'رحلة جارية' : 'Active ride'}
+          </Text>
+          <Text style={[styles.route, rtl && styles.rtl]}>
+            {activeRide.pickupLabel} → {activeRide.destinationLabel}
+          </Text>
+          <Text style={[styles.fare, rtl && styles.rtl]}>{activeRide.estimatedFare} SDG</Text>
+          <View style={styles.actionRow}>
+            {activeRide.status !== 'ARRIVING' && activeRide.status !== 'ACTIVE' && (
+              <Button title={lang === 'ar' ? 'وصلت' : 'Arrived'} variant="gold" onPress={() => handleStatus(activeRide, 'ARRIVING')} />
+            )}
+            {activeRide.status === 'ARRIVING' && (
+              <Button title={lang === 'ar' ? 'بدأ الرحلة' : 'Start ride'} variant="gold" onPress={() => handleStatus(activeRide, 'ACTIVE')} />
+            )}
+            {activeRide.status === 'ACTIVE' && (
+              <Button title={lang === 'ar' ? 'أنهيت الرحلة' : 'Complete'} variant="gold" onPress={() => handleStatus(activeRide, 'COMPLETED')} />
+            )}
+          </View>
+        </View>
+      )}
+
+      {/* Ride queue (while online and no active ride) */}
+      {online && !activeRide && rides.length === 0 && (
+        <View style={styles.waitingCard}>
+          <Text style={[styles.waitingText, rtl && styles.rtl]}>
+            {lang === 'ar' ? 'في انتظار طلبات جديدة...' : 'Waiting for ride requests...'}
+          </Text>
+        </View>
+      )}
+
       {online && !activeRide && rides.map((ride) => (
         <View key={ride.id} style={styles.rideCard}>
-          <Text style={styles.route}>{ride.pickupLabel} → {ride.destinationLabel}</Text>
+          <Text style={[styles.route, rtl && styles.rtl]}>{ride.pickupLabel} → {ride.destinationLabel}</Text>
           <Text style={styles.muted}>{ride.distanceKm} km</Text>
           <Text style={styles.fare}>{ride.estimatedFare} SDG</Text>
-          <Button title={t.acceptRide} variant="gold" onPress={() => handleStatus(ride, 'ACCEPTED')} />
-          <Button title={t.reject} variant="ghost" onPress={() => setRides((prev) => prev.filter((r) => r.id !== ride.id))} />
+          <Button title={t.acceptRide} variant="gold" onPress={() => handleStatus(ride, 'ACCEPTED').then(() => setActiveRide({ ...ride, status: 'ACCEPTED' })).catch(() => null)} />
         </View>
       ))}
 
-      {activeRide && (
-        <View style={styles.active}>
-          <Text style={styles.route}>{activeRide.pickupLabel} → {activeRide.destinationLabel}</Text>
-          <Button title={lang === 'ar' ? 'وصلت' : 'Arrived'} variant="gold" onPress={() => handleStatus(activeRide, 'ARRIVING')} />
-          <Button title={lang === 'ar' ? 'بدأ الرحلة' : 'Start ride'} variant="gold" onPress={() => handleStatus(activeRide, 'ACTIVE')} />
-          <Button title={lang === 'ar' ? 'أنهيت الرحلة' : 'Complete'} variant="gold" onPress={() => handleStatus(activeRide, 'COMPLETED')} />
+      {/* ─── Incoming Offer Modal ─── */}
+      <Modal
+        visible={!!offer}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {/* prevent accidental close */}}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>
+              {lang === 'ar' ? '🚗 طلب رحلة جديد' : '🚗 New Ride Request'}
+            </Text>
+
+            {/* Countdown progress bar */}
+            <View style={styles.progressTrack}>
+              <Animated.View
+                style={[
+                  styles.progressBar,
+                  {
+                    width: progressAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['0%', '100%'],
+                    }),
+                  },
+                ]}
+              />
+            </View>
+            <Text style={styles.countdown}>
+              {lang === 'ar' ? `ينتهي خلال ${offerCountdown}ث` : `Expires in ${offerCountdown}s`}
+            </Text>
+
+            {/* Route */}
+            <View style={styles.routeBlock}>
+              <View style={styles.routeRow}>
+                <Text style={styles.routeDot}>🟢</Text>
+                <Text style={styles.routeText}>{offer?.pickupLabel}</Text>
+              </View>
+              <View style={[styles.routeRow, { marginTop: 8 }]}>
+                <Text style={styles.routeDot}>🔴</Text>
+                <Text style={styles.routeText}>{offer?.destinationLabel}</Text>
+              </View>
+            </View>
+
+            {/* Fare / distance */}
+            <View style={styles.metaRow}>
+              <View style={styles.metaItem}>
+                <Text style={styles.metaLabel}>{lang === 'ar' ? 'المسافة' : 'Distance'}</Text>
+                <Text style={styles.metaValue}>{offer?.distanceKm} km</Text>
+              </View>
+              <View style={styles.metaSep} />
+              <View style={styles.metaItem}>
+                <Text style={styles.metaLabel}>{lang === 'ar' ? 'الأجرة' : 'Fare'}</Text>
+                <Text style={[styles.metaValue, { color: colors.gold }]}>{offer?.estimatedFare} SDG</Text>
+              </View>
+            </View>
+
+            {/* Rejection warning */}
+            <Text style={styles.warningText}>
+              {lang === 'ar'
+                ? '⚠️ الرفض يُحتسب ضمن حدك اليومي (2 رفض → تعليق)'
+                : '⚠️ Rejection counts toward your daily limit (2 rejections → suspension)'}
+            </Text>
+
+            {/* Action buttons */}
+            <View style={styles.modalButtons}>
+              <Pressable style={[styles.btnReject, offerLoading && styles.btnDisabled]} onPress={rejectOffer} disabled={offerLoading}>
+                <Text style={styles.btnRejectText}>{lang === 'ar' ? 'رفض' : 'Reject'}</Text>
+              </Pressable>
+              <Pressable style={[styles.btnAccept, offerLoading && styles.btnDisabled]} onPress={acceptOffer} disabled={offerLoading}>
+                <Text style={styles.btnAcceptText}>{lang === 'ar' ? 'قبول' : 'Accept'}</Text>
+              </Pressable>
+            </View>
+          </View>
         </View>
-      )}
+      </Modal>
     </ScrollView>
   );
 }
@@ -196,21 +465,60 @@ const styles = StyleSheet.create({
   settingsBtnText: { color: colors.navy, fontWeight: '900', fontSize: 13 },
   langBtn: { backgroundColor: colors.navy, padding: 10, borderRadius: 12 },
   langText: { color: colors.white },
-  card: { backgroundColor: colors.white, padding: 16, borderRadius: 20, flexDirection: 'row', justifyContent: 'space-between' },
-  status: { fontWeight: '900', color: colors.navy },
-  rideCard: { backgroundColor: colors.white, padding: 16, borderRadius: 20, gap: 8 },
-  route: { fontWeight: '900', fontSize: 18 },
-  muted: { color: colors.muted },
-  fare: { color: colors.gold, fontWeight: '900', fontSize: 22 },
-  active: { backgroundColor: colors.white, padding: 20, borderRadius: 20, gap: 10 },
   rtl: { textAlign: 'right', writingDirection: 'rtl' },
+
   pendingBadge: { backgroundColor: '#FFF8E7', borderRadius: 20, padding: 14, borderWidth: 1.5, borderColor: colors.gold },
   pendingText: { color: '#7A5C00', fontWeight: '800', fontSize: 14, lineHeight: 21 },
-  earningsCard: {
-    backgroundColor: colors.navy, borderRadius: 20, padding: 16,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-  },
+
+  suspendedBadge: { backgroundColor: '#FEE2E2', borderRadius: 20, padding: 14, borderWidth: 1.5, borderColor: '#FCA5A5' },
+  suspendedText: { color: '#991B1B', fontWeight: '800', fontSize: 13, lineHeight: 20 },
+
+  card: { backgroundColor: colors.white, padding: 16, borderRadius: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  status: { fontWeight: '900', color: colors.navy, fontSize: 16 },
+
+  earningsCard: { backgroundColor: colors.navy, borderRadius: 20, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   earningsLabel: { color: 'rgba(255,255,255,.75)', fontWeight: '800', fontSize: 13 },
   earningsAmount: { color: colors.gold, fontWeight: '900', fontSize: 26, marginTop: 2 },
   earningsArrow: { color: colors.gold, fontWeight: '900', fontSize: 20 },
+
+  activeCard: { backgroundColor: colors.white, borderRadius: 24, padding: 18, gap: 10, borderWidth: 2, borderColor: colors.teal },
+  activeTitle: { color: colors.teal, fontWeight: '900', fontSize: 13, letterSpacing: 1 },
+  actionRow: { gap: 8 },
+
+  waitingCard: { backgroundColor: colors.white, borderRadius: 20, padding: 24, alignItems: 'center' },
+  waitingText: { color: colors.muted, fontWeight: '800', fontSize: 15 },
+
+  rideCard: { backgroundColor: colors.white, padding: 16, borderRadius: 20, gap: 8 },
+  route: { fontWeight: '900', fontSize: 17, color: colors.navy },
+  muted: { color: colors.muted },
+  fare: { color: colors.gold, fontWeight: '900', fontSize: 22 },
+
+  // ─── Offer modal ───────────────────────────────────────────────────────────
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
+  modalCard: { backgroundColor: colors.white, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, gap: 16 },
+  modalTitle: { fontSize: 22, fontWeight: '900', color: colors.navy, textAlign: 'center' },
+
+  progressTrack: { height: 6, backgroundColor: '#E2E8F0', borderRadius: 99, overflow: 'hidden' },
+  progressBar: { height: 6, backgroundColor: colors.teal, borderRadius: 99 },
+  countdown: { color: colors.muted, fontWeight: '800', fontSize: 13, textAlign: 'center' },
+
+  routeBlock: { backgroundColor: '#F8FAFC', borderRadius: 16, padding: 14, gap: 4 },
+  routeRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  routeDot: { fontSize: 14 },
+  routeText: { color: colors.navy, fontWeight: '800', fontSize: 15, flex: 1 },
+
+  metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 0 },
+  metaItem: { flex: 1, alignItems: 'center' },
+  metaSep: { width: 1, height: 32, backgroundColor: '#E2E8F0' },
+  metaLabel: { color: colors.muted, fontWeight: '700', fontSize: 12 },
+  metaValue: { color: colors.navy, fontWeight: '900', fontSize: 20, marginTop: 2 },
+
+  warningText: { color: '#92400E', backgroundColor: '#FFFBEB', borderRadius: 10, padding: 10, fontWeight: '700', fontSize: 12, textAlign: 'center' },
+
+  modalButtons: { flexDirection: 'row', gap: 12 },
+  btnReject: { flex: 1, backgroundColor: '#F1F5F9', borderRadius: 16, paddingVertical: 16, alignItems: 'center', borderWidth: 1.5, borderColor: '#CBD5E1' },
+  btnRejectText: { color: '#64748B', fontWeight: '900', fontSize: 16 },
+  btnAccept: { flex: 2, backgroundColor: colors.teal, borderRadius: 16, paddingVertical: 16, alignItems: 'center' },
+  btnAcceptText: { color: colors.white, fontWeight: '900', fontSize: 18 },
+  btnDisabled: { opacity: 0.5 },
 });

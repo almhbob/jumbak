@@ -9,6 +9,7 @@ import { emitRideUpdate } from '../services/socketService.js';
 import { validateBody, createRideSchema, updateRideStatusSchema, rateRideSchema } from '../middleware/validate.js';
 import { requireAuth } from '../middleware/auth.js';
 import { logger } from '../services/logger.js';
+import { dispatchRideToDrivers, handleDriverAccepted, handleDriverRejection, handlePassengerCancellation } from '../services/dispatchService.js';
 
 const router = Router();
 
@@ -133,30 +134,27 @@ router.post('/', requireAuth, validateBody(createRideSchema), async (req, res) =
   const stopsJson = stops && stops.length > 2 ? JSON.stringify(stops) : null;
 
   if (prisma) {
+    // Reject suspended passengers
+    if (passengerId) {
+      const passenger = await prisma.user.findUnique({ where: { id: passengerId } }).catch(() => null);
+      if (passenger?.suspendedUntil && passenger.suspendedUntil > new Date()) {
+        return res.status(403).json({
+          error: 'account_suspended',
+          suspendedUntil: passenger.suspendedUntil,
+          message: 'حسابك معلق مؤقتاً بسبب تجاوز حد الإلغاء اليومي',
+        });
+      }
+    }
+
     const vehicle = await prisma.vehicleType.findUnique({ where: { id: vehicleTypeId } });
     const selectedVehicle = vehicle || findVehicleType(vehicleTypeId);
 
-    // Find drivers already assigned to active rides to exclude them first
-    const busyDriverIds = (await prisma.ride.findMany({
-      where: { cityId, status: { in: ACTIVE_RIDE_STATUSES }, driverId: { not: null } },
-      select: { driverId: true },
-    })).map((r) => r.driverId as string);
-
-    const baseWhere: Prisma.DriverWhereInput = { cityId, isOnline: true, isVerified: true, vehicle: { vehicleTypeId } };
-
-    // Prefer a free driver (not on active ride), least recently updated first (round-robin)
-    const matchedDriver =
-      (busyDriverIds.length > 0
-        ? await prisma.driver.findFirst({ where: { ...baseWhere, id: { notIn: busyDriverIds } }, orderBy: { updatedAt: 'asc' } })
-        : null) ??
-      await prisma.driver.findFirst({ where: baseWhere, orderBy: { updatedAt: 'asc' } });
-
+    // Create ride without a driver — dispatch will find and notify eligible drivers
     const ride = await prisma.ride.create({
       data: {
         passengerId,
         cityId,
         vehicleTypeId,
-        driverId: matchedDriver?.id,
         pickupLabel,
         destinationLabel,
         stops: stopsJson,
@@ -169,35 +167,18 @@ router.post('/', requireAuth, validateBody(createRideSchema), async (req, res) =
       },
     });
 
-    if (matchedDriver) {
-      await prisma.driver.update({ where: { id: matchedDriver.id }, data: { isOnline: matchedDriver.isOnline } }).catch(() => null);
-    }
+    // Notify passenger's ride room of initial state
+    emitRideUpdate(ride.id, { rideId: ride.id, status: 'REQUESTED', type: 'new_ride' });
 
-    // Broadcast new ride via WebSocket
-    emitRideUpdate(ride.id, { rideId: ride.id, status: 'REQUESTED', type: 'new_ride', driverId: ride.driverId });
+    // Dispatch to nearest available drivers (non-blocking)
+    dispatchRideToDrivers(ride.id).catch(() => null);
 
-    // Notify matched driver first; otherwise notify compatible online drivers
-    const onlineDrivers = matchedDriver
-      ? await prisma.driver.findMany({ where: { id: matchedDriver.id }, include: { user: { include: { deviceTokens: true } } } })
-      : await prisma.driver.findMany({
-          where: { cityId, isOnline: true, isVerified: true, vehicle: { vehicleTypeId } },
-          include: { user: { include: { deviceTokens: true } } },
-        });
-    const driverTokens = onlineDrivers.flatMap((d) => d.user.deviceTokens.map((t) => t.token));
-    if (driverTokens.length) {
-      sendPushNotifications(driverTokens, 'طلب رحلة جديد', `من ${ride.pickupLabel} إلى ${ride.destinationLabel}`, {
-        rideId: ride.id,
-        type: 'new_ride',
-      }).catch(() => null);
-    }
-
-    logger.info('Ride created', { rideId: ride.id, cityId, vehicleTypeId, passengerId, driverId: ride.driverId });
+    logger.info('Ride created', { rideId: ride.id, cityId, vehicleTypeId, passengerId });
     return res.status(201).json(ride);
   }
 
   const city = findCity(cityId);
   const vehicle = findVehicleType(vehicleTypeId);
-  const matchedDriver = memoryDrivers.find((d) => d.cityId === cityId && d.vehicleTypeId === vehicleTypeId && d.online && d.verified !== false);
   const zones = (memoryCities.find((c) => c.id === cityId) || city).zonesEn || [];
 
   const ride = {
@@ -207,8 +188,8 @@ router.post('/', requireAuth, validateBody(createRideSchema), async (req, res) =
     cityName: city.nameEn,
     vehicleTypeId,
     vehicleName: vehicle.nameEn,
-    driverId: matchedDriver?.id || null,
-    driverName: matchedDriver?.name || null,
+    driverId: null,
+    driverName: null,
     pickupLabel: pickupLabel || zones[0] || 'Pickup',
     destinationLabel: destinationLabel || zones[1] || 'Destination',
     stops: stopsJson,
@@ -219,7 +200,9 @@ router.post('/', requireAuth, validateBody(createRideSchema), async (req, res) =
     createdAt: new Date().toISOString(),
   };
   memoryRides.push(ride);
-  emitRideUpdate(ride.id, { rideId: ride.id, status: 'REQUESTED', type: 'new_ride', driverId: ride.driverId });
+  emitRideUpdate(ride.id, { rideId: ride.id, status: 'REQUESTED', type: 'new_ride' });
+  // Memory mode: emit to all driver sockets
+  dispatchRideToDrivers(ride.id).catch(() => null);
   res.status(201).json(ride);
 });
 
@@ -277,6 +260,16 @@ router.patch('/:id/status', requireAuth, validateBody(updateRideStatusSchema), a
       await prisma.driver.update({ where: { id: actingDriverId }, data: { isOnline: true } }).catch(() => null);
     }
 
+    // When a driver accepts, mark other offers expired and notify sibling drivers
+    if (status === RideStatus.ACCEPTED && actingDriverId) {
+      handleDriverAccepted(actingDriverId, rideId).catch(() => null);
+    }
+
+    // When passenger cancels, enforce daily cancellation limit
+    if (status === RideStatus.CANCELLED && ride.passengerId && !isStaffRole(role) && role !== 'driver') {
+      handlePassengerCancellation(ride.passengerId).catch(() => null);
+    }
+
     // Broadcast status change via WebSocket
     emitRideUpdate(ride.id, { rideId: ride.id, status, driverId: ride.driverId });
 
@@ -285,23 +278,6 @@ router.patch('/:id/status', requireAuth, validateBody(updateRideStatusSchema), a
     if (passengerTokens.length) {
       const msg = rideStatusMessage(status, 'ar');
       if (msg) sendPushNotifications(passengerTokens, msg.title, msg.body, { rideId: ride.id, status }).catch(() => null);
-    }
-
-    // Push to online drivers when no driver assigned yet
-    if (status === RideStatus.REQUESTED && !ride.driverId) {
-      const onlineDrivers = await prisma.driver.findMany({
-        where: { cityId: ride.cityId, isOnline: true, isVerified: true, vehicle: { vehicleTypeId: ride.vehicleTypeId } },
-        include: { user: { include: { deviceTokens: true } } },
-      });
-      const driverTokens = onlineDrivers.flatMap((d) => d.user.deviceTokens.map((t) => t.token));
-      if (driverTokens.length) {
-        sendPushNotifications(
-          driverTokens,
-          'طلب رحلة جديد',
-          `وصل طلب من ${ride.pickupLabel} إلى ${ride.destinationLabel}`,
-          { rideId: ride.id, type: 'new_ride' }
-        ).catch(() => null);
-      }
     }
 
     // Auto-credit driver earnings on completion
@@ -359,6 +335,27 @@ router.patch('/:id/status', requireAuth, validateBody(updateRideStatusSchema), a
   }
 
   res.json(ride);
+});
+
+// Driver rejects a ride offer without changing its status for other drivers
+router.post('/:id/reject', requireAuth, async (req, res) => {
+  const rideId = String(req.params['id']);
+  const role = String(req.staff?.role || '').toLowerCase();
+  const userId = req.staff?.staffId;
+
+  if (role !== 'driver') return res.status(403).json({ error: 'Only drivers can reject rides' });
+
+  if (prisma) {
+    const driver = await prisma.driver.findUnique({ where: { userId } }).catch(() => null);
+    if (!driver) return res.status(403).json({ error: 'Driver profile not found' });
+
+    const result = await handleDriverRejection(driver.id, rideId);
+    logger.info('Driver rejected ride', { rideId, driverId: driver.id, ...result });
+    return res.json({ ok: true, ...result });
+  }
+
+  // Memory mode — just acknowledge, no penalty tracking
+  res.json({ ok: true, suspended: false, deducted: false });
 });
 
 router.patch('/:id/rating', requireAuth, validateBody(rateRideSchema), async (req, res) => {

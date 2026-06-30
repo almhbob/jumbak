@@ -170,6 +170,13 @@ export async function updateRideStatus(rideId: string, status: string) {
   });
 }
 
+export async function rejectRide(rideId: string) {
+  return apiFetch(`/api/rides/${rideId}/reject`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
 export async function submitRideRating(rideId: string, rating: number) {
   return apiFetch(`/api/rides/${rideId}/rating`, {
     method: 'PATCH',

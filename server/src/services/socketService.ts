@@ -13,13 +13,26 @@ export function initSocket(httpServer: HttpServer, allowedOrigins: string[]): IO
   io.on('connection', (socket) => {
     logger.info('Socket connected', { id: socket.id });
 
-    // Client joins a ride room to receive live updates
+    // Passenger / admin joins a ride room to receive live status updates
     socket.on('join_ride', (rideId: string) => {
       socket.join(`ride:${rideId}`);
     });
 
     socket.on('leave_ride', (rideId: string) => {
       socket.leave(`ride:${rideId}`);
+    });
+
+    // Driver joins their personal room to receive ride:offer and driver:suspended events
+    socket.on('join_driver', (driverId: string) => {
+      if (typeof driverId === 'string' && driverId.length < 64) {
+        socket.join(`driver:${driverId}`);
+      }
+    });
+
+    socket.on('leave_driver', (driverId: string) => {
+      if (typeof driverId === 'string') {
+        socket.leave(`driver:${driverId}`);
+      }
     });
 
     socket.on('disconnect', () => {
