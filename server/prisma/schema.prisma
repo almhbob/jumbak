@@ -262,6 +262,13 @@ model SupportRequest {
   updatedAt DateTime      @updatedAt
 }
 
+model PlatformSetting {
+  key       String   @id
+  value     String
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+}
+
 model DriverApplication {
   id               String    @id @default(cuid())
   driverId         String?   @unique

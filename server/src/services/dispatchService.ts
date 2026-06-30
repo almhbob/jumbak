@@ -2,14 +2,7 @@ import { prisma } from '../db.js';
 import { getIo } from './socketService.js';
 import { sendPushNotifications } from './notificationService.js';
 import { logger } from './logger.js';
-
-const DAILY_REJECTION_LIMIT = 2;
-const DAILY_CANCELLATION_LIMIT = 2;
-const OFFER_TIMEOUT_MS = 60_000;
-const SUSPENSION_HOURS_FIRST = 12;
-const SUSPENSION_HOURS_DRIVER_REPEAT = 24;
-const SUSPENSION_HOURS_PASSENGER_REPEAT = 48;
-const WALLET_DEDUCTION_SDG = 50;
+import { getDispatchSettings } from './settingsService.js';
 
 function isToday(date: Date | null | undefined): boolean {
   if (!date) return false;
@@ -27,8 +20,9 @@ function isToday(date: Date | null | undefined): boolean {
  * records, and push a ride:offer socket event + push notification to each.
  */
 export async function dispatchRideToDrivers(rideId: string): Promise<void> {
+  const cfg = await getDispatchSettings();
+
   if (!prisma) {
-    // Memory mode: broadcast to any connected client listening on the generic channel
     getIo()?.emit('ride:offer', { rideId });
     return;
   }
@@ -65,7 +59,7 @@ export async function dispatchRideToDrivers(rideId: string): Promise<void> {
     destinationLabel: ride.destinationLabel,
     estimatedFare: ride.estimatedFare,
     distanceKm: ride.distanceKm,
-    expiresIn: OFFER_TIMEOUT_MS / 1000,
+    expiresIn: cfg.offerTimeoutSeconds,
   };
 
   const pushTokens: string[] = [];
@@ -90,7 +84,7 @@ export async function dispatchRideToDrivers(rideId: string): Promise<void> {
       where: { rideId, status: 'PENDING' },
       data: { status: 'EXPIRED', respondedAt: new Date() },
     }).catch(() => null);
-  }, OFFER_TIMEOUT_MS);
+  }, cfg.offerTimeoutSeconds * 1000);
 
   logger.info('dispatch: offers sent', { rideId, count: eligible.length });
 }
@@ -135,6 +129,8 @@ export async function handleDriverRejection(
 ): Promise<{ suspended: boolean; suspendedUntil: Date | null; deducted: boolean }> {
   if (!prisma) return { suspended: false, suspendedUntil: null, deducted: false };
 
+  const cfg = await getDispatchSettings();
+
   await prisma.rideOffer.updateMany({
     where: { rideId, driverId, status: 'PENDING' },
     data: { status: 'REJECTED', respondedAt: new Date() },
@@ -160,9 +156,9 @@ export async function handleDriverRejection(
     lastRejectionDate: now,
   };
 
-  if (newCount >= DAILY_REJECTION_LIMIT) {
+  if (newCount >= cfg.dailyRejectionLimit) {
     const newViolations = driver.violationCount + 1;
-    const hours = newViolations === 1 ? SUSPENSION_HOURS_FIRST : SUSPENSION_HOURS_DRIVER_REPEAT;
+    const hours = newViolations === 1 ? cfg.suspensionHoursFirst : cfg.suspensionHoursDriverRepeat;
     suspendedUntil = new Date(now.getTime() + hours * 3_600_000);
 
     update.suspendedUntil = suspendedUntil;
@@ -173,16 +169,16 @@ export async function handleDriverRejection(
 
     if (newViolations > 1) {
       const wallet = await prisma.wallet.findUnique({ where: { userId: driver.userId } });
-      if (wallet && wallet.balance >= WALLET_DEDUCTION_SDG) {
+      if (wallet && wallet.balance >= cfg.walletDeductionSDG) {
         await prisma.$transaction([
           prisma.wallet.update({
             where: { id: wallet.id },
-            data: { balance: { decrement: WALLET_DEDUCTION_SDG } },
+            data: { balance: { decrement: cfg.walletDeductionSDG } },
           }),
           prisma.walletTransaction.create({
             data: {
               walletId: wallet.id,
-              amount: -WALLET_DEDUCTION_SDG,
+              amount: -cfg.walletDeductionSDG,
               type: 'RIDE_PAYMENT',
               description: `خصم مخالفة رفض الرحلات — المخالفة #${newViolations}`,
             },
@@ -195,17 +191,16 @@ export async function handleDriverRejection(
     const tokens = driver.user.deviceTokens.map((t: { token: string }) => t.token);
     if (tokens.length) {
       const msg = deducted
-        ? `تجاوزت حد الرفض اليومي. حسابك معلق ${hours} ساعة وتم خصم ${WALLET_DEDUCTION_SDG} SDG من محفظتك.`
+        ? `تجاوزت حد الرفض اليومي. حسابك معلق ${hours} ساعة وتم خصم ${cfg.walletDeductionSDG} SDG من محفظتك.`
         : `تجاوزت حد الرفض اليومي. حسابك معلق لمدة ${hours} ساعة.`;
       sendPushNotifications(tokens, 'تم تعليق حسابك مؤقتاً', msg, { type: 'suspension' }).catch(() => null);
     }
 
-    // Push suspension event to driver's socket room so the app reacts immediately
     getIo()?.to(`driver:${driverId}`).emit('driver:suspended', {
       suspendedUntil,
       hours,
       deducted,
-      deductedAmount: deducted ? WALLET_DEDUCTION_SDG : 0,
+      deductedAmount: deducted ? cfg.walletDeductionSDG : 0,
     });
 
     logger.info('driver suspended', { driverId, violations: newViolations, suspendedUntil, deducted });
@@ -223,6 +218,8 @@ export async function handlePassengerCancellation(
   passengerId: string
 ): Promise<{ suspended: boolean; suspendedUntil: Date | null }> {
   if (!prisma) return { suspended: false, suspendedUntil: null };
+
+  const cfg = await getDispatchSettings();
 
   const user = await prisma.user.findUnique({
     where: { id: passengerId },
@@ -243,10 +240,10 @@ export async function handlePassengerCancellation(
     lastCancellationDate: now,
   };
 
-  if (newCount >= DAILY_CANCELLATION_LIMIT) {
+  if (newCount >= cfg.dailyCancellationLimit) {
     const isRepeat = user.suspendedUntil !== null &&
       user.suspendedUntil > new Date(now.getTime() - 7 * 24 * 3_600_000);
-    const hours = isRepeat ? SUSPENSION_HOURS_PASSENGER_REPEAT : SUSPENSION_HOURS_FIRST;
+    const hours = isRepeat ? cfg.suspensionHoursPassengerRepeat : cfg.suspensionHoursPassengerFirst;
     suspendedUntil = new Date(now.getTime() + hours * 3_600_000);
 
     update.suspendedUntil = suspendedUntil;

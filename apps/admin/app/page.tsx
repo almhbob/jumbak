@@ -27,6 +27,7 @@ const copy = {
     finance: 'المحاسبة', financeDesc: 'المحفظة، التحصيل، والتقارير المالية.',
     workflow: 'تنسيق العمل', workflowDesc: 'تنسيق المهام اليومية والأسبوعية.',
     launch: 'جاهزية الإطلاق', launchDesc: 'متطلبات وجاهزية إطلاق الخدمة.',
+    penalties: 'العقوبات والتوزيع', penaltiesDesc: 'إعدادات حدود الرفض والإلغاء ومدد التعليق وخصومات المحفظة.',
     trips: 'إجمالي الرحلات', active: 'السائقون النشطون', open: 'طلبات الدعم', cities: 'المدن',
     summary: 'ملخص سريع', done: 'الرحلات المكتملة', revenue: 'الإيراد التقديري',
     source: 'مصدر البيانات', firebase: 'Firebase Firestore', backend: 'Backend API', preview: 'وضع المعاينة',
@@ -45,6 +46,7 @@ const copy = {
     finance: 'Finance', financeDesc: 'Wallet, collections, and financial reports.',
     workflow: 'Workflow', workflowDesc: 'Daily and weekly task coordination.',
     launch: 'Launch', launchDesc: 'Launch readiness and requirements checklist.',
+    penalties: 'Penalties & Dispatch', penaltiesDesc: 'Rejection/cancellation limits, suspension durations, and wallet deductions.',
     trips: 'Total Trips', active: 'Active Drivers', open: 'Support Open', cities: 'Cities',
     summary: 'Quick Summary', done: 'Completed Rides', revenue: 'Est. Revenue',
     source: 'Data Source', firebase: 'Firebase Firestore', backend: 'Backend API', preview: 'Preview Mode',
@@ -62,6 +64,7 @@ const workspaces: { key: keyof typeof copy.ar; descKey: keyof typeof copy.ar; pa
   { key: 'workflow',   descKey: 'workflowDesc',    path: '/workflow',   accent: '#F59E0B' },
   { key: 'settings',   descKey: 'settingsDesc',    path: '/settings',   accent: '#6366F1' },
   { key: 'launch',     descKey: 'launchDesc',      path: '/launch',     accent: '#EF4444' },
+  { key: 'penalties',  descKey: 'penaltiesDesc',   path: '/penalties',  accent: '#DC2626' },
 ];
 
 async function apiGet<T>(path: string, fallback: T): Promise<T> {

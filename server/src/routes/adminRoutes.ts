@@ -3,6 +3,7 @@ import { prisma } from '../db.js';
 import { memoryCities, memoryVehicleTypes } from './configStore.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { rufaaZones, ZONE_CATEGORIES } from '../data/rufaaZones.js';
+import { getDispatchSettings, updateDispatchSetting, dispatchSettingsDefaults, type DispatchSettings } from '../services/settingsService.js';
 
 type MemZone = { id: string; cityId: string; nameAr: string; nameEn: string; category: string; fixedFare?: number | null };
 const memoryZones: MemZone[] = rufaaZones.map((z) => ({ ...z }));
@@ -185,6 +186,48 @@ router.delete('/zones/:id', requireAuth, requireRole('developer', 'business'), a
   const idx = memoryZones.findIndex((z) => z.id === id);
   if (idx >= 0) memoryZones.splice(idx, 1);
   res.json({ ok: true });
+});
+
+// ─── Penalty / Dispatch settings ──────────────────────────────────────────────
+
+const PENALTY_ROLES = ['developer', 'supervisor', 'operations'] as const;
+
+router.get('/penalty-settings', requireAuth, requireRole(...PENALTY_ROLES), async (_req, res) => {
+  const settings = await getDispatchSettings();
+  res.json({ settings, defaults: dispatchSettingsDefaults });
+});
+
+router.patch('/penalty-settings', requireAuth, requireRole(...PENALTY_ROLES), async (req, res) => {
+  const updatedBy = String(req.staff?.username || req.staff?.staffId || 'admin');
+  const allowed: (keyof DispatchSettings)[] = [
+    'dailyRejectionLimit',
+    'suspensionHoursFirst',
+    'suspensionHoursDriverRepeat',
+    'walletDeductionSDG',
+    'dailyCancellationLimit',
+    'suspensionHoursPassengerFirst',
+    'suspensionHoursPassengerRepeat',
+    'offerTimeoutSeconds',
+  ];
+
+  const errors: string[] = [];
+  const updated: Partial<DispatchSettings> = {};
+
+  for (const field of allowed) {
+    if (req.body[field] === undefined) continue;
+    const n = Number(req.body[field]);
+    if (!Number.isFinite(n) || n <= 0) {
+      errors.push(`${field}: must be a positive number`);
+      continue;
+    }
+    await updateDispatchSetting(field, n, updatedBy).catch((e) => errors.push(String(e)));
+    updated[field] = n;
+  }
+
+  if (errors.length) return res.status(400).json({ error: errors.join('; '), updated });
+
+  const settings = await getDispatchSettings();
+  res.json({ ok: true, settings });
 });
 
 export default router;
