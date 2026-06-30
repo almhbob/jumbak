@@ -1,4 +1,10 @@
-const { withAppBuildGradle, withGradleProperties } = require('@expo/config-plugins');
+let withAppBuildGradle, withGradleProperties;
+try {
+  ({ withAppBuildGradle, withGradleProperties } = require('@expo/config-plugins'));
+} catch {
+  // Gradle re-evaluates app.json at build time without mobile node_modules in scope;
+  // signing was already injected during prebuild, so gracefully skip.
+}
 const path = require('path');
 const fs = require('fs');
 
@@ -10,6 +16,7 @@ const KEY_ALIAS = process.env.KEYSTORE_ALIAS || 'jnbk-release';
 const KEY_PASS = process.env.KEY_PASSWORD || 'Jnbk@2026!Secure';
 
 function withReleaseSigning(config) {
+  if (!withGradleProperties || !withAppBuildGradle) return config;
   config = withGradleProperties(config, (c) => {
     const props = c.modResults;
     const set = (k, v) => { const i = props.findIndex((p) => p.key === k); if (i >= 0) props[i] = { type: 'property', key: k, value: v }; else props.push({ type: 'property', key: k, value: v }); };
