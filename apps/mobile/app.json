@@ -3,7 +3,7 @@
     "name": "جنبك",
     "slug": "riksha-jnbk",
     "scheme": "jnbk",
-    "version": "0.1.7",
+    "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/icon.png",
@@ -14,7 +14,7 @@
     },
     "android": {
       "package": "com.almhbob.jnbk",
-      "versionCode": 8,
+      "versionCode": 9,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#063B63"
@@ -35,6 +35,7 @@
     },
     "plugins": [
       "expo-router",
+      "./plugins/withReleaseSigning",
       [
         "expo-notifications",
         {

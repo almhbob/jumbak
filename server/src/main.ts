@@ -184,6 +184,43 @@ app.post('/api/pricing/estimate', async (req, res) => {
   });
 });
 
+// ─── Public legal pages (required for Google Play listing) ────────────────
+const legalHtml = (titleAr: string, titleEn: string, sections: { h: string; p: string }[]) => `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${titleAr} — جنبك</title>
+<style>body{font-family:system-ui,sans-serif;max-width:760px;margin:40px auto;padding:0 20px;color:#1a2535;line-height:1.7}
+h1{color:#063B63;font-size:1.6rem}h2{color:#063B63;font-size:1.1rem;margin-top:2rem}
+p{color:#374151}footer{margin-top:3rem;color:#9ca3af;font-size:.85rem;border-top:1px solid #e5e7eb;padding-top:1rem}</style>
+</head><body>
+<h1>${titleAr}<br><small style="font-size:.7em;color:#6b7280">${titleEn}</small></h1>
+${sections.map(s => `<h2>${s.h}</h2><p>${s.p}</p>`).join('\n')}
+<footer>جنبك — Jnbk &nbsp;|&nbsp; آخر تحديث: ${new Date().getFullYear()}</footer>
+</body></html>`;
+
+app.get('/privacy', (_req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(legalHtml('سياسة الخصوصية', 'Privacy Policy', [
+    { h: 'البيانات التي نجمعها', p: 'رقم الهاتف، الاسم، المدينة، بيانات الرحلات، رسائل الدعم، وبيانات السائق والمركبة عند الحاجة.' },
+    { h: 'كيف نستخدم البيانات', p: 'تشغيل الرحلات، دعم المستخدمين، إدارة السائقين، حساب الأسعار، تحسين السلامة، وإصدار التقارير التشغيلية.' },
+    { h: 'بيانات الموقع', p: 'قد تُستخدم بيانات الموقع لاختيار نقطة الانطلاق والوجهة وحساب المسافة وربط السائقين القريبين.' },
+    { h: 'أمن البيانات', p: 'يتم تقييد الوصول حسب الصلاحية. في الإنتاج يُستخدم اتصال مشفر وجلسات آمنة وصلاحيات محدودة.' },
+    { h: 'حذف البيانات', p: 'يمكن للمستخدمين طلب حذف بياناتهم عبر قسم الدعم في التطبيق.' },
+    { h: 'التواصل', p: 'يمكن التواصل عبر التطبيق أو البريد الإلكتروني للدعم المنشور في صفحة المتجر.' },
+  ]));
+});
+
+app.get('/terms', (_req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(legalHtml('شروط الاستخدام', 'Terms of Use', [
+    { h: 'نطاق الخدمة', p: 'يوفر جنبك منصة تقنية لربط الركاب بمقدمي خدمات النقل المتاحين حسب المدن والخدمات المدعومة.' },
+    { h: 'مسؤوليات المستخدم', p: 'يلتزم المستخدم بتقديم بيانات صحيحة واحترام السائقين والركاب وعدم إساءة استخدام المنصة.' },
+    { h: 'مسؤوليات السائق', p: 'يلتزم السائق بتقديم بيانات صحيحة والامتثال للأنظمة المحلية والحفاظ على سلامة المركبة ومعايير الرحلة.' },
+    { h: 'الأسعار', p: 'قد يتغير السعر التقديري حسب المسافة والمدينة ونوع الخدمة والعروض أو التعديلات التشغيلية.' },
+    { h: 'إيقاف الحساب', p: 'يمكن لجنبك إيقاف الحسابات المرتبطة بالاحتيال أو السلوك غير الآمن أو الشكاوى المتكررة أو مخالفة القواعد.' },
+  ]));
+});
+
 // ─── Health ────────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {
   res.json({ ok: true, app: 'Jnbk', appAr: 'جنبك', region: 'global-ready', database: isDatabaseEnabled() });

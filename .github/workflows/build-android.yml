@@ -47,7 +47,18 @@ jobs:
         env:
           EXPO_PUBLIC_API_URL: https://jumbakserver-production.up.railway.app
           EXPO_NO_TELEMETRY: 1
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEYSTORE_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: npx expo prebuild --platform android --clean
+
+      - name: Decode release keystore
+        run: |
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > apps/mobile/release.keystore
+          else
+            echo "⚠️  KEYSTORE_BASE64 secret not set — APK will be signed with debug key"
+          fi
 
       - name: Make gradlew executable
         run: chmod +x apps/mobile/android/gradlew
@@ -70,6 +81,9 @@ jobs:
           SENTRY_DISABLE_AUTO_UPLOAD: true
           SENTRY_NO_PROGRESS_BAR: true
           EXPO_PUBLIC_API_URL: https://jumbakserver-production.up.railway.app
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEYSTORE_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew assembleRelease --stacktrace
 
       - name: Find APK
