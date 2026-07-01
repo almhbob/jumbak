@@ -22,7 +22,9 @@
       "permissions": [
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE",
-        "android.permission.POST_NOTIFICATIONS"
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
       ]
     },
     "ios": {
@@ -36,6 +38,13 @@
     "plugins": [
       "expo-router",
       "./plugins/withReleaseSigning",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "جنبك يستخدم موقعك لتوصيل الرحلات بدقة.",
+          "locationWhenInUsePermission": "جنبك يستخدم موقعك لتوصيل الرحلات بدقة."
+        }
+      ],
       [
         "expo-notifications",
         {
