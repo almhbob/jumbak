@@ -2,7 +2,7 @@ name: Build Android APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, claude/repo-review-apk-build-ter5u4]
   workflow_dispatch:
 
 jobs:
