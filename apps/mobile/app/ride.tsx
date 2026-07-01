@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, View, Text, StyleSheet, Pressable, Image } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, Pressable, Image, Alert } from 'react-native';
 
 const logoSource = require('../assets/logo-mark.png');
 import { useLocalSearchParams, router } from 'expo-router';
@@ -8,7 +8,7 @@ import { colors } from '../src/constants/theme';
 import { dict, Lang } from '../src/i18n';
 import { sw } from '../src/constants/responsive';
 import { getDrivers, getRide } from '../src/api';
-import { joinRide, leaveRide, onRideUpdate } from '../src/socketClient';
+import { joinRide, leaveRide, onRideUpdate, onNoDrivers } from '../src/socketClient';
 
 type Driver = { id: string; name: string; vehicle: string; rating: number; online?: boolean };
 type RideDetails = { id: string; pickupLabel?: string; destinationLabel?: string; estimatedFare?: number; finalFare?: number; status?: string; driver?: { user?: { name?: string; phone?: string }; vehicle?: { vehicleType?: { nameAr?: string; nameEn?: string } } }; vehicleType?: { nameAr?: string; nameEn?: string }; city?: { nameAr?: string; nameEn?: string } };
@@ -51,6 +51,16 @@ export default function Ride() {
       if (data.rideId === rideId) loadRide(true);
     });
 
+    const unsubNoDrivers = onNoDrivers((data) => {
+      if (data.rideId !== rideId) return;
+      Alert.alert(
+        lang === 'ar' ? 'لا يوجد سائقون' : 'No Drivers Available',
+        lang === 'ar'
+          ? 'لا يوجد سائقون متاحون في منطقتك الآن. يرجى المحاولة مرة أخرى لاحقاً.'
+          : 'No available drivers in your area right now. Please try again later.'
+      );
+    });
+
     // Fallback polling (every 30s) in case socket is not connected
     const isFinal = completed || currentStatus === 'CANCELLED';
     const fallbackTimer = autoRefresh && !isFinal ? setInterval(() => loadRide(true), 30000) : null;
@@ -58,6 +68,7 @@ export default function Ride() {
     return () => {
       leaveRide(rideId);
       unsub();
+      unsubNoDrivers();
       if (fallbackTimer) clearInterval(fallbackTimer);
     };
   }, [params.rideId, autoRefresh, completed]);

@@ -227,6 +227,8 @@ model Ride {
   pickupLabel      String
   destinationLabel String
   stops            String?
+  pickupLat        Float?
+  pickupLng        Float?
   distanceKm       Float       @default(2)
   estimatedFare    Int
   finalFare        Int?

@@ -3,7 +3,7 @@ import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../db.js';
 import { memoryStaff, memoryUsers } from '../store.js';
-import { signToken, signRefreshToken, verifyRefreshToken } from '../middleware/auth.js';
+import { signToken, signRefreshToken, verifyRefreshToken, requireAuth } from '../middleware/auth.js';
 import { validateBody, requestOtpSchema, verifyOtpSchema, staffLoginSchema } from '../middleware/validate.js';
 import { UserRole } from '@prisma/client';
 import { verifyFirebaseIdToken } from '../services/firebaseAdmin.js';
@@ -259,6 +259,40 @@ router.post('/auth/refresh', loginLimiter, (req, res) => {
 
   const token = signToken({ staffId: payload.staffId, username: payload.username, role: payload.role });
   res.json({ ok: true, token });
+});
+
+// DELETE /api/auth/account — permanently anonymize the caller's account (Google Play requirement)
+router.delete('/auth/account', requireAuth, async (req, res) => {
+  const userId = req.staff?.staffId;
+  if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+
+  if (prisma) {
+    const anonPhone = `deleted_${userId}_${Date.now()}`;
+    await prisma.user
+      .update({
+        where: { id: userId },
+        data: {
+          name: null,
+          phone: anonPhone,
+          otpCode: null,
+          otpExpiresAt: null,
+          suspendedUntil: null,
+        },
+      })
+      .catch(() => null);
+
+    await prisma.deviceToken.deleteMany({ where: { userId } }).catch(() => null);
+
+    logger.info('Account anonymized (user-requested deletion)', { userId });
+    return res.json({ ok: true });
+  }
+
+  const user = memoryUsers.find((u) => u.id === userId);
+  if (user) {
+    user.name = null;
+    user.phone = `deleted_${userId}_${Date.now()}`;
+  }
+  res.json({ ok: true });
 });
 
 export default router;

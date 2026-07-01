@@ -230,4 +230,105 @@ router.patch('/penalty-settings', requireAuth, requireRole(...PENALTY_ROLES), as
   res.json({ ok: true, settings });
 });
 
+// ─── Unsuspend ────────────────────────────────────────────────────────────────
+
+const UNSUSPEND_ROLES = ['developer', 'supervisor', 'operations'] as const;
+
+router.patch('/drivers/:id/unsuspend', requireAuth, requireRole(...UNSUSPEND_ROLES), async (req, res) => {
+  const driverId = String(req.params['id']);
+
+  if (prisma) {
+    const driver = await prisma.driver
+      .update({
+        where: { id: driverId },
+        data: { suspendedUntil: null, violationCount: 0, dailyRejections: 0, isOnline: false },
+      })
+      .catch(() => null);
+    if (!driver) return res.status(404).json({ error: 'Driver not found' });
+    return res.json({ ok: true, driverId });
+  }
+
+  res.json({ ok: true, driverId });
+});
+
+router.patch('/users/:id/unsuspend', requireAuth, requireRole(...UNSUSPEND_ROLES), async (req, res) => {
+  const userId = String(req.params['id']);
+
+  if (prisma) {
+    const user = await prisma.user
+      .update({
+        where: { id: userId },
+        data: { suspendedUntil: null, dailyCancellations: 0 },
+      })
+      .catch(() => null);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    return res.json({ ok: true, userId });
+  }
+
+  res.json({ ok: true, userId });
+});
+
+// ─── Dispatch Monitor ─────────────────────────────────────────────────────────
+
+router.get('/dispatch-monitor', requireAuth, requireRole(...PENALTY_ROLES), async (_req, res) => {
+  if (!prisma) {
+    return res.json({
+      suspendedDrivers: [],
+      suspendedPassengers: [],
+      pendingOffers: 0,
+      openRides: 0,
+      todayRejections: [],
+    });
+  }
+
+  const now = new Date();
+  const startOfDay = new Date(now);
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const [suspendedDrivers, suspendedPassengers, pendingOffers, openRides, driverRejections] =
+    await Promise.all([
+      prisma.driver.findMany({
+        where: { suspendedUntil: { gt: now } },
+        include: { user: true },
+      }),
+      prisma.user.findMany({
+        where: { suspendedUntil: { gt: now }, role: 'PASSENGER' },
+      }),
+      prisma.rideOffer.count({ where: { status: 'PENDING' } }),
+      prisma.ride.count({ where: { status: 'REQUESTED', driverId: null } }),
+      prisma.driver.findMany({
+        where: { dailyRejections: { gt: 0 }, lastRejectionDate: { gte: startOfDay } },
+        include: { user: true },
+      }),
+    ]);
+
+  type DrvRow = { id: string; violationCount: number; dailyRejections: number; suspendedUntil: Date | null; user: { name: string | null; phone: string } };
+  type UsrRow = { id: string; name: string | null; phone: string; suspendedUntil: Date | null };
+
+  res.json({
+    suspendedDrivers: (suspendedDrivers as DrvRow[]).map((d) => ({
+      id: d.id,
+      name: d.user.name || d.user.phone,
+      phone: d.user.phone,
+      suspendedUntil: d.suspendedUntil,
+      violationCount: d.violationCount,
+    })),
+    suspendedPassengers: (suspendedPassengers as UsrRow[]).map((u) => ({
+      id: u.id,
+      name: u.name || u.phone,
+      phone: u.phone,
+      suspendedUntil: u.suspendedUntil,
+    })),
+    pendingOffers,
+    openRides,
+    todayRejections: (driverRejections as DrvRow[]).map((d) => ({
+      id: d.id,
+      name: d.user.name || d.user.phone,
+      phone: d.user.phone,
+      dailyRejections: d.dailyRejections,
+      violationCount: d.violationCount,
+    })),
+  });
+});
+
 export default router;

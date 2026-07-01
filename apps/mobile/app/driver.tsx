@@ -5,13 +5,14 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useLocalSearchParams } from 'expo-router';
+import * as Location from 'expo-location';
 import { Button } from '../src/components/Button';
 import { colors } from '../src/constants/theme';
 import { dict, Lang } from '../src/i18n';
 import { getRides, updateRideStatus, rejectRide, getWallet, toggleDriverOnline } from '../src/api';
 import {
   getSocket, onRideUpdate, onRideOffer, onRideTaken, onDriverSuspended,
-  joinDriverRoom, leaveDriverRoom, disconnectSocket,
+  joinDriverRoom, leaveDriverRoom, disconnectSocket, emitDriverLocation,
   type RideOfferPayload, type SuspensionPayload,
 } from '../src/socketClient';
 import { getCurrentDriverProfile } from '../src/driverProfile';
@@ -144,6 +145,28 @@ export default function Driver() {
     pollRef.current = setInterval(refreshRideList, 30_000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [online]);
+
+  // ─── GPS tracking when online ─────────────────────────────────────────────
+  useEffect(() => {
+    if (!online || !driverId) return;
+    let locationSub: Location.LocationSubscription | null = null;
+
+    Location.requestForegroundPermissionsAsync()
+      .then(({ status }) => {
+        if (status !== 'granted') return;
+        Location.watchPositionAsync(
+          { accuracy: Location.Accuracy.Balanced, distanceInterval: 50, timeInterval: 30_000 },
+          (loc) => {
+            if (driverId) {
+              emitDriverLocation(driverId, loc.coords.latitude, loc.coords.longitude);
+            }
+          }
+        ).then((sub) => { locationSub = sub; }).catch(() => null);
+      })
+      .catch(() => null);
+
+    return () => { locationSub?.remove(); };
+  }, [online, driverId]);
 
   // ─── Offer countdown ─────────────────────────────────────────────────────────
   function showOffer(incoming: RideOfferPayload) {

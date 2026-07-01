@@ -78,6 +78,18 @@ export function onDriverSuspended(callback: (data: SuspensionPayload) => void): 
   return () => s.off('driver:suspended', callback);
 }
 
+// Driver sends live GPS to server for nearest-driver dispatch sorting
+export function emitDriverLocation(driverId: string, lat: number, lng: number): void {
+  getSocket().emit('driver:location', { driverId, lat, lng });
+}
+
+// Passenger receives this when all dispatch retries are exhausted
+export function onNoDrivers(callback: (data: { rideId: string }) => void): () => void {
+  const s = getSocket();
+  s.on('ride:no_drivers', callback);
+  return () => s.off('ride:no_drivers', callback);
+}
+
 export function disconnectSocket(): void {
   socket?.disconnect();
   socket = null;

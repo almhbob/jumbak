@@ -278,3 +278,9 @@ export async function unregisterPushToken(token: string) {
     body: JSON.stringify({ token }),
   });
 }
+
+// ─── Account ──────────────────────────────────────────────────────────────────
+
+export async function deleteAccount() {
+  return apiFetch('/api/auth/account', { method: 'DELETE' });
+}

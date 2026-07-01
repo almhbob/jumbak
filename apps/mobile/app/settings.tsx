@@ -7,7 +7,7 @@ import { colors } from '../src/constants/theme';
 import { sw } from '../src/constants/responsive';
 import { dict, Lang } from '../src/i18n';
 import { cities, vehicleTypes } from '../src/serviceConfig';
-import { setTokenCache } from '../src/api';
+import { setTokenCache, deleteAccount } from '../src/api';
 import { unregisterPushToken } from '../src/api';
 
 const SETTINGS_KEYS = {
@@ -66,6 +66,35 @@ export default function Settings() {
   function setCashOnly(v: boolean) {
     setCashOnlyState(v);
     AsyncStorage.setItem(SETTINGS_KEYS.cashOnly, String(v));
+  }
+
+  async function handleDeleteAccount() {
+    Alert.alert(
+      lang === 'ar' ? 'حذف الحساب نهائياً' : 'Delete My Account',
+      lang === 'ar'
+        ? 'هل أنت متأكد؟ سيتم حذف جميع بياناتك بشكل دائم ولا يمكن التراجع عن ذلك.'
+        : 'Are you sure? All your data will be permanently deleted. This cannot be undone.',
+      [
+        { text: lang === 'ar' ? 'إلغاء' : 'Cancel', style: 'cancel' },
+        {
+          text: lang === 'ar' ? 'حذف نهائي' : 'Delete permanently',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteAccount();
+            } catch { /* best-effort — proceed to clear local session */ }
+            const pushToken = await AsyncStorage.getItem('jnbk_push_token');
+            if (pushToken) unregisterPushToken(pushToken).catch(() => null);
+            await AsyncStorage.multiRemove([
+              'jnbk_auth_token', 'jnbk_refresh_token', 'jnbk_user_id',
+              'jnbk_user_role', 'jnbk_driver_id', 'jnbk_push_token',
+            ]);
+            setTokenCache(null);
+            router.replace('/');
+          },
+        },
+      ]
+    );
   }
 
   async function handleLogout() {
@@ -168,6 +197,11 @@ export default function Settings() {
       <Pressable style={styles.logoutBtn} onPress={handleLogout}>
         <Text style={styles.logoutText}>{lang === 'ar' ? 'تسجيل الخروج' : 'Sign out'}</Text>
       </Pressable>
+
+      {/* Delete account */}
+      <Pressable style={styles.deleteBtn} onPress={handleDeleteAccount}>
+        <Text style={styles.deleteText}>{lang === 'ar' ? 'حذف الحساب نهائياً' : 'Delete my account'}</Text>
+      </Pressable>
     </ScrollView>
   );
 }
@@ -218,5 +252,11 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: '#E74C3C', alignItems: 'center',
   },
   logoutText: { color: '#E74C3C', fontWeight: '900', fontSize: sw(16) },
+  deleteBtn: {
+    marginTop: sw(6), paddingVertical: sw(14), borderRadius: 28,
+    borderWidth: 1.5, borderColor: '#B91C1C', alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+  },
+  deleteText: { color: '#B91C1C', fontWeight: '900', fontSize: sw(14) },
   rtl: { textAlign: 'right', writingDirection: 'rtl' },
 });
