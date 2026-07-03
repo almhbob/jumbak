@@ -198,7 +198,7 @@ export default function Home() {
         <View style={styles.logoWrap}><BrandLogo size='sm' onDark showTagline={false} /></View>
         <Text style={[styles.heroPromise, rtl && styles.rtl]}>{lang === 'ar' ? brand.promiseAr : brand.promiseEn}</Text>
         <Text style={[styles.heroSub, rtl && styles.rtl]}>{lang === 'ar' ? brand.serviceAr : brand.serviceEn}</Text>
-      </LinearGradient>
+      </View>
 
       <View style={[styles.quickRow, rtl && styles.reverse]}>
         <Pressable style={styles.quickCard} onPress={() => router.push({ pathname: '/wallet', params: { lang } })}>
