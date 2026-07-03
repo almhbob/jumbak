@@ -2,7 +2,7 @@ import React from 'react';
 import { Image, View, StyleSheet } from 'react-native';
 
 const logoSource = require('../../assets/logo-mark.png');
-const LOGO_ASPECT = 383 / 364; // logo-mark.png height / width
+const LOGO_ASPECT = 383 / 364;
 
 type Props = {
   size?: 'sm' | 'md' | 'lg';
@@ -25,13 +25,15 @@ export function BrandLogo({ size = 'md' }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#ffffff',
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
     paddingVertical: 10,
     paddingHorizontal: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.14,
-    shadowRadius: 10,
-    elevation: 5,
+    shadowColor: '#13D5F0',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 18,
+    elevation: 6,
   },
 });
