@@ -1,0 +1,31 @@
+databases:
+  - name: jumbak-db
+    plan: free
+    region: frankfurt
+
+services:
+  - type: web
+    name: jumbak-server
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: npm install -g pnpm && pnpm install --frozen-lockfile=false && pnpm --filter @jumbak/server build
+    startCommand: pnpm --filter @jumbak/server start:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: jumbak-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: AT_API_KEY
+        sync: false
+      - key: AT_USERNAME
+        sync: false
+      - key: SENTRY_DSN
+        sync: false

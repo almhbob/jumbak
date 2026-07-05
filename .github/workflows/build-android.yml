@@ -45,7 +45,7 @@ jobs:
       - name: Expo prebuild (Android)
         working-directory: apps/mobile
         env:
-          EXPO_PUBLIC_API_URL: https://jumbakserver-production.up.railway.app
+          EXPO_PUBLIC_API_URL: https://jumbak-server.onrender.com
           EXPO_NO_TELEMETRY: 1
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEYSTORE_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
@@ -80,7 +80,7 @@ jobs:
           ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.1.12297006
           SENTRY_DISABLE_AUTO_UPLOAD: true
           SENTRY_NO_PROGRESS_BAR: true
-          EXPO_PUBLIC_API_URL: https://jumbakserver-production.up.railway.app
+          EXPO_PUBLIC_API_URL: https://jumbak-server.onrender.com
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEYSTORE_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
