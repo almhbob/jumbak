@@ -229,6 +229,18 @@ app.get('/terms', (_req, res) => {
   ]));
 });
 
+// ─── DB table diagnostic (temporary) ─────────────────────────────────────
+app.get('/health/db', async (_req, res) => {
+  if (!prisma) return res.json({ ok: false, message: 'DB not connected' });
+  const [countries, cities, vehicleTypes, staffMembers] = await Promise.all([
+    prisma.country.count().catch((e: Error) => e.message),
+    prisma.city.count().catch((e: Error) => e.message),
+    prisma.vehicleType.count().catch((e: Error) => e.message),
+    prisma.staffMember.count().catch((e: Error) => e.message),
+  ]);
+  res.json({ ok: true, tables: { countries, cities, vehicleTypes, staffMembers } });
+});
+
 // ─── Health ────────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {
   res.json({ ok: true, app: 'Jnbk', appAr: 'جنبك', region: 'global-ready', database: isDatabaseEnabled() });
