@@ -25,15 +25,13 @@ export function BrandLogo({ size = 'md' }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'rgba(255,255,255,0.10)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: '#FFFFFF',
     paddingVertical: 10,
     paddingHorizontal: 14,
-    shadowColor: '#13D5F0',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.22,
-    shadowRadius: 18,
-    elevation: 6,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 4,
   },
 });

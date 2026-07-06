@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
     gap: 12,
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.20)',
-    shadowColor: '#13D5F0',
+    shadowColor: colors.teal,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.18,
     shadowRadius: 24,
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
   },
   roleText: { color: 'rgba(255,255,255,0.82)', fontWeight: '900', fontSize: 16 },
   active: {
-    backgroundColor: 'rgba(19,213,240,0.20)',
+    backgroundColor: 'rgba(59,130,246,0.20)',
     borderColor: colors.teal,
     shadowColor: colors.teal,
     shadowOffset: { width: 0, height: 0 },
@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
   resend: { alignSelf: 'center', paddingVertical: 10 },
   resendText: { color: 'rgba(255,255,255,0.72)', fontSize: 14, textDecorationLine: 'underline' },
   devBanner: {
-    backgroundColor: 'rgba(242,196,65,0.12)',
+    backgroundColor: 'rgba(245,158,11,0.12)',
     borderRadius: 20,
     padding: 18,
     alignItems: 'center',
@@ -285,6 +285,6 @@ const styles = StyleSheet.create({
   },
   devBannerLabel: { color: colors.gold, fontWeight: '800', fontSize: 13 },
   devBannerCode: { color: colors.white, fontWeight: '900', fontSize: 38, letterSpacing: 8 },
-  devBannerNote: { color: 'rgba(242,196,65,0.75)', fontWeight: '700', fontSize: 11 },
+  devBannerNote: { color: 'rgba(245,158,11,0.75)', fontWeight: '700', fontSize: 11 },
   tagline: { color: 'rgba(255,255,255,0.42)', fontSize: 13, fontWeight: '800', textAlign: 'center', letterSpacing: 1.5, marginTop: 8, marginBottom: 4 },
 });

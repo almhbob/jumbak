@@ -10,14 +10,14 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#063B63"
+      "backgroundColor": "#0A1929"
     },
     "android": {
       "package": "com.almhbob.jnbk",
       "versionCode": 9,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#063B63"
+        "backgroundColor": "#0F2D52"
       },
       "permissions": [
         "android.permission.RECEIVE_BOOT_COMPLETED",
@@ -49,7 +49,7 @@
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
-          "color": "#063B63",
+          "color": "#3B82F6",
           "defaultChannel": "default",
           "sounds": []
         }

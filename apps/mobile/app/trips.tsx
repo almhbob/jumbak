@@ -65,11 +65,11 @@ const styles = StyleSheet.create({
   },
   langText: { color: colors.white, fontWeight: '900', fontSize: sw(13) },
   sourceCard: {
-    backgroundColor: 'rgba(19,213,240,0.08)',
+    backgroundColor: 'rgba(59,130,246,0.08)',
     borderRadius: 20,
     padding: 12,
     borderWidth: 1,
-    borderColor: 'rgba(19,213,240,0.22)',
+    borderColor: 'rgba(59,130,246,0.22)',
   },
   sourceText: { color: colors.teal, fontWeight: '900' },
   quickRow: { flexDirection: 'row', gap: 10 },
@@ -84,12 +84,12 @@ const styles = StyleSheet.create({
   statValue: { color: colors.gold, fontSize: sw(22), fontWeight: '900' },
   statLabel: { color: colors.muted, fontWeight: '800', fontSize: sw(12) },
   refresh: {
-    backgroundColor: 'rgba(19,213,240,0.14)',
+    backgroundColor: 'rgba(59,130,246,0.14)',
     borderRadius: 18,
     padding: sw(12),
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(19,213,240,0.30)',
+    borderColor: 'rgba(59,130,246,0.30)',
   },
   refreshText: { color: colors.teal, fontWeight: '900' },
   card: {

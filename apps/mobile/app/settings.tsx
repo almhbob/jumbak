@@ -237,11 +237,11 @@ const styles = StyleSheet.create({
   },
   langText: { color: colors.white, fontWeight: '900', fontSize: sw(13) },
   card: {
-    backgroundColor: 'rgba(19,213,240,0.10)',
+    backgroundColor: 'rgba(59,130,246,0.10)',
     borderRadius: 28,
     padding: sw(18),
     borderWidth: 1,
-    borderColor: 'rgba(19,213,240,0.28)',
+    borderColor: 'rgba(59,130,246,0.28)',
   },
   cardTitle: { color: colors.white, fontSize: sw(20), fontWeight: '900' },
   cardText: { color: 'rgba(255,255,255,0.72)', marginTop: 8, lineHeight: 23 },
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.16)',
   },
   active: {
-    backgroundColor: 'rgba(19,213,240,0.18)',
+    backgroundColor: 'rgba(59,130,246,0.18)',
     borderColor: colors.teal,
   },
   chipText: { color: 'rgba(255,255,255,0.82)', fontWeight: '900', fontSize: sw(14) },

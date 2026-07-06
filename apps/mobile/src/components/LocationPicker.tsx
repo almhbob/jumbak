@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)',
   },
   catChipActive: {
-    backgroundColor: 'rgba(19,213,240,0.18)',
+    backgroundColor: 'rgba(59,130,246,0.18)',
     borderColor: colors.teal,
   },
   catIcon: { fontSize: 14 },
@@ -223,12 +223,12 @@ const styles = StyleSheet.create({
   sep: { height: 1, backgroundColor: 'rgba(255,255,255,0.07)' },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, gap: 12 },
   rowSelected: {
-    backgroundColor: 'rgba(19,213,240,0.10)',
+    backgroundColor: 'rgba(59,130,246,0.10)',
     borderRadius: 14,
     paddingHorizontal: 10,
     marginHorizontal: -10,
     borderWidth: 1,
-    borderColor: 'rgba(19,213,240,0.28)',
+    borderColor: 'rgba(59,130,246,0.28)',
   },
   rowContent: { flex: 1 },
   locationIcon: { fontSize: 18 },

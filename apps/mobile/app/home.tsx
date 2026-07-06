@@ -468,11 +468,11 @@ const styles = StyleSheet.create({
   quickIcon: { color: colors.gold, fontSize: sw(13), fontWeight: '900', letterSpacing: 1 },
   quickText: { color: colors.white, fontWeight: '900', marginTop: 5, fontSize: sw(13) },
   sourceCard: {
-    backgroundColor: 'rgba(19,213,240,0.08)',
+    backgroundColor: 'rgba(59,130,246,0.08)',
     borderRadius: 20,
     padding: 12,
     borderWidth: 1,
-    borderColor: 'rgba(19,213,240,0.22)',
+    borderColor: 'rgba(59,130,246,0.22)',
   },
   sourceText: { color: colors.teal, fontWeight: '900', fontSize: sw(13) },
   modeGrid: { gap: 8 },
@@ -484,7 +484,7 @@ const styles = StyleSheet.create({
     borderColor: G.border,
   },
   modeActive: {
-    backgroundColor: 'rgba(19,213,240,0.16)',
+    backgroundColor: 'rgba(59,130,246,0.16)',
     borderColor: colors.teal,
     ...G.tealGlow,
   },
@@ -496,9 +496,9 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     padding: sw(16),
     gap: sw(12),
-    backgroundColor: 'rgba(19,213,240,0.08)',
+    backgroundColor: 'rgba(59,130,246,0.08)',
     borderWidth: 1.5,
-    borderColor: 'rgba(19,213,240,0.25)',
+    borderColor: 'rgba(59,130,246,0.25)',
   },
   mapHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 },
   mapTitle: { color: colors.white, fontSize: sw(22), fontWeight: '900' },
@@ -546,7 +546,7 @@ const styles = StyleSheet.create({
   },
   serviceIcon: { color: colors.gold, fontWeight: '900', fontSize: sw(14) },
   active: {
-    backgroundColor: 'rgba(19,213,240,0.18)',
+    backgroundColor: 'rgba(59,130,246,0.18)',
     borderColor: colors.teal,
   },
   chipText: { color: 'rgba(255,255,255,0.82)', fontWeight: '900', fontSize: sw(14) },
@@ -569,8 +569,8 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: G.border,
   },
   pickerButtonGold: {
-    borderColor: 'rgba(242,196,65,0.60)',
-    backgroundColor: 'rgba(242,196,65,0.07)',
+    borderColor: 'rgba(245,158,11,0.60)',
+    backgroundColor: 'rgba(245,158,11,0.07)',
   },
   rowRev: { flexDirection: 'row-reverse' },
   pickerIcon: { fontSize: sw(20) },
@@ -581,12 +581,12 @@ const styles = StyleSheet.create({
   // Open ride
   openRideCard: {
     borderRadius: 32, padding: sw(16), gap: sw(10),
-    backgroundColor: 'rgba(19,213,240,0.07)',
-    borderWidth: 1.5, borderColor: 'rgba(19,213,240,0.30)',
+    backgroundColor: 'rgba(59,130,246,0.07)',
+    borderWidth: 1.5, borderColor: 'rgba(59,130,246,0.30)',
   },
   openRideHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 4 },
   stopBadge: {
-    backgroundColor: 'rgba(19,213,240,0.22)',
+    backgroundColor: 'rgba(59,130,246,0.22)',
     borderRadius: 999, paddingVertical: 5, paddingHorizontal: 12,
     borderWidth: 1, borderColor: colors.teal,
   },
@@ -596,7 +596,7 @@ const styles = StyleSheet.create({
   stopDot: { width: sw(12), height: sw(12), borderRadius: 99, backgroundColor: colors.teal, borderWidth: 2, borderColor: 'rgba(255,255,255,0.30)' },
   stopDotFirst: { backgroundColor: colors.teal },
   stopDotLast: { backgroundColor: colors.gold },
-  stopConnector: { width: 2, flex: 1, backgroundColor: 'rgba(19,213,240,0.25)', minHeight: sw(18) },
+  stopConnector: { width: 2, flex: 1, backgroundColor: 'rgba(59,130,246,0.25)', minHeight: sw(18) },
   stopButton: {
     flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: G.glass, borderRadius: 18, padding: sw(12),
@@ -608,7 +608,7 @@ const styles = StyleSheet.create({
   removeStopText: { color: colors.danger, fontWeight: '900', fontSize: sw(12) },
   addStopBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: 'rgba(19,213,240,0.18)',
+    backgroundColor: 'rgba(59,130,246,0.18)',
     borderRadius: 18, paddingVertical: sw(11), paddingHorizontal: sw(14),
     alignSelf: 'flex-start', marginTop: 4,
     borderWidth: 1, borderColor: colors.teal,

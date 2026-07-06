@@ -1,27 +1,27 @@
 export const colors = {
-  navy: '#063B63',
-  navyDeep: '#020B14',
-  blue: '#075A8A',
-  teal: '#13D5F0',
-  tealSoft: '#0E8FB3',
-  sky: 'rgba(19,213,240,0.10)',
-  gold: '#F2C441',
-  goldSoft: 'rgba(242,196,65,0.12)',
+  navy: '#0F2D52',
+  navyDeep: '#0A1929',
+  blue: '#1565C0',
+  teal: '#3B82F6',
+  tealSoft: '#60A5FA',
+  sky: 'rgba(59,130,246,0.10)',
+  gold: '#F59E0B',
+  goldSoft: 'rgba(245,158,11,0.12)',
 
   // Glass surface tokens
-  glass: 'rgba(255,255,255,0.07)',
-  glassElevated: 'rgba(255,255,255,0.13)',
-  glassBorder: 'rgba(255,255,255,0.15)',
-  glassBorderBright: 'rgba(255,255,255,0.26)',
+  glass: 'rgba(255,255,255,0.06)',
+  glassElevated: 'rgba(255,255,255,0.11)',
+  glassBorder: 'rgba(255,255,255,0.11)',
+  glassBorderBright: 'rgba(255,255,255,0.22)',
 
   // Dark-theme semantic tokens
-  bg: '#020B14',
-  card: 'rgba(255,255,255,0.07)',
-  border: 'rgba(255,255,255,0.15)',
-  text: '#FFFFFF',
-  muted: 'rgba(255,255,255,0.52)',
+  bg: '#0A1929',
+  card: 'rgba(255,255,255,0.06)',
+  border: 'rgba(255,255,255,0.11)',
+  text: '#EEF2FF',
+  muted: 'rgba(238,242,255,0.55)',
   white: '#FFFFFF',
-  danger: '#FF6B6B',
+  danger: '#F87171',
 };
 
 export const brand = {
@@ -35,7 +35,7 @@ export const brand = {
   promiseEn: 'Always near you.',
   serviceAr: 'أقرب ريكشة إليك في السودان',
   serviceEn: 'Your rickshaw, always nearby.',
-  gradient: ['#020B14', '#042A47', '#0A4060'] as const,
+  gradient: ['#0A1929', '#0D2340', '#0F2D52'] as const,
 };
 
 export const radii = {
