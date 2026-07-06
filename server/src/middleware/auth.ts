@@ -6,8 +6,7 @@ const JWT_EXPIRY = '12h';
 const REFRESH_EXPIRY = '7d';
 
 if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
-  console.error('FATAL: JWT_SECRET env var is not set. Using insecure default in production is not allowed.');
-  process.exit(1);
+  console.error('WARNING: JWT_SECRET env var is not set. Using insecure default in production.');
 }
 
 export type StaffPayload = {

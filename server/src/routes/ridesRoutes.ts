@@ -256,7 +256,7 @@ router.patch('/:id/status', requireAuth, validateBody(updateRideStatusSchema), a
     }).catch(() => null);
     if (!ride) return res.status(404).json({ error: 'Ride not found' });
 
-    if (actingDriverId && [RideStatus.ACCEPTED, RideStatus.COMPLETED, RideStatus.CANCELLED].includes(status)) {
+    if (actingDriverId && ([RideStatus.ACCEPTED, RideStatus.COMPLETED, RideStatus.CANCELLED] as RideStatus[]).includes(status)) {
       await prisma.driver.update({ where: { id: actingDriverId }, data: { isOnline: true } }).catch(() => null);
     }
 
