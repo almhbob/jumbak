@@ -132,12 +132,16 @@ app.use('/api/wallet', walletRoutes);
 // ─── Config ────────────────────────────────────────────────────────────────
 app.get('/api/config', async (_req, res) => {
   if (prisma) {
-    const [dbCountries, dbCities, dbVehicleTypes] = await Promise.all([
-      prisma.country.findMany(),
-      prisma.city.findMany({ include: { zones: true } }),
-      prisma.vehicleType.findMany({ where: { isVisible: true }, orderBy: { id: 'asc' } }),
-    ]);
-    return res.json({ countries: dbCountries, cities: dbCities, vehicleTypes: dbVehicleTypes });
+    try {
+      const [dbCountries, dbCities, dbVehicleTypes] = await Promise.all([
+        prisma.country.findMany(),
+        prisma.city.findMany({ include: { zones: true } }),
+        prisma.vehicleType.findMany({ where: { isVisible: true }, orderBy: { id: 'asc' } }),
+      ]);
+      return res.json({ countries: dbCountries, cities: dbCities, vehicleTypes: dbVehicleTypes });
+    } catch {
+      // Fall through to memory data if DB query fails
+    }
   }
   const citiesWithZones = memoryCities.map((city) => ({
     ...city,
@@ -153,24 +157,28 @@ app.post('/api/pricing/estimate', async (req, res) => {
   const cityId = String(req.body.cityId || 'rufaa');
 
   if (prisma) {
-    const [city, vehicle] = await Promise.all([
-      prisma.city.findUnique({ where: { id: cityId }, include: { country: true } }),
-      prisma.vehicleType.findUnique({ where: { id: vehicleTypeId } }),
-    ]);
-    const fallbackCity = findCity(cityId);
-    const fallbackVehicle = findVehicleType(vehicleTypeId);
-    const selectedVehicle = vehicle || fallbackVehicle;
-    const estimatedFare = Math.max(
-      Math.round(selectedVehicle.baseFare + distanceKm * selectedVehicle.perKmFare),
-      selectedVehicle.minimumFare
-    );
-    return res.json({
-      currency: city?.country.currency || (fallbackCity.countryId === 'sa' ? 'SAR' : 'SDG'),
-      city: city || fallbackCity,
-      vehicle: selectedVehicle,
-      distanceKm,
-      estimatedFare,
-    });
+    try {
+      const [city, vehicle] = await Promise.all([
+        prisma.city.findUnique({ where: { id: cityId }, include: { country: true } }),
+        prisma.vehicleType.findUnique({ where: { id: vehicleTypeId } }),
+      ]);
+      const fallbackCity = findCity(cityId);
+      const fallbackVehicle = findVehicleType(vehicleTypeId);
+      const selectedVehicle = vehicle || fallbackVehicle;
+      const estimatedFare = Math.max(
+        Math.round(selectedVehicle.baseFare + distanceKm * selectedVehicle.perKmFare),
+        selectedVehicle.minimumFare
+      );
+      return res.json({
+        currency: city?.country.currency || (fallbackCity.countryId === 'sa' ? 'SAR' : 'SDG'),
+        city: city || fallbackCity,
+        vehicle: selectedVehicle,
+        distanceKm,
+        estimatedFare,
+      });
+    } catch {
+      // Fall through to memory-based estimation
+    }
   }
 
   const city = findCity(cityId);
