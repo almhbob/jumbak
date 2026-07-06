@@ -1,5 +1,5 @@
 -- Add DriverApplication table to store full compliance fields from driver registration
-CREATE TABLE "DriverApplication" (
+CREATE TABLE IF NOT EXISTS "DriverApplication" (
   "id"               TEXT NOT NULL,
   "driverId"         TEXT,
   "phone"            TEXT NOT NULL,
@@ -27,7 +27,13 @@ CREATE TABLE "DriverApplication" (
   CONSTRAINT "DriverApplication_pkey" PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "DriverApplication_driverId_key" ON "DriverApplication"("driverId");
+CREATE UNIQUE INDEX IF NOT EXISTS "DriverApplication_driverId_key" ON "DriverApplication"("driverId");
 
-ALTER TABLE "DriverApplication" ADD CONSTRAINT "DriverApplication_driverId_fkey"
-  FOREIGN KEY ("driverId") REFERENCES "Driver"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'DriverApplication_driverId_fkey'
+  ) THEN
+    ALTER TABLE "DriverApplication" ADD CONSTRAINT "DriverApplication_driverId_fkey"
+      FOREIGN KEY ("driverId") REFERENCES "Driver"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END $$;
