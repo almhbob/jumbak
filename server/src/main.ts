@@ -18,7 +18,7 @@ import rateLimit from 'express-rate-limit';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import { argv } from 'process';
-import { prisma, isDatabaseEnabled } from './db.js';
+import { prisma, isDatabaseEnabled, initDatabase } from './db.js';
 import { countries } from './config.js';
 import { memoryCities, memoryVehicleTypes } from './routes/configStore.js';
 import { rufaaZones } from './data/rufaaZones.js';
@@ -254,10 +254,17 @@ initSocket(httpServer, allowedOrigins);
 const currentFile = fileURLToPath(import.meta.url);
 const isMain = argv[1] === currentFile || argv[1]?.endsWith('/main.js');
 
+// Catch any unhandled rejections so a single async failure doesn't kill the process
+process.on('unhandledRejection', (reason) => {
+  logger.error('Unhandled rejection', { reason: String(reason) });
+});
+
 if (isMain) {
   const port = Number(process.env.PORT || 4000);
-  httpServer.listen(port, '0.0.0.0', () => {
-    logger.info(`Jnbk API running on port ${port}`, { database: isDatabaseEnabled(), realtime: true });
+  initDatabase().then(() => {
+    httpServer.listen(port, '0.0.0.0', () => {
+      logger.info(`Jnbk API running on port ${port}`, { database: isDatabaseEnabled(), realtime: true });
+    });
   });
 }
 
