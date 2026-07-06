@@ -59,64 +59,67 @@ async function bootstrapDeveloperAccount(client: PrismaClient): Promise<void> {
 }
 
 async function seedReferenceData(client: PrismaClient): Promise<void> {
-  try {
-    const countryCount = await client.country.count();
-    if (countryCount > 0) return; // already seeded
+  const [{ countries, cities }, { rufaaZones }] = await Promise.all([
+    import('./config.js'),
+    import('./data/rufaaZones.js'),
+  ]);
 
-    // Dynamic import so this module stays lightweight when DB is not used
-    const [{ countries, cities }, { rufaaZones }] = await Promise.all([
-      import('./config.js'),
-      import('./data/rufaaZones.js'),
-    ]);
+  // Each step is independent — a failure in one doesn't block the others.
+  // Count-guards prevent redundant inserts on subsequent cold starts.
 
-    // 1. Countries
+  const [cntCountries, cntCities, cntZones, cntVehicles] = await Promise.all([
+    client.country.count().catch(() => -1),
+    client.city.count().catch(() => -1),
+    client.zone.count().catch(() => -1),
+    client.vehicleType.count().catch(() => -1),
+  ]);
+
+  if (cntCountries === 0) {
     await client.country.createMany({
       data: countries.map((c) => ({ id: c.id, nameAr: c.nameAr, nameEn: c.nameEn, currency: c.currency })),
       skipDuplicates: true,
-    });
+    }).then((r) => console.log(`[db] Countries seeded: ${r.count}`))
+      .catch((e: Error) => console.error('[db] Countries seed error:', e.message));
+  }
 
-    // 2. Cities
+  if (cntCities === 0) {
     await client.city.createMany({
       data: cities.map((c) => ({ id: c.id, countryId: c.countryId, nameAr: c.nameAr, nameEn: c.nameEn })),
       skipDuplicates: true,
-    });
+    }).then((r) => console.log(`[db] Cities seeded: ${r.count}`))
+      .catch((e: Error) => console.error('[db] Cities seed error:', e.message));
+  }
 
-    // 3. Zones (Rufaa + simple placeholder zones for other cities)
-    const zones = [
+  if (cntZones === 0) {
+    const zoneData = [
       ...rufaaZones.map((z) => ({
-        id: z.id,
-        cityId: z.cityId,
-        nameAr: z.nameAr,
-        nameEn: z.nameEn,
-        category: z.category,
-        multiplier: 1.0,
+        id: z.id, cityId: z.cityId, nameAr: z.nameAr, nameEn: z.nameEn,
+        category: z.category, multiplier: 1.0,
         ...(z.fixedFare !== undefined ? { fixedFare: z.fixedFare } : {}),
       })),
-      // Khartoum placeholder zones
-      { id: 'khartoum-center', cityId: 'khartoum', nameAr: 'الخرطوم', nameEn: 'Khartoum', category: 'أحياء وشوارع', multiplier: 1.0 },
-      { id: 'khartoum-bahri', cityId: 'khartoum', nameAr: 'بحري', nameEn: 'Bahri', category: 'أحياء وشوارع', multiplier: 1.0 },
-      { id: 'khartoum-omdurman', cityId: 'khartoum', nameAr: 'أمدرمان', nameEn: 'Omdurman', category: 'أحياء وشوارع', multiplier: 1.0 },
-      { id: 'khartoum-airport', cityId: 'khartoum', nameAr: 'المطار', nameEn: 'Airport', category: 'مرافق ومعالم', multiplier: 1.0 },
-      // Dammam placeholder zones
-      { id: 'dammam-center', cityId: 'dammam', nameAr: 'وسط الدمام', nameEn: 'Central Dammam', category: 'أحياء وشوارع', multiplier: 1.0 },
-      { id: 'dammam-corniche', cityId: 'dammam', nameAr: 'الكورنيش', nameEn: 'Corniche', category: 'مرافق ومعالم', multiplier: 1.0 },
-      { id: 'dammam-airport', cityId: 'dammam', nameAr: 'المطار', nameEn: 'Airport', category: 'مرافق ومعالم', multiplier: 1.0 },
+      { id: 'khartoum-center',   cityId: 'khartoum', nameAr: 'الخرطوم',   nameEn: 'Khartoum',       category: 'أحياء وشوارع',  multiplier: 1.0 },
+      { id: 'khartoum-bahri',    cityId: 'khartoum', nameAr: 'بحري',       nameEn: 'Bahri',          category: 'أحياء وشوارع',  multiplier: 1.0 },
+      { id: 'khartoum-omdurman', cityId: 'khartoum', nameAr: 'أمدرمان',    nameEn: 'Omdurman',       category: 'أحياء وشوارع',  multiplier: 1.0 },
+      { id: 'khartoum-airport',  cityId: 'khartoum', nameAr: 'المطار',     nameEn: 'Airport',        category: 'مرافق ومعالم', multiplier: 1.0 },
+      { id: 'dammam-center',     cityId: 'dammam',   nameAr: 'وسط الدمام', nameEn: 'Central Dammam', category: 'أحياء وشوارع',  multiplier: 1.0 },
+      { id: 'dammam-corniche',   cityId: 'dammam',   nameAr: 'الكورنيش',   nameEn: 'Corniche',       category: 'مرافق ومعالم', multiplier: 1.0 },
+      { id: 'dammam-airport',    cityId: 'dammam',   nameAr: 'المطار',     nameEn: 'Airport',        category: 'مرافق ومعالم', multiplier: 1.0 },
     ];
-    await client.zone.createMany({ data: zones, skipDuplicates: true });
+    await client.zone.createMany({ data: zoneData, skipDuplicates: true })
+      .then((r) => console.log(`[db] Zones seeded: ${r.count}`))
+      .catch((e: Error) => console.error('[db] Zones seed error:', e.message));
+  }
 
-    // 4. Vehicle types
+  if (cntVehicles === 0) {
     await client.vehicleType.createMany({
       data: [
-        { id: 'rickshaw', nameAr: 'ركشة',       nameEn: 'Rickshaw', baseFare: 500,  perKmFare: 300, minimumFare: 1000, isVisible: true },
+        { id: 'rickshaw', nameAr: 'ركشة',       nameEn: 'Rickshaw', baseFare: 500,  perKmFare: 300, minimumFare: 1000, isVisible: true  },
         { id: 'car',      nameAr: 'سيارة',       nameEn: 'Car',      baseFare: 900,  perKmFare: 550, minimumFare: 1800, isVisible: false },
         { id: 'van',      nameAr: 'حافلة صغيرة', nameEn: 'Van',      baseFare: 1200, perKmFare: 700, minimumFare: 2500, isVisible: false },
       ],
       skipDuplicates: true,
-    });
-
-    console.log('[db] Reference data seeded (countries, cities, zones, vehicle types)');
-  } catch (err) {
-    console.error('[db] Reference data seeding failed:', err instanceof Error ? err.message : String(err));
+    }).then((r) => console.log(`[db] VehicleTypes seeded: ${r.count}`))
+      .catch((e: Error) => console.error('[db] VehicleTypes seed error:', e.message));
   }
 }
 
