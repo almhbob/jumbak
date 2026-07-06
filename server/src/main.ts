@@ -232,13 +232,18 @@ app.get('/terms', (_req, res) => {
 // ─── DB table diagnostic (temporary) ─────────────────────────────────────
 app.get('/health/db', async (_req, res) => {
   if (!prisma) return res.json({ ok: false, message: 'DB not connected' });
-  const [countries, cities, vehicleTypes, staffMembers] = await Promise.all([
+  const [countries, cities, zones, vehicleTypes, staffMembers] = await Promise.all([
     prisma.country.count().catch((e: Error) => e.message),
     prisma.city.count().catch((e: Error) => e.message),
+    prisma.zone.count().catch((e: Error) => e.message),
     prisma.vehicleType.count().catch((e: Error) => e.message),
     prisma.staffMember.count().catch((e: Error) => e.message),
   ]);
-  res.json({ ok: true, tables: { countries, cities, vehicleTypes, staffMembers } });
+  // Try a raw insert to surface the exact vehicle type error
+  const vtTest = await prisma.$queryRaw`SELECT column_name FROM information_schema.columns WHERE table_name = 'VehicleType'`
+    .then((cols) => (cols as Array<{column_name: string}>).map(c => c.column_name))
+    .catch((e: Error) => e.message);
+  res.json({ ok: true, tables: { countries, cities, zones, vehicleTypes, staffMembers }, vtColumns: vtTest });
 });
 
 // ─── Health ────────────────────────────────────────────────────────────────
