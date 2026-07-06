@@ -509,11 +509,11 @@ const styles = StyleSheet.create({
   actionRow: { gap: 8 },
 
   waitingCard: { backgroundColor: colors.white, borderRadius: 20, padding: 24, alignItems: 'center' },
-  waitingText: { color: colors.muted, fontWeight: '800', fontSize: 15 },
+  waitingText: { color: colors.mutedOnLight, fontWeight: '800', fontSize: 15 },
 
   rideCard: { backgroundColor: colors.white, padding: 16, borderRadius: 20, gap: 8 },
   route: { fontWeight: '900', fontSize: 17, color: colors.navy },
-  muted: { color: colors.muted },
+  muted: { color: colors.mutedOnLight },
   fare: { color: colors.gold, fontWeight: '900', fontSize: 22 },
 
   // ─── Offer modal ───────────────────────────────────────────────────────────
@@ -523,7 +523,7 @@ const styles = StyleSheet.create({
 
   progressTrack: { height: 6, backgroundColor: '#E2E8F0', borderRadius: 99, overflow: 'hidden' },
   progressBar: { height: 6, backgroundColor: colors.teal, borderRadius: 99 },
-  countdown: { color: colors.muted, fontWeight: '800', fontSize: 13, textAlign: 'center' },
+  countdown: { color: colors.mutedOnLight, fontWeight: '800', fontSize: 13, textAlign: 'center' },
 
   routeBlock: { backgroundColor: '#F8FAFC', borderRadius: 16, padding: 14, gap: 4 },
   routeRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -533,7 +533,7 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 0 },
   metaItem: { flex: 1, alignItems: 'center' },
   metaSep: { width: 1, height: 32, backgroundColor: '#E2E8F0' },
-  metaLabel: { color: colors.muted, fontWeight: '700', fontSize: 12 },
+  metaLabel: { color: colors.mutedOnLight, fontWeight: '700', fontSize: 12 },
   metaValue: { color: colors.navy, fontWeight: '900', fontSize: 20, marginTop: 2 },
 
   warningText: { color: '#92400E', backgroundColor: '#FFFBEB', borderRadius: 10, padding: 10, fontWeight: '700', fontSize: 12, textAlign: 'center' },

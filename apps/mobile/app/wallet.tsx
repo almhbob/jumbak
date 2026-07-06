@@ -259,10 +259,10 @@ export default function Wallet() {
       <Modal visible={withdrawVisible} transparent animationType="slide" onRequestClose={() => setWithdrawVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={[styles.sectionTitle, rtl && styles.rtl]}>
+            <Text style={[styles.modalTitle, rtl && styles.rtl]}>
               {lang === 'ar' ? 'طلب سحب رصيد' : 'Request Withdrawal'}
             </Text>
-            <Text style={[styles.topupNote, rtl && styles.rtl]}>
+            <Text style={[styles.modalNote, rtl && styles.rtl]}>
               {lang === 'ar'
                 ? `الرصيد المتاح: ${fmt(wallet?.balance ?? 0)} ${currency}`
                 : `Available: ${fmt(wallet?.balance ?? 0)} ${currency}`}
@@ -282,7 +282,7 @@ export default function Wallet() {
               onChangeText={setWithdrawAccount}
               textAlign={rtl ? 'right' : 'left'}
             />
-            <Text style={[styles.topupNote, rtl && styles.rtl]}>
+            <Text style={[styles.modalNote, rtl && styles.rtl]}>
               {lang === 'ar'
                 ? 'سيتم مراجعة طلب السحب من قبل الإدارة خلال 1-3 أيام عمل.'
                 : 'Withdrawal will be reviewed by admin within 1-3 business days.'}
@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
   balanceAmount: { color: colors.gold, fontSize: sw(54), fontWeight: '900', letterSpacing: -1, marginTop: 4 },
   currencyLabel: { color: 'rgba(255,255,255,.7)', fontWeight: '900', fontSize: sw(16), marginTop: -4 },
   section: { margin: sw(16), marginTop: sw(12), gap: sw(10) },
-  sectionTitle: { color: colors.navy, fontWeight: '900', fontSize: sw(16) },
+  sectionTitle: { color: colors.text, fontWeight: '900', fontSize: sw(16) },
   amountsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   reverseRow: { flexDirection: 'row-reverse' },
   amountChip: {
@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
     shadowColor: colors.navy, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 6, elevation: 2,
   },
   amountText: { color: colors.navy, fontWeight: '900', fontSize: sw(17) },
-  amountCurrency: { color: colors.muted, fontWeight: '800', fontSize: sw(11), marginTop: 2 },
+  amountCurrency: { color: colors.mutedOnLight, fontWeight: '800', fontSize: sw(11), marginTop: 2 },
   topupNote: { color: colors.muted, fontWeight: '700', fontSize: sw(12), lineHeight: 19 },
   bankCard: {
     backgroundColor: '#F0F9FF', borderRadius: 20, padding: sw(16),
@@ -339,10 +339,10 @@ const styles = StyleSheet.create({
   bankLabel: { color: '#0369A1', fontWeight: '800', fontSize: sw(12), lineHeight: 18 },
   bankRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   bankIcon: { fontSize: sw(28) },
-  bankName: { color: colors.muted, fontWeight: '700', fontSize: sw(11) },
+  bankName: { color: colors.mutedOnLight, fontWeight: '700', fontSize: sw(11) },
   bankNumber: { color: colors.navy, fontWeight: '900', fontSize: sw(26), letterSpacing: 3 },
   emptyCard: { backgroundColor: colors.white, borderRadius: 20, padding: sw(20), alignItems: 'center' },
-  emptyText: { color: colors.muted, fontWeight: '800', fontSize: sw(14) },
+  emptyText: { color: colors.mutedOnLight, fontWeight: '800', fontSize: sw(14) },
   txRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: colors.white, borderRadius: 18, padding: sw(13),
@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
   txIconText: { fontWeight: '900', fontSize: sw(17) },
   txContent: { flex: 1 },
   txDesc: { color: colors.navy, fontWeight: '900', fontSize: sw(14) },
-  txDate: { color: colors.muted, fontWeight: '700', fontSize: sw(12), marginTop: 2 },
+  txDate: { color: colors.mutedOnLight, fontWeight: '700', fontSize: sw(12), marginTop: 2 },
   txAmount: { fontWeight: '900', fontSize: sw(15), textAlign: 'right' },
   rtl: { textAlign: 'right', writingDirection: 'rtl' },
   modalOverlay: {
@@ -363,11 +363,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white, borderTopLeftRadius: 28, borderTopRightRadius: 28,
     padding: sw(24), gap: sw(14),
   },
+  modalTitle: { color: colors.navy, fontWeight: '900', fontSize: sw(16) },
+  modalNote: { color: colors.mutedOnLight, fontWeight: '700', fontSize: sw(12), lineHeight: 19 },
   input: {
-    borderWidth: 1.5, borderColor: colors.border, borderRadius: 14,
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.20)', borderRadius: 14,
     paddingHorizontal: sw(14), paddingVertical: sw(12),
-    fontSize: sw(15), fontWeight: '700', color: colors.navy,
-    backgroundColor: colors.bg,
+    fontSize: sw(15), fontWeight: '700', color: colors.text,
+    backgroundColor: colors.navyDeep,
   },
   rtlInput: { textAlign: 'right' },
   modalActions: { flexDirection: 'row', gap: 12, justifyContent: 'flex-end' },

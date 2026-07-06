@@ -20,6 +20,7 @@ export const colors = {
   border: 'rgba(255,255,255,0.11)',
   text: '#EEF2FF',
   muted: 'rgba(238,242,255,0.55)',
+  mutedOnLight: '#64748B',
   white: '#FFFFFF',
   danger: '#F87171',
 };

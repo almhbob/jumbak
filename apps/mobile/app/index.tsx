@@ -120,9 +120,9 @@ export default function Welcome() {
       </Text>
 
       <View style={styles.features}>
-        <Feature title={rtl ? 'آمن' : 'Safe'} letter='S' />
-        <Feature title={rtl ? 'سريع' : 'Fast'} letter='F' />
-        <Feature title={rtl ? 'موثوق' : 'Reliable'} letter='R' />
+        <Feature title={rtl ? 'آمن' : 'Safe'} icon='🛡️' />
+        <Feature title={rtl ? 'سريع' : 'Fast'} icon='⚡' />
+        <Feature title={rtl ? 'موثوق' : 'Reliable'} icon='✅' />
       </View>
 
       <Button title={t.startRide} variant='gold' onPress={() => router.push({ pathname: '/login', params: { lang } })} />
@@ -131,10 +131,10 @@ export default function Welcome() {
   );
 }
 
-function Feature({ title, letter }: { title: string; letter: string }) {
+function Feature({ title, icon }: { title: string; icon: string }) {
   return (
     <View style={styles.feature}>
-      <Text style={styles.featureIcon}>{letter}</Text>
+      <Text style={styles.featureIcon}>{icon}</Text>
       <Text style={styles.featureText}>{title}</Text>
     </View>
   );
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
     flex: 1, backgroundColor: 'rgba(255,255,255,.12)', borderRadius: 20,
     padding: 12, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,.16)',
   },
-  featureIcon: { color: colors.gold, fontSize: 22, fontWeight: '900' },
+  featureIcon: { fontSize: 24, textAlign: 'center' },
   featureText: { color: colors.white, fontWeight: '900', marginTop: 5 },
   rtl: { textAlign: 'center', writingDirection: 'rtl' },
 });

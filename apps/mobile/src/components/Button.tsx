@@ -54,9 +54,7 @@ const styles = StyleSheet.create({
     minHeight: 52,
   },
   primary: {
-    backgroundColor: 'rgba(6,59,99,0.72)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.20)',
+    backgroundColor: colors.teal,
   },
   gold: {
     backgroundColor: colors.gold,

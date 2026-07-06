@@ -64,10 +64,10 @@ function Layout() {
         headerShown: true,
         headerBackTitle: 'رجوع',
         headerTitleAlign: 'center',
-        headerTintColor: colors.navy,
+        headerTintColor: colors.text,
         headerStyle: { backgroundColor: colors.bg },
         headerShadowVisible: false,
-        headerTitleStyle: { color: colors.navy, fontWeight: '900' },
+        headerTitleStyle: { color: colors.text, fontWeight: '900' },
         contentStyle: { backgroundColor: colors.bg },
       }}
     >

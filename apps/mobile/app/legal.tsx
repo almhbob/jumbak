@@ -16,6 +16,6 @@ export default function LegalScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 24, paddingTop: 60, gap: 14 },
-  title: { color: colors.navy, fontSize: 26, fontWeight: '900', textAlign: 'right' },
+  title: { color: colors.text, fontSize: 26, fontWeight: '900', textAlign: 'right' },
   text: { color: colors.text, fontSize: 16, lineHeight: 26, fontWeight: '700', textAlign: 'right' }
 });
