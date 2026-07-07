@@ -198,7 +198,7 @@ const legalHtml = (titleAr: string, titleEn: string, sections: { h: string; p: s
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${titleAr} — جنبك</title>
 <style>body{font-family:system-ui,sans-serif;max-width:760px;margin:40px auto;padding:0 20px;color:#1a2535;line-height:1.7}
-h1{color:#063B63;font-size:1.6rem}h2{color:#063B63;font-size:1.1rem;margin-top:2rem}
+h1{color:#0F2D52;font-size:1.6rem}h2{color:#0F2D52;font-size:1.1rem;margin-top:2rem}
 p{color:#374151}footer{margin-top:3rem;color:#9ca3af;font-size:.85rem;border-top:1px solid #e5e7eb;padding-top:1rem}</style>
 </head><body>
 <h1>${titleAr}<br><small style="font-size:.7em;color:#6b7280">${titleEn}</small></h1>
@@ -227,23 +227,6 @@ app.get('/terms', (_req, res) => {
     { h: 'الأسعار', p: 'قد يتغير السعر التقديري حسب المسافة والمدينة ونوع الخدمة والعروض أو التعديلات التشغيلية.' },
     { h: 'إيقاف الحساب', p: 'يمكن لجنبك إيقاف الحسابات المرتبطة بالاحتيال أو السلوك غير الآمن أو الشكاوى المتكررة أو مخالفة القواعد.' },
   ]));
-});
-
-// ─── DB table diagnostic (temporary) ─────────────────────────────────────
-app.get('/health/db', async (_req, res) => {
-  if (!prisma) return res.json({ ok: false, message: 'DB not connected' });
-  const [countries, cities, zones, vehicleTypes, staffMembers] = await Promise.all([
-    prisma.country.count().catch((e: Error) => e.message),
-    prisma.city.count().catch((e: Error) => e.message),
-    prisma.zone.count().catch((e: Error) => e.message),
-    prisma.vehicleType.count().catch((e: Error) => e.message),
-    prisma.staffMember.count().catch((e: Error) => e.message),
-  ]);
-  // Try a raw insert to surface the exact vehicle type error
-  const vtTest = await prisma.$queryRaw`SELECT column_name FROM information_schema.columns WHERE table_name = 'VehicleType'`
-    .then((cols) => (cols as Array<{column_name: string}>).map(c => c.column_name))
-    .catch((e: Error) => e.message);
-  res.json({ ok: true, tables: { countries, cities, zones, vehicleTypes, staffMembers }, vtColumns: vtTest });
 });
 
 // ─── Health ────────────────────────────────────────────────────────────────

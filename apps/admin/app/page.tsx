@@ -57,8 +57,8 @@ const copy = {
 };
 
 const workspaces: { key: keyof typeof copy.ar; descKey: keyof typeof copy.ar; path: string; accent: string }[] = [
-  { key: 'operations', descKey: 'operationsDesc', path: '/operations', accent: '#0E8FB3' },
-  { key: 'business',   descKey: 'businessDesc',   path: '/business',   accent: '#D6A936' },
+  { key: 'operations', descKey: 'operationsDesc', path: '/operations', accent: '#3B82F6' },
+  { key: 'business',   descKey: 'businessDesc',   path: '/business',   accent: '#F59E0B' },
   { key: 'staff',      descKey: 'staffDesc',       path: '/staff',      accent: '#8B5CF6' },
   { key: 'pricing',    descKey: 'pricingDesc',     path: '/pricing',    accent: '#10B981' },
   { key: 'zones',      descKey: 'zonesDesc',       path: '/zones',      accent: '#3B82F6' },
@@ -98,7 +98,7 @@ export default async function Dashboard({ searchParams }: { searchParams?: { lan
   const isFirebase   = isFirebaseConfigured();
   const hasBackend   = !!process.env.NEXT_PUBLIC_API_URL;
   const sourceLabel  = isFirebase ? t.firebase : (hasBackend ? t.backend : t.preview);
-  const sourceColor  = isFirebase ? '#0E8FB3' : (hasBackend ? '#10B981' : '#F59E0B');
+  const sourceColor  = isFirebase ? '#3B82F6' : (hasBackend ? '#10B981' : '#F59E0B');
 
   const activeDrivers  = drivers.filter((d) => d.online || d.status === 'approved').length;
   const completedRides = rides.filter((r) => r.status === 'COMPLETED' || r.status === 'completed').length;
@@ -159,11 +159,11 @@ export default async function Dashboard({ searchParams }: { searchParams?: { lan
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div style={{ background: '#F0F6FC', borderRadius: 12, padding: '14px 18px' }}>
             <div style={{ fontSize: 12, fontWeight: 800, color: '#7A92A8', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 6 }}>{t.done}</div>
-            <div style={{ fontSize: 26, fontWeight: 900, color: '#063B63' }}>{completedRides}</div>
+            <div style={{ fontSize: 26, fontWeight: 900, color: '#0F2D52' }}>{completedRides}</div>
           </div>
           <div style={{ background: '#F0F6FC', borderRadius: 12, padding: '14px 18px' }}>
             <div style={{ fontSize: 12, fontWeight: 800, color: '#7A92A8', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 6 }}>{t.revenue}</div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: '#0E8FB3' }}>{totalRevenue.toLocaleString()} <span style={{ fontSize: 14 }}>SDG</span></div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: '#3B82F6' }}>{totalRevenue.toLocaleString()} <span style={{ fontSize: 14 }}>SDG</span></div>
           </div>
         </div>
       </section>

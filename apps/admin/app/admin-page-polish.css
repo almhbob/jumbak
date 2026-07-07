@@ -18,14 +18,14 @@
 }
 
 .adminReviewCard:hover {
-  border-color: rgba(14,143,179,0.28);
+  border-color: rgba(59,130,246,0.28);
   background: #fbfdff;
 }
 
 .adminInfoBlock {
   border-radius: 14px;
   background: #f8fbfd;
-  border: 1px solid rgba(6,59,99,0.08);
+  border: 1px solid rgba(15,45,82,0.08);
   padding: 12px 13px;
 }
 
@@ -117,7 +117,7 @@
 }
 
 .pricingCard:hover {
-  border-color: rgba(14,143,179,0.28);
+  border-color: rgba(59,130,246,0.28);
   background: #fbfdff;
 }
 
@@ -139,7 +139,7 @@
 .pricingMetric {
   border-radius: 14px;
   background: #f8fbfd;
-  border: 1px solid rgba(6,59,99,0.08);
+  border: 1px solid rgba(15,45,82,0.08);
   padding: 10px 12px;
 }
 
@@ -163,7 +163,7 @@
   gap: 10px;
   align-items: end;
   background: #f8fbfd;
-  border: 1px dashed rgba(14,143,179,0.32);
+  border: 1px dashed rgba(59,130,246,0.32);
   border-radius: 18px;
   padding: 14px;
 }
@@ -200,7 +200,7 @@
 }
 
 .zoneCard:hover {
-  border-color: rgba(14,143,179,0.28);
+  border-color: rgba(59,130,246,0.28);
   background: #fbfdff;
 }
 
@@ -235,7 +235,7 @@
   gap: 10px;
   align-items: end;
   background: #f8fbfd;
-  border: 1px dashed rgba(14,143,179,0.32);
+  border: 1px dashed rgba(59,130,246,0.32);
   border-radius: 18px;
   padding: 14px;
 }
@@ -270,7 +270,7 @@
 }
 
 .financeCard:hover {
-  border-color: rgba(14,143,179,0.28);
+  border-color: rgba(59,130,246,0.28);
   background: #fbfdff;
 }
 
@@ -291,7 +291,7 @@
   padding: 14px;
   margin-top: 8px;
   background: #f8fbfd;
-  border: 1px dashed rgba(14,143,179,0.32);
+  border: 1px dashed rgba(59,130,246,0.32);
 }
 
 .financeConfirmDanger {
@@ -357,7 +357,7 @@
 
 .panel form[style*='grid-template-columns'] {
   background: #f8fbfd;
-  border: 1px dashed rgba(14,143,179,0.28);
+  border: 1px dashed rgba(59,130,246,0.28);
   border-radius: 18px;
   padding: 14px;
 }
@@ -367,7 +367,7 @@
 .panel form[style*='grid-template-columns'] select {
   min-height: 44px;
   border-radius: 12px;
-  border: 1px solid rgba(6,59,99,0.16);
+  border: 1px solid rgba(15,45,82,0.16);
   background: #fff;
 }
 

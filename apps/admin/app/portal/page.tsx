@@ -237,13 +237,13 @@ export default function Portal() {
                 className="languageSwitch buttonReset"
                 type="button"
                 onClick={() => setShowPw(!showPw)}
-                style={{ color: '#063B63', background: '#F7FAFC', border: '1px solid #D9E2EC' }}
+                style={{ color: '#0F2D52', background: '#F7FAFC', border: '1px solid #D9E2EC' }}
               >
                 {showPw ? t.hide : t.show}
               </button>
             </div>
 
-            <button className="languageSwitch buttonReset" type="button" onClick={() => setShowUsername(!showUsername)} style={{ color: '#063B63', background: '#F7FAFC', border: '1px solid #D9E2EC' }}>
+            <button className="languageSwitch buttonReset" type="button" onClick={() => setShowUsername(!showUsername)} style={{ color: '#0F2D52', background: '#F7FAFC', border: '1px solid #D9E2EC' }}>
               {showUsername ? t.hideCustom : t.useCustom}
             </button>
 

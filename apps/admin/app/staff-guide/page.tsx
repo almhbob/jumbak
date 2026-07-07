@@ -12,7 +12,7 @@ const roleGuides: Record<StaffRole, {
   blockedAr: string[]; blockedEn: string[];
 }> = {
   operations: {
-    titleAr: 'مدير التشغيل', titleEn: 'Operations Manager', route: '/operations', level: 'تشغيل رئيسي', color: '#0E8FB3',
+    titleAr: 'مدير التشغيل', titleEn: 'Operations Manager', route: '/operations', level: 'تشغيل رئيسي', color: '#3B82F6',
     summaryAr: 'يدير الرحلات اليومية، السائقين، الدعم، ومؤشرات التشغيل.',
     summaryEn: 'Manages daily rides, drivers, support, and operations indicators.',
     dailyAr: ['متابعة الرحلات النشطة', 'متابعة توفر الجوكية', 'تصعيد البلاغات الحرجة', 'مراجعة طلبات الجوكية عند الحاجة'],
@@ -78,7 +78,7 @@ const roleGuides: Record<StaffRole, {
     blockedEn: ['No contract/share changes without management', 'Does not override management decisions'],
   },
   business: {
-    titleAr: 'الإدارة', titleEn: 'Management', route: '/business', level: 'إدارة عليا', color: '#D6A936',
+    titleAr: 'الإدارة', titleEn: 'Management', route: '/business', level: 'إدارة عليا', color: '#F59E0B',
     summaryAr: 'يدير القرارات، العقود، النسب، الموظفين، والمدن.',
     summaryEn: 'Manages decisions, contracts, shares, staff, and cities.',
     dailyAr: ['مراجعة التقارير', 'اعتماد القرارات', 'إدارة الموظفين', 'متابعة التوسع'],
