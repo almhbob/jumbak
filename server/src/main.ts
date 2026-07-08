@@ -170,7 +170,7 @@ app.post('/api/pricing/estimate', async (req, res) => {
         selectedVehicle.minimumFare
       );
       return res.json({
-        currency: city?.country.currency || (fallbackCity.countryId === 'sa' ? 'SAR' : 'SDG'),
+        currency: city?.country.currency || 'SDG',
         city: city || fallbackCity,
         vehicle: selectedVehicle,
         distanceKm,
@@ -184,7 +184,7 @@ app.post('/api/pricing/estimate', async (req, res) => {
   const city = findCity(cityId);
   const vehicle = findVehicleType(vehicleTypeId);
   res.json({
-    currency: city.countryId === 'sa' ? 'SAR' : 'SDG',
+    currency: 'SDG',
     city,
     vehicle,
     distanceKm,

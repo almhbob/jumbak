@@ -97,13 +97,6 @@ async function seedReferenceData(client: PrismaClient): Promise<void> {
         category: z.category, multiplier: 1.0,
         ...(z.fixedFare !== undefined ? { fixedFare: z.fixedFare } : {}),
       })),
-      { id: 'khartoum-center',   cityId: 'khartoum', nameAr: 'الخرطوم',   nameEn: 'Khartoum',       category: 'أحياء وشوارع',  multiplier: 1.0 },
-      { id: 'khartoum-bahri',    cityId: 'khartoum', nameAr: 'بحري',       nameEn: 'Bahri',          category: 'أحياء وشوارع',  multiplier: 1.0 },
-      { id: 'khartoum-omdurman', cityId: 'khartoum', nameAr: 'أمدرمان',    nameEn: 'Omdurman',       category: 'أحياء وشوارع',  multiplier: 1.0 },
-      { id: 'khartoum-airport',  cityId: 'khartoum', nameAr: 'المطار',     nameEn: 'Airport',        category: 'مرافق ومعالم', multiplier: 1.0 },
-      { id: 'dammam-center',     cityId: 'dammam',   nameAr: 'وسط الدمام', nameEn: 'Central Dammam', category: 'أحياء وشوارع',  multiplier: 1.0 },
-      { id: 'dammam-corniche',   cityId: 'dammam',   nameAr: 'الكورنيش',   nameEn: 'Corniche',       category: 'مرافق ومعالم', multiplier: 1.0 },
-      { id: 'dammam-airport',    cityId: 'dammam',   nameAr: 'المطار',     nameEn: 'Airport',        category: 'مرافق ومعالم', multiplier: 1.0 },
     ];
     await client.zone.createMany({ data: zoneData, skipDuplicates: true })
       .then((r) => console.log(`[db] Zones seeded: ${r.count}`))

@@ -6,15 +6,12 @@ export type VehicleType = { id: string; nameAr: string; nameEn: string; baseFare
 
 export const countries: Country[] = [
   { id: 'sd', nameAr: 'السودان', nameEn: 'Sudan', currency: 'SDG' },
-  { id: 'sa', nameAr: 'السعودية', nameEn: 'Saudi Arabia', currency: 'SAR' },
 ];
 
 const rufaaZoneNames = rufaaZones.map((z) => z.nameAr);
 
 export const cities: City[] = [
-  { id: 'rufaa',    countryId: 'sd', nameAr: 'رفاعة',  nameEn: 'Rufaa',   zonesAr: rufaaZoneNames, zonesEn: rufaaZoneNames },
-  { id: 'khartoum', countryId: 'sd', nameAr: 'الخرطوم', nameEn: 'Khartoum', zonesAr: ['الخرطوم', 'بحري', 'أمدرمان', 'السوق العربي', 'المطار'], zonesEn: ['Khartoum', 'Bahri', 'Omdurman', 'Arab Market', 'Airport'] },
-  { id: 'dammam',  countryId: 'sa', nameAr: 'الدمام',  nameEn: 'Dammam',  zonesAr: ['وسط الدمام', 'الكورنيش', 'الشاطئ', 'الفيصلية', 'المطار'], zonesEn: ['Central Dammam', 'Corniche', 'Al Shati', 'Al Faisaliyah', 'Airport'] },
+  { id: 'rufaa', countryId: 'sd', nameAr: 'رفاعة', nameEn: 'Rufaa', zonesAr: rufaaZoneNames, zonesEn: rufaaZoneNames },
 ];
 
 export const vehicleTypes: VehicleType[] = [

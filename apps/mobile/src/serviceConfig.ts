@@ -42,7 +42,6 @@ export type ServiceMode = {
 
 export const countries: Country[] = [
   { id: 'sd', nameAr: 'السودان', nameEn: 'Sudan', currency: 'SDG' },
-  { id: 'sa', nameAr: 'السعودية', nameEn: 'Saudi Arabia', currency: 'SAR' }
 ];
 
 // ─── All 212 Rufaa zones — organized by 8 categories ─────────────────────────
@@ -290,22 +289,6 @@ export const cities: City[] = [
     zonesEn: rufaaZonesEn,
     locationItems: rufaaLocationItems,
   },
-  {
-    id: 'khartoum',
-    countryId: 'sd',
-    nameAr: 'الخرطوم',
-    nameEn: 'Khartoum',
-    zonesAr: ['وسط الخرطوم', 'بحري', 'أمدرمان', 'السوق العربي', 'المطار'],
-    zonesEn: ['Central Khartoum', 'Bahri', 'Omdurman', 'Arab Market', 'Airport']
-  },
-  {
-    id: 'dammam',
-    countryId: 'sa',
-    nameAr: 'الدمام',
-    nameEn: 'Dammam',
-    zonesAr: ['وسط الدمام', 'الكورنيش', 'الشاطئ', 'الفيصلية', 'المطار'],
-    zonesEn: ['Central Dammam', 'Corniche', 'Al Shati', 'Al Faisaliyah', 'Airport']
-  }
 ];
 
 export const vehicleTypes: VehicleType[] = [
