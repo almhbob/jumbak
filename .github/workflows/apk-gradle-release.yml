@@ -2,6 +2,14 @@ name: APK Gradle Release
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/mobile/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/apk-gradle-release.yml'
 
 jobs:
   apk:
@@ -20,6 +28,9 @@ jobs:
       - name: Install
         working-directory: apps/mobile
         run: npm install --legacy-peer-deps
+      - name: Validate Expo configuration
+        working-directory: apps/mobile
+        run: npx expo config --type public
       - name: Prebuild
         working-directory: apps/mobile
         run: npx expo prebuild --platform android --clean --non-interactive
